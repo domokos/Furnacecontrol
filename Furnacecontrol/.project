@@ -19,5 +19,6 @@
 	<natures>
 		<nature>org.rubypeople.rdt.core.rubynature</nature>
 		<nature>org.eclipse.dltk.ruby.core.nature</nature>
+		<nature>net.sourceforge.shelled.core.nature</nature>
 	</natures>
 </projectDescription>
