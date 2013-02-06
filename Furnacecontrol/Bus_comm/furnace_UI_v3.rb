@@ -165,17 +165,17 @@ class UI_interface
 	    when RECEIVE_COMMAND
 	      char_read = @sp.getc
 	      if char_read == MESSAGE_TERMINATOR
-		host = message[0]
-		seq = (message[1]-48)*100+(message[2]-48)*10+message[3]-48
-		if host == HOST_ID
-		  @receive_sema.synchronize { @send_buffer[seq] != nil and @answer_buffer[seq]=message }
-		else
-		  @incoming_message_buffer[seq]=message
-		end
-		@messaging_state = WAIT_COMMAND_HEAD
-		message = ""
+	          host = message[0]
+	          seq = (message[1]-48)*100+(message[2]-48)*10+message[3]-48
+	          if host == HOST_ID
+	            @receive_sema.synchronize { @send_buffer[seq] != nil and @answer_buffer[seq]=message }
+	          else
+	            @incoming_message_buffer[seq]=message
+	          end
+	          @messaging_state = WAIT_COMMAND_HEAD
+	          message = ""
 	      else
-		message << char_read
+	        message << char_read
 	      end
 	    end
 	  end
