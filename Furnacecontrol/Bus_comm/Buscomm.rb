@@ -84,7 +84,7 @@ COMM_SPEED_57600_H = 15
 
 # The received message contais CRC error
 # The message has a zero length payload. CRC follows the opcode
-CRC_ERROR 0
+CRC_ERROR = 0
 # Command succesfully recieved response messge payload
 # contains the information requested by the master
 COMMAND_SUCCESS = 1
