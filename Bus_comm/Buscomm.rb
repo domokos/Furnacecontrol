@@ -122,14 +122,14 @@ PARAMETER_START = 3
 class Buscomm
   def initialize(portnum,parity,stopbits,baud,databits)
     @sp = SerialPort.new(portnum)
-    set_comm_paremeters(portnum,parity,stopbits,baud,databits)    
+    set_comm_paremeters(portnum,parity,stopbits,baud,databits)   
+    @sp.flow_control=SerialPort::NONE
+    comm_direction(MASTER_SENDS)
     @sp.sync = true
     @message_seq = 0
     @busmutex = Mutex.new
     @serial_read_mutex = Mutex.new 
-
     @serial_response_buffer=[]
-    init_serial_reader_thread
   end
 
   def send_message(slave_address,opcode,parameter)
@@ -153,10 +153,19 @@ class Buscomm
   # Write the message to the bus
     framed_message = ""
     framed_message << START_FRAME << message << END_FRAME  
+    
+    comm_direction(MASTER_SENDS)
     @sp.write(framed_message)
-
+    
+    
   # Wait for the response and return it to the caller
+    comm_direction(MASTER_LISTENS)
+  # Flush the serial port input buffer
+    @sp.fsync
+    
+    start_serial_reader_thread
     return wait_for_response
+    stop_serial_reader_thread
   end 
  end
 
@@ -213,17 +222,32 @@ private
      end
    end
    
-  def init_serial_reader_thread
+  def start_serial_reader_thread
     @reader_thread = Thread.new do
-      char_read = @sp.getc
-      @serial_read_mutex.synchronize do
-        @serial_response_buffer.push(char_read)
-        # Discard characers not read for a long time
-        shift @serial_response_buffer if @serial_response_buffer.size > SERIAL_RECIEVE_BUFFER_LIMIT 
-      end
+      @serial_read_mutex.synchronize do @serial_response_buffer=[] end
+      while true
+        char_read = @sp.getc
+        @serial_read_mutex.synchronize do
+          @serial_response_buffer.push(char_read)
+          # Discard characers not read for a long time
+          shift @serial_response_buffer if @serial_response_buffer.size > SERIAL_RECIEVE_BUFFER_LIMIT 
+        end
      end
+    end
+  end
+
+  def stop_serial_reader_thread
+    @reader_thread.kill
   end
   
+  def is_master_sending
+    return @sp.rts
+  end
+  
+  def comm_direction(direction)
+    @sp.rts = direction
+  end
+    
   def escape(message)
     escaped = ""
     message.each_char do |c|
@@ -286,6 +310,8 @@ private
     0x6e17, 0x7e36, 0x4e55, 0x5e74, 0x2e93, 0x3eb2, 0x0ed1, 0x1ef0
     ]
 
+    MASTER_SENDS = 1
+    MASTER_LISTENS = 0
 end
 
 #Parameters
@@ -295,8 +321,18 @@ STOPBITS=1
 BAUD=4800
 DATABITS=8
 
+port = SerialPort.new(0)
+port.modem_params=({"parity"=>0, "stop_bits"=>1, "baud"=>4800, "data_bits"=>8})
+port.rts = Buscomm::MASTER_SENDS
 
-my_comm = Buscomm.new(SERIALPORT_NUM,PARITY,STOPBITS,BAUD,DATABITS)
+while true
+  port.write(START_FRAME)
+end
 
-print my_comm.send_message(1,PING,"ping"),"\n"
 
+
+#my_comm = Buscomm.new(SERIALPORT_NUM,PARITY,STOPBITS,BAUD,DATABITS)
+#
+#while true
+#  print my_comm.send_message(1,PING,"ping"),"\n"
+#end
