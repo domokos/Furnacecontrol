@@ -9,6 +9,15 @@ MAX_MESSAGE_LENGTH = 15
 SERIAL_RECIEVE_BUFFER_LIMIT = 100
 RESPONSE_RECIEVE_TIMEOUT = 3000
 
+# Messaging states
+WAITING_FOR_TRAIN = 0
+RECEIVING_TRAIN = 1
+IN_SYNC = 2
+RECEIVING_MESSAGE = 3
+RECEIVING_CRC1 = 4
+RECEIVING_CRC2 = 5
+
+
 # Message recieving states
 AWAITING_START_FRAME = 0
 RECEIVING_MESSAGE = 1
@@ -21,19 +30,16 @@ RECEIVING_MESSAGE = 1
 MESSAGE_TIMEOUT_COUNT_LIMIT = 500
 
 # Messaging frame structure elements
-START_FRAME = 0x55
-END_FRAME = 0x5d
-MESSAGE_ESCAPE = 0x7d
+TRAIN_CHR = 0xff
+ESCAPE_CHR = 0x7d
+
 
 # Messaging error conditions
 NO_ERROR = 0 # No error
-NO_START_FRAME_RECEIVED = 1 # Expected message start frame, got something else => Ignoring the frame
-MESSAGE_TOO_LONG = 2 #Receive buffer length exceeded
-MESSAGING_TIMEOUT = 3 #Timeout occured
-COMM_CRC_ERROR = 4  #Frame with CRC error received
-
-# CRC generator polynomial
-CRC16_POLYNOMIAL = 0x1021
+NO_TRAIN_RECEIVED = 1 # Expected train sequence, got something else => Ignoring communication
+MESSAGE_TOO_LONG = 2 # Receive buffer length exceeded
+MESSAGING_TIMEOUT = 3 # Timeout occured - expected but no communication is seen on the bus
+COMM_CRC_ERROR = 4 # Frame with CRC error received
 
 #
 # Command opcodes
@@ -97,19 +103,19 @@ COMMAND_FAIL = 2
 ECHO = 3
 
 
-#/**********************************************************************************
+#**********************************************************************************
 # * The messaging format:
-# * START_FRAME - 8 bits
+# * TRAIN_CHR - n*8 bits
 # * SLAVE_ADDRESS - 8 bits
 # * SEQ - 8 bits
 # * OPCODE - 8 bits
 # * PARAMERER - arbitrary number of bytes
-# CRC - 2*8 bits calculated for the data including start frame and the last byte of parameter
-# * END_FRAME - 8 bits
+# * TRAIN_CHR - indicating end of message
+# * CRC - 2*8 bits calculated for the data excluding start frame
+# * Train_CHR - 8 bits - to make sure bus state remains in send during transmitting CRC
 # *
 # *  * The SEQ field holds a message sequence number
-# *      SEQ
-# *      Index must point to the last parameter byte
+# *  * Index of the message buffer points to the last parameter byte
 # ***********************************************************************************/
 
 # The buffer indexes
