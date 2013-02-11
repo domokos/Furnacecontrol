@@ -126,6 +126,7 @@ class Buscomm
     @sp.flow_control=SerialPort::NONE
     comm_direction(MASTER_SENDS)
     @sp.sync = true
+    @sp.binmode
     @message_seq = 0
     @busmutex = Mutex.new
     @serial_read_mutex = Mutex.new 
@@ -161,7 +162,7 @@ class Buscomm
   # Wait for the response and return it to the caller
     comm_direction(MASTER_LISTENS)
   # Flush the serial port input buffer
-    @sp.fsync
+    @sp.sync
     
     start_serial_reader_thread
     return wait_for_response
@@ -186,32 +187,32 @@ private
 
   def wait_for_response
      message = ""
-     char_received = ""
+     byte_recieved = 0
      response_state = AWAITING_START_FRAME
      escaped = false
      timeout_counter = 0
      while true
-       @serial_read_mutex.synchronize { char_received = @serial_response_buffer.shift }
-       if char_received == nil
+       @serial_read_mutex.synchronize { byte_recieved = @serial_response_buffer.shift }
+       if byte_recieved == nil
          # Save the processor
          timeout_counter += 1
          timeout_counter > RESPONSE_RECIEVE_TIMEOUT and return {"Return_code" => MESSAGING_TIMEOUT, "Content" => nil}
          sleep 0.001
          next
        end
-    # Character recieved - process it   
+       # Character recieved - process it   
        case response_state
        when AWAITING_START_FRAME
-         char_recieved  == START_FRAME and response_state = RECEIVING_MESSAGE
+         byte_recieved  == START_FRAME and response_state = RECEIVING_MESSAGE
        when RECEIVING_MESSAGE
-         if char_recieved == MESSAGE_ESCAPE && !escaped
+         if byte_recieved == MESSAGE_ESCAPE && !escaped
            escaped = true
-         elsif char_recieved != END_FRAME || escaped
+         elsif byte_recieved != END_FRAME || escaped
            escaped = false
            message << char_recieved
          else
            # End frame is recieved evaluate the recieved message
-           message << char_recieved
+           message << byte_recieved
            if !check_crc(message) or message[OPCODE] == CRC_ERROR
            return {"Return_code" => COMM_CRC_ERROR, "Content" => message}
            else
@@ -226,9 +227,10 @@ private
     @reader_thread = Thread.new do
       @serial_read_mutex.synchronize do @serial_response_buffer=[] end
       while true
-        char_read = @sp.getc
+        byte_read = @sp.getbyte
+        print byte_read,","
         @serial_read_mutex.synchronize do
-          @serial_response_buffer.push(char_read)
+          @serial_response_buffer.push(byte_read)
           # Discard characers not read for a long time
           shift @serial_response_buffer if @serial_response_buffer.size > SERIAL_RECIEVE_BUFFER_LIMIT 
         end
@@ -321,18 +323,23 @@ STOPBITS=1
 BAUD=4800
 DATABITS=8
 
-port = SerialPort.new(0)
-port.modem_params=({"parity"=>0, "stop_bits"=>1, "baud"=>4800, "data_bits"=>8})
-port.rts = Buscomm::MASTER_SENDS
+#port = SerialPort.new(0)
+#port.modem_params=({"parity"=>0, "stop_bits"=>1, "baud"=>4800, "data_bits"=>8})
+#port.rts = Buscomm::MASTER_SENDS
+
+#while true
+# port.write(START_FRAME)
+# port.write(1)
+# port.write(PING)
+# port.write(0x1a)
+# port.write(0x36)
+# port.write(END_FRAME)
+#end
+
+
+
+my_comm = Buscomm.new(SERIALPORT_NUM,PARITY,STOPBITS,BAUD,DATABITS)
 
 while true
-  port.write(START_FRAME)
+  print my_comm.send_message(1,PING,"ping"),"\n"
 end
-
-
-
-#my_comm = Buscomm.new(SERIALPORT_NUM,PARITY,STOPBITS,BAUD,DATABITS)
-#
-#while true
-#  print my_comm.send_message(1,PING,"ping"),"\n"
-#end
