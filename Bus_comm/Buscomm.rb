@@ -17,11 +17,6 @@ RECEIVING_MESSAGE = 3
 RECEIVING_CRC1 = 4
 RECEIVING_CRC2 = 5
 
-
-# Message recieving states
-AWAITING_START_FRAME = 0
-RECEIVING_MESSAGE = 1
-
 #
 # The number after which get_message is called while waiting for a character
 # during transmission of a frame but recieving none that will cause
@@ -130,13 +125,15 @@ class Buscomm
     @sp = SerialPort.new(portnum)
     set_comm_paremeters(portnum,parity,stopbits,baud,databits)   
     @sp.flow_control=SerialPort::NONE
-    comm_direction(MASTER_SENDS)
     @sp.sync = true
     @sp.binmode
     @message_seq = 0
     @busmutex = Mutex.new
-    @serial_read_mutex = Mutex.new 
-    @serial_response_buffer=[]
+    @message_send_buffer= []
+    @data_needs_sending_sema = Mutex.new
+    @data_sent_sema = Mutex.new 
+    @data_needs_sending = false
+    start_train_thread
   end
 
   def send_message(slave_address,opcode,parameter)
@@ -145,35 +142,33 @@ class Buscomm
 # synchronize it across potentially multiple Buscomm objects
 # to make it Thread safe
   @busmutex.synchronize do
-    message=""
+    @message_send_buffer=""
     seq = @message_seq
   
   #Incerement message seq 
     @message_seq < 255 ? @message_seq+=1 : @message_seq=0
   
   #Create the message
-    message << slave_address << seq << opcode << parameter
-    crc = crc16(message)
-    message << ( crc >> 8).chr << (crc & 0xff).chr
-    escape(message)
+    @message_send_buffer << slave_address << seq << opcode << parameter
+    @message_send_buffer = escape(@message_send_buffer)
+
+    crc = crc16(@message_send_buffer)
+    @message_send_buffer << ( crc >> 8).chr << (crc & 0xff).chr
+
+    @message_send_buffer << TRAIN_CHR  
     
-  # Write the message to the bus
-    framed_message = ""
-    framed_message << START_FRAME << message << END_FRAME  
+    # Signal train sender thread to send data
+    @data_needs_sending_sema.synchronize {@data_needs_sending = true}
+
+    # Wait for message sending complete 
+    # Sending complete changes bus direction
+    @data_sent_sema.lock
     
-    comm_direction(MASTER_SENDS)
-    @sp.write(framed_message)
-    
-    
-  # Wait for the response and return it to the caller
-    comm_direction(MASTER_LISTENS)
-  # Flush the serial port input buffer
-    @sp.sync
-    
-    start_serial_reader_thread
-    return wait_for_response
-    stop_serial_reader_thread
-  end 
+    response = wait_for_response
+
+    start_train_thread
+  end
+  return response 
  end
 
  def ping(slave_address)
@@ -191,64 +186,85 @@ class Buscomm
   
 private
 
-  def wait_for_response
-     message = ""
-     byte_recieved = 0
-     response_state = AWAITING_START_FRAME
-     escaped = false
-     timeout_counter = 0
-     while true
-       @serial_read_mutex.synchronize { byte_recieved = @serial_response_buffer.shift }
-       if byte_recieved == nil
-         # Save the processor
-         timeout_counter += 1
-         timeout_counter > RESPONSE_RECIEVE_TIMEOUT and return {"Return_code" => MESSAGING_TIMEOUT, "Content" => nil}
-         sleep 0.001
-         next
-       end
-       # Character recieved - process it   
-       case response_state
-       when AWAITING_START_FRAME
-         byte_recieved  == START_FRAME and response_state = RECEIVING_MESSAGE
-       when RECEIVING_MESSAGE
-         if byte_recieved == MESSAGE_ESCAPE && !escaped
-           escaped = true
-         elsif byte_recieved != END_FRAME || escaped
-           escaped = false
-           message << char_recieved
-         else
-           # End frame is recieved evaluate the recieved message
-           message << byte_recieved
-           if !check_crc(message) or message[OPCODE] == CRC_ERROR
-           return {"Return_code" => COMM_CRC_ERROR, "Content" => message}
-           else
-           return {"Return_code" => NO_ERROR, "Content" => message}
-           end
-         end
-       end
-     end
-   end
-   
-  def start_serial_reader_thread
-    @reader_thread = Thread.new do
-      @serial_read_mutex.synchronize do @serial_response_buffer=[] end
+  def start_train_thread
+    @train_thread = Thread.new do
+      comm_direction(MASTER_SENDS)
+      @data_sent_sema.lock
       while true
-        byte_read = @sp.getbyte
-        print byte_read,","
-        @serial_read_mutex.synchronize do
-          @serial_response_buffer.push(byte_read)
-          # Discard characers not read for a long time
-          shift @serial_response_buffer if @serial_response_buffer.size > SERIAL_RECIEVE_BUFFER_LIMIT 
+        @data_needs_sending_sema.synchronize { send_data = @data_needs_sending }
+        if send_data
+          @sp.write(@message_send_buffer)
+          @sp.write(TRAIN_CHR)
+          comm_direction(MASTER_LISTENS)
+          @data_sent_sema.unlock
+          Thread.exit
+        else
+          @sp.write(TRAIN_CHR)
         end
-     end
+       end
     end
   end
 
-  def stop_serial_reader_thread
-    @reader_thread.kill
+  def stop_train_thread
+    @train_thread.exit
   end
   
-  def is_master_sending
+#  def wait_for_response
+#    # Flush the serial port input buffer
+#     @sp.sync
+#     response = ""
+#     byte_recieved = 0
+#     response_state = AWAITING_START_FRAME
+#     escaped = false
+#     timeout_counter = 0
+#     while true
+#       @serial_read_mutex.synchronize { byte_recieved = @serial_response_buffer.shift }
+#       if byte_recieved == nil
+#         # Save the processor
+#         timeout_counter += 1
+#         timeout_counter > RESPONSE_RECIEVE_TIMEOUT and return {"Return_code" => MESSAGING_TIMEOUT, "Content" => nil}
+#         sleep 0.001
+#         next
+#       end
+#       # Character recieved - process it   
+#       case response_state
+#       when AWAITING_START_FRAME
+#         byte_recieved  == START_FRAME and response_state = RECEIVING_MESSAGE
+#       when RECEIVING_MESSAGE
+#         if byte_recieved == MESSAGE_ESCAPE && !escaped
+#           escaped = true
+#         elsif byte_recieved != END_FRAME || escaped
+#           escaped = false
+#           message << char_recieved
+#         else
+#           # End frame is recieved evaluate the recieved message
+#           message << byte_recieved
+#           if !check_crc(message) or message[OPCODE] == CRC_ERROR
+#           return {"Return_code" => COMM_CRC_ERROR, "Content" => message}
+#           else
+#           return {"Return_code" => NO_ERROR, "Content" => message}
+#           end
+#         end
+#       end
+#     end
+#   end
+#   
+#  def start_serial_reader_thread
+#    @reader_thread = Thread.new do
+#      @serial_read_mutex.synchronize do @serial_response_buffer=[] end
+#      while true
+#        byte_read = @sp.getbyte
+#        print byte_read,","
+#        @serial_read_mutex.synchronize do
+#          @serial_response_buffer.push(byte_read)
+#          # Discard characers not read for a long time
+#          shift @serial_response_buffer if @serial_response_buffer.size > SERIAL_RECIEVE_BUFFER_LIMIT 
+#        end
+#     end
+#    end
+#  end
+
+  def get_comm_direction
     return @sp.rts
   end
   
@@ -259,7 +275,7 @@ private
   def escape(message)
     escaped = ""
     message.each_char do |c|
-      if c == MESSAGE_ESCAPE  or c == END_FRAME
+      if c == ESCAPE_CHR  or c == TRAIN_CHR
         escaped << MESSAGE_ESCAPE << c  
       else 
         escaped << c
