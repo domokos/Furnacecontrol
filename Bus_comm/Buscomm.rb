@@ -5,134 +5,143 @@ require 'rubygems'
 require 'serialport'
 require 'thread'
 
-MAX_MESSAGE_LENGTH = 15
-SERIAL_RECIEVE_BUFFER_LIMIT = 100
-RESPONSE_RECIEVE_TIMEOUT = 3000
-
-# Messaging states
-WAITING_FOR_TRAIN = 0
-RECEIVING_TRAIN = 1
-IN_SYNC = 2
-RECEIVING_MESSAGE = 3
-RECEIVING_CRC1 = 4
-RECEIVING_CRC2 = 5
-
-#
-# The number after which get_message is called while waiting for a character
-# during transmission of a frame but recieving none that will cause
-# it to reset: a timeout limit.
-#
-MESSAGE_TIMEOUT_COUNT_LIMIT = 500
-
-# Messaging frame structure elements
-TRAIN_CHR = 0xff
-ESCAPE_CHR = 0x7d
-
-
-# Messaging error conditions
-NO_ERROR = 0 # No error
-NO_TRAIN_RECEIVED = 1 # Expected train sequence, got something else => Ignoring communication
-MESSAGE_TOO_LONG = 2 # Receive buffer length exceeded
-MESSAGING_TIMEOUT = 3 # Timeout occured - expected but no communication is seen on the bus
-COMM_CRC_ERROR = 4 # Frame with CRC error received
-
-#
-# Command opcodes
-#
-
-# Set the value of a register
-SET_REGISTER = 0
-# Read the value of a register
-READ_REGISTER = 1
-# Identify a register by returning its description
-IDENTTIFY_REGISTER = 2
-# Reset the device to its basic state
-RESET_DEVICE = 3
-# Perform tests
-COMM_TEST_REVERSE_MESSAGE = 4
-# PING - master expects an echo and the same payload
-PING = 5
-# Set communication speed
-SET_COMM_SPEED = 6
-
-
-#
-# COMMAND PARAMETERS
-#
-# Parameters of SET_COMM_SPEED
-
-COMM_SPEED_300_L = 0
-COMM_SPEED_1200_L = 1
-COMM_SPEED_2400_L = 2
-COMM_SPEED_4800_L = 3
-COMM_SPEED_9600_L = 4
-COMM_SPEED_14400_L = 5
-COMM_SPEED_28800_L = 6
-COMM_SPEED_300_H = 7
-COMM_SPEED_1200_H = 8
-COMM_SPEED_2400_H = 9
-COMM_SPEED_4800_H = 10
-COMM_SPEED_9600_H = 11
-COMM_SPEED_14400_H = 12
-COMM_SPEED_19200_H = 13
-COMM_SPEED_28800_H = 14
-COMM_SPEED_57600_H = 15
-
-
-#
-# Response opcodes
-#
-
-# The received message contais CRC error
-# The message has a zero length payload. CRC follows the opcode
-CRC_ERROR = 0
-# Command succesfully recieved response messge payload
-# contains the information requested by the master
-COMMAND_SUCCESS = 1
-# Command succesfully recieved, execution of the
-# requested operation failed, original status preserved or
-# status undefined
-COMMAND_FAIL = 2
-# Response to a PING message - should contain the same
-# message recieved in the PING
-ECHO = 3
-
-
-#**********************************************************************************
-# * The messaging format:
-# * TRAIN_CHR - n*8 bits
-# * SLAVE_ADDRESS - 8 bits
-# * SEQ - 8 bits
-# * OPCODE - 8 bits
-# * PARAMERER - arbitrary number of bytes
-# * TRAIN_CHR - indicating end of message
-# * CRC - 2*8 bits calculated for the data excluding start frame
-# * Train_CHR - 8 bits - to make sure bus state remains in send during transmitting CRC
-# *
-# *  * The SEQ field holds a message sequence number
-# *  * Index of the message buffer points to the last parameter byte
-# ***********************************************************************************/
-
-# The buffer indexes
-SLAVE_ADDRESS = 0
-SEQ = 1
-OPCODE = 2
-PARAMETER_START = 3
-
-
 class Buscomm
+  MAX_MESSAGE_LENGTH = 15
+  SERIAL_RECIEVE_BUFFER_LIMIT = 100
+  # Milliseconds to timeout during receive between characters
+  RESPONSE_RECIEVE_TIMEOUT = 250
+  
+  TRAIN_LENGTH_RCV  = 8
+  TRAIN_LENGTH_SND = 16
+  
+  # Messaging states
+  WAITING_FOR_TRAIN = 0
+  RECEIVING_TRAIN = 1
+  IN_SYNC = 2
+  RECEIVING_MESSAGE = 3
+  RECEIVING_CRC1 = 4
+  RECEIVING_CRC2 = 5
+  
+  #
+  # The number after which get_message is called while waiting for a character
+  # during transmission of a frame but recieving none that will cause
+  # it to reset: a timeout limit.
+  #
+  MESSAGE_TIMEOUT_COUNT_LIMIT = 500
+  
+  # Messaging frame structure elements
+  TRAIN_CHR = 0xff
+  ESCAPE_CHR = 0x7d
+  
+  
+  # Message receiving error conditions
+  NO_ERROR = 0 # No error
+  NO_TRAIN_RECEIVED = 1 # Expected train sequence, got something else => Ignoring communication
+  MESSAGE_TOO_LONG = 2 # Receive buffer length exceeded
+  MESSAGING_TIMEOUT = 3 # Timeout occured - expected but no communication is seen on the bus
+  COMM_CRC_ERROR = 4 # Frame with CRC error received
+  
+  #
+  # Command opcodes
+  #
+  
+  # Set the value of a register
+  SET_REGISTER = 0
+  # Read the value of a register
+  READ_REGISTER = 1
+  # Identify a register by returning its description
+  IDENTTIFY_REGISTER = 2
+  # Reset the device to its basic state
+  RESET_DEVICE = 3
+  # Perform tests
+  COMM_TEST_REVERSE_MESSAGE = 4
+  # PING - master expects an echo and the same payload
+  PING = 5
+  # Set communication speed
+  SET_COMM_SPEED = 6
+  
+  
+  #
+  # COMMAND PARAMETERS
+  #
+  # Parameters of SET_COMM_SPEED
+  
+  COMM_SPEED_300_L = 0
+  COMM_SPEED_1200_L = 1
+  COMM_SPEED_2400_L = 2
+  COMM_SPEED_4800_L = 3
+  COMM_SPEED_9600_L = 4
+  COMM_SPEED_14400_L = 5
+  COMM_SPEED_28800_L = 6
+  COMM_SPEED_300_H = 7
+  COMM_SPEED_1200_H = 8
+  COMM_SPEED_2400_H = 9
+  COMM_SPEED_4800_H = 10
+  COMM_SPEED_9600_H = 11
+  COMM_SPEED_14400_H = 12
+  COMM_SPEED_19200_H = 13
+  COMM_SPEED_28800_H = 14
+  COMM_SPEED_57600_H = 15
+  
+  
+  #
+  # Response opcodes
+  #
+  
+  # The received message contais CRC error
+  # The message has a zero length payload. CRC follows the opcode
+  CRC_ERROR = 0
+  # Command succesfully recieved response messge payload
+  # contains the information requested by the master
+  COMMAND_SUCCESS = 1
+  # Command succesfully recieved, execution of the
+  # requested operation failed, original status preserved or
+  # status undefined
+  COMMAND_FAIL = 2
+  # Response to a PING message - should contain the same
+  # message recieved in the PING
+  ECHO = 3
+  
+  
+  #**********************************************************************************
+  # * The messaging format:
+  # * TRAIN_CHR - n*8 bits
+  # * SLAVE_ADDRESS - 8 bits
+  # * SEQ - 8 bits
+  # * OPCODE - 8 bits
+  # * PARAMERER - arbitrary number of bytes
+  # * TRAIN_CHR - indicating end of message
+  # * CRC - 2*8 bits calculated for the data excluding start frame
+  # * Train_CHR - 8 bits - to make sure bus state remains in send during transmitting CRC
+  # *
+  # *  * The SEQ field holds a message sequence number
+  # *  * Index of the message buffer points to the last parameter byte
+  # ***********************************************************************************/
+  
+  # The buffer indexes
+  SLAVE_ADDRESS = 0
+  SEQ = 1
+  OPCODE = 2
+  PARAMETER_START = 3
+
   def initialize(portnum,parity,stopbits,baud,databits)
     @sp = SerialPort.new(portnum)
-    set_comm_paremeters(portnum,parity,stopbits,baud,databits)   
-    @sp.flow_control=SerialPort::NONE
+    set_comm_paremeters(portnum,parity,stopbits,baud,databits)
+    @sp.flow_control = SerialPort::NONE
     @sp.sync = true
     @sp.binmode
+
     @message_seq = 0
+
     @busmutex = Mutex.new
-    @message_send_buffer= []
-    @data_needs_sending_sema = Mutex.new
-    @data_sent_sema = Mutex.new 
-    @data_needs_sending = false
+    @serial_read_mutex = Mutex.new
+    @data_send_sema = Mutex.new
+    
+    @message_send_buffer = []
+    @serial_response_buffer = []
+
+    # Start the train sending thread
+    @data_send_sema.lock
     start_train_thread
   end
 
@@ -143,14 +152,13 @@ class Buscomm
 # to make it Thread safe
   @busmutex.synchronize do
     @message_send_buffer=""
-    seq = @message_seq
-  
-  #Incerement message seq 
-    @message_seq < 255 ? @message_seq+=1 : @message_seq=0
   
   #Create the message
-    @message_send_buffer << slave_address << seq << opcode << parameter
+    @message_send_buffer << slave_address << @message_seq << opcode << parameter
     @message_send_buffer = escape(@message_send_buffer)
+
+    #Incerement message seq 
+    @message_seq < 255 ? @message_seq += 1 : @message_seq = 0
 
     crc = crc16(@message_send_buffer)
     @message_send_buffer << ( crc >> 8).chr << (crc & 0xff).chr
@@ -158,17 +166,22 @@ class Buscomm
     @message_send_buffer << TRAIN_CHR  
     
     # Signal train sender thread to send data
-    @data_needs_sending_sema.synchronize {@data_needs_sending = true}
+    @data_send_sema.unlock
 
     # Wait for message sending complete 
     # Sending complete changes bus direction
-    @data_sent_sema.lock
-    
-    response = wait_for_response
+    # so it is possible to start listening afterwards
+    @data_send_sema.lock
 
+
+    @response = wait_for_response
+    
+    stop_serial_reader_thread
+    
+    # Semaphore is already locked, so just start sending train sequence
     start_train_thread
   end
-  return response 
+  return @response
  end
 
  def ping(slave_address)
@@ -186,17 +199,19 @@ class Buscomm
   
 private
 
+  # The thread sending train continuously on the bus and adding a 
+  # message at the end when sending is needed
   def start_train_thread
+    return unless @train_thread == nil 
     @train_thread = Thread.new do
       comm_direction(MASTER_SENDS)
-      @data_sent_sema.lock
       while true
-        @data_needs_sending_sema.synchronize { send_data = @data_needs_sending }
-        if send_data
+        if @data_send_sema.try_lock
           @sp.write(@message_send_buffer)
           @sp.write(TRAIN_CHR)
           comm_direction(MASTER_LISTENS)
-          @data_sent_sema.unlock
+          @data_send_sema.unlock
+          @train_thread = nil
           Thread.exit
         else
           @sp.write(TRAIN_CHR)
@@ -206,64 +221,126 @@ private
   end
 
   def stop_train_thread
-    @train_thread.exit
+    @train_thread.exit unless @train_thread == nil
+    @train_thread = nil 
   end
   
-#  def wait_for_response
-#    # Flush the serial port input buffer
-#     @sp.sync
-#     response = ""
-#     byte_recieved = 0
-#     response_state = AWAITING_START_FRAME
-#     escaped = false
-#     timeout_counter = 0
-#     while true
-#       @serial_read_mutex.synchronize { byte_recieved = @serial_response_buffer.shift }
-#       if byte_recieved == nil
-#         # Save the processor
-#         timeout_counter += 1
-#         timeout_counter > RESPONSE_RECIEVE_TIMEOUT and return {"Return_code" => MESSAGING_TIMEOUT, "Content" => nil}
-#         sleep 0.001
-#         next
-#       end
-#       # Character recieved - process it   
-#       case response_state
-#       when AWAITING_START_FRAME
-#         byte_recieved  == START_FRAME and response_state = RECEIVING_MESSAGE
-#       when RECEIVING_MESSAGE
-#         if byte_recieved == MESSAGE_ESCAPE && !escaped
-#           escaped = true
-#         elsif byte_recieved != END_FRAME || escaped
-#           escaped = false
-#           message << char_recieved
-#         else
-#           # End frame is recieved evaluate the recieved message
-#           message << byte_recieved
-#           if !check_crc(message) or message[OPCODE] == CRC_ERROR
-#           return {"Return_code" => COMM_CRC_ERROR, "Content" => message}
-#           else
-#           return {"Return_code" => NO_ERROR, "Content" => message}
-#           end
-#         end
-#       end
-#     end
-#   end
-#   
-#  def start_serial_reader_thread
-#    @reader_thread = Thread.new do
-#      @serial_read_mutex.synchronize do @serial_response_buffer=[] end
-#      while true
-#        byte_read = @sp.getbyte
-#        print byte_read,","
-#        @serial_read_mutex.synchronize do
-#          @serial_response_buffer.push(byte_read)
-#          # Discard characers not read for a long time
-#          shift @serial_response_buffer if @serial_response_buffer.size > SERIAL_RECIEVE_BUFFER_LIMIT 
-#        end
-#     end
-#    end
-#  end
+  def wait_for_response
+    # Flush the serial port input buffer
+   @sp.sync
+   response = ""
+   byte_recieved = 0
+   response_state = WAITING_FOR_TRAIN
+   escape_char_received = false
+   timeout_start = (Time.now.to_f - 1300000000) * 1000 
+   return_value = nil
 
+   # Start another thread to read from the serial port as
+   # all read calls to serialport are blocking
+   start_serial_reader_thread
+   
+   while true
+
+     # If return_value is set then return it otherwise continue receiving
+     unless return_value == nil
+       stop_serial_reader_thread
+       return return_value 
+     end
+
+     # Read a character from the serial buffer filled by the serial reader thread
+     @serial_read_mutex.synchronize { byte_recieved = @serial_response_buffer.shift }
+
+     if byte_recieved == nil
+       ((Time.now.to_f - 1300000000) * 1000 - timeout_start) > RESPONSE_RECIEVE_TIMEOUT and return_value = {"Return_code" => MESSAGING_TIMEOUT, "Content" => nil}
+       # Save the processor :)
+       sleep 0.01
+       next
+     else
+       timeout_start = (Time.now.to_f - 1300000000) * 1000
+     end
+
+     # Character recieved - process it   
+     case response_state
+       
+     when WAITING_FOR_TRAIN
+       if byte_recieved  == TRAIN_CHR 
+         train_length = 0
+         response_state = RECEIVING_TRAIN
+       else 
+         return_value = {"Return_code" => NO_TRAIN_RECEIVED, "Content" => nil} 
+       end
+
+     when RECEIVING_TRAIN, IN_SYNC
+       # Recieved the expected character increase the
+       # train length seen so far and cahge state if
+       # enough train is seen
+       if byte_recieved == TRAIN_CHR
+         train_length = train_length +1
+         train_length == TRAIN_LENGTH_RCV and response_state = IN_SYNC
+       else
+         if response_state == RECEIVING_TRAIN
+           # Not a train character is received, not yet synced
+           # Go back to Waiting for train state
+           response_state = WAITING_FOR_TRAIN;
+         else
+           # Got a non-train character when synced -
+           # start processig the message: change state
+           response_state = RECEIVING_MESSAGE;
+           response << byte_recieved
+           escape_char_received = false
+         end
+       end
+         
+     when RECEIVING_MESSAGE
+       if response.size > MAX_MESSAGE_LENGTH
+         return_value = {"Return_code" => MESSAGE_TOO_LONG, "Content" => nil}
+       elsif byte_recieved == ESCAPE_CHR && !escape_char_received
+         escape_char_received = true
+       elsif byte_recieved == TRAIN_CHR && !escape_char_received
+         response_state = RECEIVING_CRC1
+       else
+         # Receive the escaped or not escaped message character
+         # and clear the escape flag
+         response << byte_recieved
+         escape_char_received = false
+       end
+       
+     when RECEIVING_CRC1
+       crc1 = byte_recieved
+       response_state = RECEIVING_CRC2
+      
+     when RECEIVING_CRC2
+       crc2 = byte_recieved
+
+       if crc16(message) != ((crc1 <<8 ) | crc2) or response[OPCODE] == CRC_ERROR
+         return_value = {"Return_code" => COMM_CRC_ERROR, "Content" => message}
+       else
+         return_value = {"Return_code" => NO_ERROR, "Content" => message}
+       end
+     end
+   end
+  end
+   
+  def start_serial_reader_thread
+    return unless @serial_reader_thread == nil
+    @serial_reader_thread = Thread.new do
+      @serial_read_mutex.synchronize { @serial_response_buffer=[] }
+      while true
+        byte_read = @sp.getbyte
+        @serial_read_mutex.synchronize do
+          @serial_response_buffer.push(byte_read)
+          # Discard characers not read for a long time
+          shift @serial_response_buffer if @serial_response_buffer.size > SERIAL_RECIEVE_BUFFER_LIMIT 
+        end
+     end
+    end
+  end
+
+  def stop_serial_reader_thread
+    @serial_reader_thread.exit unless @serial_reader_thread == nil 
+    @serial_reader_thread = nil
+  end
+  
   def get_comm_direction
     return @sp.rts
   end
@@ -358,10 +435,8 @@ DATABITS=8
 # port.write(END_FRAME)
 #end
 
-
-
 my_comm = Buscomm.new(SERIALPORT_NUM,PARITY,STOPBITS,BAUD,DATABITS)
 
 while true
-  print my_comm.send_message(1,PING,"ping"),"\n"
+  print my_comm.send_message(1,Buscomm::PING,"ping"),"\n"
 end
