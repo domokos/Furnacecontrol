@@ -30,8 +30,8 @@ class Buscomm
   MESSAGE_TIMEOUT_COUNT_LIMIT = 500
   
   # Messaging frame structure elements
-  TRAIN_CHR = 0xff
-  ESCAPE_CHR = 0x7d
+  TRAIN_CHR = 0xff.chr
+  ESCAPE_CHR = 0x7d.chr
   
   
   # Message receiving error conditions
@@ -154,7 +154,7 @@ class Buscomm
     @message_send_buffer=""
   
   #Create the message
-    @message_send_buffer << slave_address << @message_seq << opcode << parameter
+    @message_send_buffer << slave_address.chr << @message_seq.chr << opcode.chr << parameter
     @message_send_buffer = escape(@message_send_buffer)
 
     #Incerement message seq 
@@ -353,7 +353,7 @@ private
     escaped = ""
     message.each_char do |c|
       if c == ESCAPE_CHR  or c == TRAIN_CHR
-        escaped << MESSAGE_ESCAPE << c  
+        escaped << ESCAPE_CHR << c  
       else 
         escaped << c
       end
@@ -425,12 +425,15 @@ DATABITS=8
 #port = SerialPort.new(0)
 #port.modem_params=({"parity"=>0, "stop_bits"=>1, "baud"=>4800, "data_bits"=>8})
 #port.rts = Buscomm::MASTER_SENDS
+#port.binmode
+
+
 
 #while true
 # port.write(START_FRAME)
 # port.write(1)
 # port.write(PING)
-# port.write(0x1a)
+# port.write(0xff.chr)
 # port.write(0x36)
 # port.write(END_FRAME)
 #end
