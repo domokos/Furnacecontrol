@@ -143,6 +143,7 @@ class Buscomm
     # Start the train sending thread
     @data_send_sema.lock
     start_train_thread
+    sleep 0.01
   end
 
   def send_message(slave_address,opcode,parameter)
@@ -163,16 +164,17 @@ class Buscomm
     crc = crc16(@message_send_buffer)
     @message_send_buffer << ( crc >> 8).chr << (crc & 0xff).chr
 
+
     @message_send_buffer << TRAIN_CHR  << TRAIN_CHR 
-    
+
     # Signal train sender thread to send data
     @data_send_sema.unlock
+    sleep 0.01
 
     # Wait for message sending complete 
     # Sending complete changes bus direction
     # so it is possible to start listening afterwards
     @data_send_sema.lock
-
 
     @response = wait_for_response
     
@@ -180,6 +182,7 @@ class Buscomm
     
     # Semaphore is already locked, so just start sending train sequence
     start_train_thread
+    sleep 0.01
   end
   return @response
  end
@@ -205,7 +208,7 @@ private
     return unless @train_thread == nil 
     @train_thread = Thread.new do
       comm_direction(MASTER_SENDS)
-      while true
+      while true do
         if @data_send_sema.try_lock
           @sp.write(@message_send_buffer)
           @sp.write(TRAIN_CHR)
