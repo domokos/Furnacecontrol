@@ -163,7 +163,7 @@ class Buscomm
     crc = crc16(@message_send_buffer)
     @message_send_buffer << ( crc >> 8).chr << (crc & 0xff).chr
 
-    @message_send_buffer << TRAIN_CHR  
+    @message_send_buffer << TRAIN_CHR  << TRAIN_CHR 
     
     # Signal train sender thread to send data
     @data_send_sema.unlock
