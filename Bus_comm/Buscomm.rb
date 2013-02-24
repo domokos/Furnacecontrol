@@ -160,17 +160,18 @@ COMM_DATA = [
 
     @busmutex = Mutex.new
     @serial_read_mutex = Mutex.new
-    @send_data_sema = Mutex.new
     
-    @message_send_buffer = []
     @serial_response_buffer = []
-
     @message_send_buffer = ""
-      
-    # Lock the signalling semaphore and start the train sending thread 
-    @send_data_sema.lock
-    start_train_thread
-  end
+
+    @train = ""
+    
+    i = TRAIN_LENGTH_SND
+    while i > 0
+      @train << TRAIN_CHR.chr
+      i -= 1
+    end
+   end
 
   def send_message(slave_address,opcode,parameter)
 # Communicate in a synchronized manner 
@@ -180,29 +181,21 @@ COMM_DATA = [
   @busmutex.synchronize do
     @message_send_buffer.clear
   
-  #Create the message
+   #Create the message
     @message_send_buffer << @master_address.chr << slave_address.chr << @message_seq.chr << opcode.chr << parameter
 
     #Incerement message seq 
     @message_seq < 255 ? @message_seq += 1 : @message_seq = 0
 
-    @message_send_buffer = (@message_send_buffer.length+2).chr << @message_send_buffer
+    @message_send_buffer = (@message_send_buffer.length+3).chr + @message_send_buffer
     
     crc = crc16(@message_send_buffer)
-    @message_send_buffer << ( crc >> 8).chr << (crc & 0xff).chr
-        
-    # Signal train sender thread to send data
-    @send_data_sema.unlock
-
-    # Wait for message sending complete 
-    @train_thread.join
-    @train_thread = nil
-
-    @response = wait_for_response
     
-    # Lock the signalling semaphore and start the train sending thread
-    @send_data_sema.lock
-    start_train_thread
+    @message_send_buffer = @train + @message_send_buffer + ( crc >> 8).chr + (crc & 0xff).chr + TRAIN_CHR.chr
+
+    @sp.write(@message_send_buffer)
+        
+    @response = wait_for_response
   end
   return @response
  end
@@ -222,33 +215,10 @@ COMM_DATA = [
   
 private
 
-  # The thread sending train continuously on the bus and adding a 
-  # message at the end when sending is needed
-  def start_train_thread
-    return unless @train_thread == nil
-    @train_thread = Thread.new do
-      while true
-        if @send_data_sema.try_lock
-          @sp.write(@message_send_buffer)
-          @sp.write(TRAIN_CHR)
-          Thread.exit
-        else
-          @sp.write(TRAIN_CHR)
-        end
-       end
-     end
-    sleep 0.05
-  end
-
-  def stop_train_thread
-    @train_thread.exit unless @train_thread == nil
-    @train_thread.join
-    @train_thread = nil 
-  end
-  
   def wait_for_response
     # Flush the serial port input buffer
    @sp.sync
+   @sp.flush
    response = ""
    byte_recieved = 0
    response_state = WAITING_FOR_TRAIN
@@ -266,6 +236,9 @@ private
      # Handle timeout
      (Time.now.to_f - timeout_start) > COMM_DATA[@comm_speed][TIMEOUT_DATA].to_f / 1000 and return_value = {"Return_code" => MESSAGING_TIMEOUT, "Content" => nil}
 
+#    print "Clock: ",(Time.now.to_f - timeout_start),"\n"
+#    print "Limit: ",COMM_DATA[@comm_speed][TIMEOUT_DATA].to_f / 1000,"\n"  
+       
      # If return_value is set then return it otherwise continue receiving
      unless return_value == nil
        stop_serial_reader_thread
@@ -277,7 +250,7 @@ private
 
      if byte_recieved == nil
        # Save the processor :)
-       sleep 0.001
+       sleep 0.005
        next
      end
 
@@ -316,15 +289,15 @@ private
      when RECEIVING_MESSAGE
        if response.size > MAX_MESSAGE_LENGTH
          return_value = {"Return_code" => MESSAGE_TOO_LONG, "Content" => nil}
-       elsif response.size < msg_size
+       elsif response.size < msg_size.ord
          # Receive the next message character
          response << byte_recieved
+       elsif crc16(response[0,msg_size.ord-2]) != ((response[msg_size.ord-2].ord << 8 ) | response[msg_size.ord-1].ord) or response[OPCODE] == CRC_ERROR
+           return_value = {"Return_code" => COMM_CRC_ERROR, "Content" => response}
+             print "CRC_ERROR "
+             print response[0,msg_size.ord-2].inspect,"\n"
        else
-         if crc16(message[0,message.length-2]) != ((message[message.length-1].ord << 8 ) | message[message.length].ord) or response[OPCODE] == CRC_ERROR
-           return_value = {"Return_code" => COMM_CRC_ERROR, "Content" => message}
-         else
-           return_value = {"Return_code" => NO_ERROR, "Content" => message}
-         end
+           return_value = {"Return_code" => NO_ERROR, "Content" => response}
        end
      end
    end
@@ -426,7 +399,16 @@ MASTER_ADDRESS = 1
 
 my_comm = Buscomm.new(1,SERIALPORT_NUM,COMM_SPEED)
 
+
 while true
-  print my_comm.send_message(1,Buscomm::PING,"ping"),"\n"
+  ret = my_comm.send_message(1,Buscomm::PING,"p")
+  print   "Code: ",ret["Return_code"]
+  if ret["Return_code"] == Buscomm::NO_ERROR 
+    print " Content: "
+    ret["Content"].each_char do |c|
+          print c.ord.to_s(16) , " "
+        end
+  end
+    print "\n\n"
   sleep 0.01
 end
