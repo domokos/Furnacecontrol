@@ -12,27 +12,16 @@ class Buscomm
   RESPONSE_RECIEVE_TIMEOUT = 250
   
   TRAIN_LENGTH_RCV  = 8
-  TRAIN_LENGTH_SND = 16
+  TRAIN_LENGTH_SND = 15
   
   # Messaging states
   WAITING_FOR_TRAIN = 0
   RECEIVING_TRAIN = 1
   IN_SYNC = 2
   RECEIVING_MESSAGE = 3
-  RECEIVING_CRC1 = 4
-  RECEIVING_CRC2 = 5
   
-  #
-  # The number after which get_message is called while waiting for a character
-  # during transmission of a frame but recieving none that will cause
-  # it to reset: a timeout limit.
-  #
-  MESSAGE_TIMEOUT_COUNT_LIMIT = 500
-  
-  # Messaging frame structure elements
+  # Messaging structure elements
   TRAIN_CHR = 0xff.chr
-  ESCAPE_CHR = 0x7d.chr
-  
   
   # Message receiving error conditions
   NO_ERROR = 0 # No error
@@ -101,28 +90,36 @@ class Buscomm
   # Response to a PING message - should contain the same
   # message recieved in the PING
   ECHO = 3
+  # timeout report to the host by the master
+  TIMEOUT = 4
   
   
-  #**********************************************************************************
-  # * The messaging format:
-  # * TRAIN_CHR - n*8 bits
-  # * SLAVE_ADDRESS - 8 bits
-  # * SEQ - 8 bits
-  # * OPCODE - 8 bits
-  # * PARAMERER - arbitrary number of bytes
-  # * TRAIN_CHR - indicating end of message
-  # * CRC - 2*8 bits calculated for the data excluding start frame
-  # * Train_CHR - 8 bits - to make sure bus state remains in send during transmitting CRC
-  # *
-  # *  * The SEQ field holds a message sequence number
-  # *  * Index of the message buffer points to the last parameter byte
-  # ***********************************************************************************/
+#   **********************************************************************************
+#   * The messaging format:
+#   * TRAIN_CHR - n*8 bits - at least TRAIN_LENGTH_RCV
+#   * LENGTH - the length of the message
+#   * MASTER_ADDRESS - 8 bits the address of the master
+#   * SLAVE_ADDRESS - 8 bits
+#   * SEQ - 8 bits
+#   * OPCODE - 8 bits
+#   * PARAMERER - arbitrary number of bytes
+#   * CRC - 2*8 bits calculated for the data excluding start frame
+#   *
+#   *  * The SEQ field holds a message sequence number
+#   *  * Index of the message buffer points to the last parameter byte
+#   ***********************************************************************************/
   
   # The buffer indexes
-  SLAVE_ADDRESS = 0
-  SEQ = 1
-  OPCODE = 2
-  PARAMETER_START = 3
+  LENGTH = 0
+  MASTER_ADDRESS = 1
+  SLAVE_ADDRESS = 2
+  SEQ = 3
+  OPCODE = 4
+  PARAMETER_START = 5
+  #PARAMETER_END LENGTH-2
+  #CRC1 - LENGTH-1
+  #CRC2 - LENGTH
+
 
   def initialize(portnum,parity,stopbits,baud,databits)
     @sp = SerialPort.new(portnum)
@@ -135,18 +132,17 @@ class Buscomm
 
     @busmutex = Mutex.new
     @serial_read_mutex = Mutex.new
-    @data_send_sema = Mutex.new
+    @send_data_sema = Mutex.new
     
     @message_send_buffer = []
     @serial_response_buffer = []
 
-    # Start the train sending thread
-    @data_send_sema.lock
+    # Lock the signalling semaphore and start the train sending thread 
+    @send_data_sema.lock
     start_train_thread
-    sleep 0.01
   end
 
-  def send_message(slave_address,opcode,parameter)
+  def send_message(master_address,slave_address,opcode,parameter)
 # Communicate in a synchronized manner 
 # only one communication session is allowed on the bus so 
 # synchronize it across potentially multiple Buscomm objects
@@ -155,7 +151,7 @@ class Buscomm
     @message_send_buffer=""
   
   #Create the message
-    @message_send_buffer << slave_address.chr << @message_seq.chr << opcode.chr << parameter
+    @message_send_buffer << slave_address.chr << slave_address.chr << @message_seq.chr << opcode.chr << parameter
     @message_send_buffer = escape(@message_send_buffer)
 
     #Incerement message seq 
@@ -164,25 +160,20 @@ class Buscomm
     crc = crc16(@message_send_buffer)
     @message_send_buffer << ( crc >> 8).chr << (crc & 0xff).chr
 
-
-    @message_send_buffer << TRAIN_CHR  << TRAIN_CHR 
-
     # Signal train sender thread to send data
-    @data_send_sema.unlock
-    sleep 0.01
+    @send_data_sema.unlock
 
     # Wait for message sending complete 
     # Sending complete changes bus direction
     # so it is possible to start listening afterwards
-    @data_send_sema.lock
+    @train_thread.join
+    @train_thread = nil
 
     @response = wait_for_response
     
-    stop_serial_reader_thread
-    
-    # Semaphore is already locked, so just start sending train sequence
+    # Lock the signalling semaphore and start the train sending thread
+    @send_data_sema.lock
     start_train_thread
-    sleep 0.01
   end
   return @response
  end
@@ -205,26 +196,30 @@ private
   # The thread sending train continuously on the bus and adding a 
   # message at the end when sending is needed
   def start_train_thread
-    return unless @train_thread == nil 
+    return unless @train_thread == nil
     @train_thread = Thread.new do
       comm_direction(MASTER_SENDS)
-      while true do
-        if @data_send_sema.try_lock
+      n=0
+      while true
+        if @send_data_sema.try_lock
+          n=n+1
           @sp.write(@message_send_buffer)
           @sp.write(TRAIN_CHR)
+          @sp.write(TRAIN_CHR)
           comm_direction(MASTER_LISTENS)
-          @data_send_sema.unlock
-          @train_thread = nil
           Thread.exit
         else
+          n=n+1
           @sp.write(TRAIN_CHR)
         end
        end
-    end
+     end
+    sleep 0.05
   end
 
   def stop_train_thread
     @train_thread.exit unless @train_thread == nil
+    @train_thread.join
     @train_thread = nil 
   end
   
@@ -235,14 +230,18 @@ private
    byte_recieved = 0
    response_state = WAITING_FOR_TRAIN
    escape_char_received = false
-   timeout_start = (Time.now.to_f - 1300000000) * 1000 
+   timeout_start = Time.now.to_f 
    return_value = nil
 
    # Start another thread to read from the serial port as
    # all read calls to serialport are blocking
    start_serial_reader_thread
-   
+   return_value = nil
+    
    while true
+
+     # Handle timeout
+     (Time.now.to_f - timeout_start) > RESPONSE_RECIEVE_TIMEOUT.to_f/1000 and return_value = {"Return_code" => MESSAGING_TIMEOUT, "Content" => nil}
 
      # If return_value is set then return it otherwise continue receiving
      unless return_value == nil
@@ -254,12 +253,9 @@ private
      @serial_read_mutex.synchronize { byte_recieved = @serial_response_buffer.shift }
 
      if byte_recieved == nil
-       ((Time.now.to_f - 1300000000) * 1000 - timeout_start) > RESPONSE_RECIEVE_TIMEOUT and return_value = {"Return_code" => MESSAGING_TIMEOUT, "Content" => nil}
        # Save the processor :)
-       sleep 0.01
+       sleep 0.001
        next
-     else
-       timeout_start = (Time.now.to_f - 1300000000) * 1000
      end
 
      # Character recieved - process it   
@@ -270,7 +266,7 @@ private
          train_length = 0
          response_state = RECEIVING_TRAIN
        else 
-         return_value = {"Return_code" => NO_TRAIN_RECEIVED, "Content" => nil} 
+         # Ignore what happens
        end
 
      when RECEIVING_TRAIN, IN_SYNC
@@ -278,7 +274,7 @@ private
        # train length seen so far and cahge state if
        # enough train is seen
        if byte_recieved == TRAIN_CHR
-         train_length = train_length +1
+         train_length += 1
          train_length == TRAIN_LENGTH_RCV and response_state = IN_SYNC
        else
          if response_state == RECEIVING_TRAIN
@@ -329,7 +325,8 @@ private
     @serial_reader_thread = Thread.new do
       @serial_read_mutex.synchronize { @serial_response_buffer=[] }
       while true
-        byte_read = @sp.getbyte
+        byte_read = @sp.getc
+        print byte_read ," "
         @serial_read_mutex.synchronize do
           @serial_response_buffer.push(byte_read)
           # Discard characers not read for a long time
@@ -418,6 +415,8 @@ private
     MASTER_LISTENS = 0
 end
 
+STDOUT.sync = true
+
 #Parameters
 SERIALPORT_NUM=0
 PARITY=0
@@ -425,24 +424,34 @@ STOPBITS=1
 BAUD=4800
 DATABITS=8
 
-#port = SerialPort.new(0)
-#port.modem_params=({"parity"=>0, "stop_bits"=>1, "baud"=>4800, "data_bits"=>8})
-#port.rts = Buscomm::MASTER_SENDS
-#port.binmode
+port = SerialPort.new(0)
+port.modem_params=({"parity"=>0, "stop_bits"=>1, "baud"=>4800, "data_bits"=>8})
+port.binmode
+
+port.flow_control = SerialPort::NONE
+port.sync = true
 
 
+message =""
+message << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr
+message << 0x08.chr << 0x01.chr << 0x01.chr << 0x36.chr << 0x02.chr << 0x04.chr << 0x2c.chr << 0xd8.chr << 0xff.chr << 0xff.chr
 
-#while true
-# port.write(START_FRAME)
-# port.write(1)
-# port.write(PING)
-# port.write(0xff.chr)
-# port.write(0x36)
-# port.write(END_FRAME)
-#end
 
-my_comm = Buscomm.new(SERIALPORT_NUM,PARITY,STOPBITS,BAUD,DATABITS)
+port.write(message)
+
+
+ 
+  
+  
+ 
 
 while true
-  print my_comm.send_message(1,Buscomm::PING,"ping"),"\n"
+  print port.getc.ord, " "
 end
+
+#my_comm = Buscomm.new(SERIALPORT_NUM,PARITY,STOPBITS,BAUD,DATABITS)
+#
+#while true
+#  print my_comm.send_message(1,Buscomm::PING,"ping"),"\n"
+#  sleep 0.01
+#end
