@@ -8,9 +8,7 @@ require 'thread'
 class Buscomm
   MAX_MESSAGE_LENGTH = 15
   SERIAL_RECIEVE_BUFFER_LIMIT = 100
-  # Milliseconds to timeout during receive between characters
-  RESPONSE_RECIEVE_TIMEOUT = 250
-  
+
   TRAIN_LENGTH_RCV  = 8
   TRAIN_LENGTH_SND = 15
   
@@ -73,6 +71,28 @@ class Buscomm
   COMM_SPEED_57600_H = 15
   
   
+BAUD_DATA = 0
+TIMEOUT_DATA = 1  
+  
+COMM_DATA = [
+  [300,2100], # COMM_SPEED_300_L 
+  [1200,600], # COMM_SPEED_1200_L 
+  [2400,350], # COMM_SPEED_2400_L 
+  [4800,225], # COMM_SPEED_4800_L 
+  [9600,163], # COMM_SPEED_9600_L 
+  [14400,142], # COMM_SPEED_14400_L 
+  [28800,121], # COMM_SPEED_28800_L 
+  
+  [300,2100], # COMM_SPEED_300_H 
+  [1200,600], # COMM_SPEED_1200_H 
+  [2400,350], # COMM_SPEED_2400_H 
+  [4800,225], # COMM_SPEED_4800_H 
+  [9600,163], # COMM_SPEED_9600_H 
+  [14400,142], # COMM_SPEED_14400_H 
+  [19200,131], # COMM_SPEED_19200_H 
+  [28800,121], # COMM_SPEED_28800_H 
+  [57600,110] ] # COMM_SPEED_57600_H
+      
   #
   # Response opcodes
   #
@@ -109,7 +129,7 @@ class Buscomm
 #   *  * Index of the message buffer points to the last parameter byte
 #   ***********************************************************************************/
   
-  # The buffer indexes
+  # Message indexes
   LENGTH = 0
   MASTER_ADDRESS = 1
   SLAVE_ADDRESS = 2
@@ -119,15 +139,23 @@ class Buscomm
   #PARAMETER_END LENGTH-2
   #CRC1 - LENGTH-1
   #CRC2 - LENGTH
+  
+  PARITY=0
+  STOPBITS=1
+  DATABITS=8
+  
 
+  def initialize(master_address, portnum, comm_speed)
 
-  def initialize(portnum,parity,stopbits,baud,databits)
+    @comm_speed = comm_speed
     @sp = SerialPort.new(portnum)
-    set_comm_paremeters(portnum,parity,stopbits,baud,databits)
+    set_host_paremeters(portnum, PARITY, STOPBITS, COMM_DATA[@comm_speed][BAUD_DATA], DATABITS)
     @sp.flow_control = SerialPort::NONE
     @sp.sync = true
     @sp.binmode
-
+    
+    @master_address = master_address
+    
     @message_seq = 0
 
     @busmutex = Mutex.new
@@ -137,35 +165,36 @@ class Buscomm
     @message_send_buffer = []
     @serial_response_buffer = []
 
+    @message_send_buffer = ""
+      
     # Lock the signalling semaphore and start the train sending thread 
     @send_data_sema.lock
     start_train_thread
   end
 
-  def send_message(master_address,slave_address,opcode,parameter)
+  def send_message(slave_address,opcode,parameter)
 # Communicate in a synchronized manner 
 # only one communication session is allowed on the bus so 
-# synchronize it across potentially multiple Buscomm objects
+# synchronize it across potentially multiple use of the same Buscomm object
 # to make it Thread safe
   @busmutex.synchronize do
-    @message_send_buffer=""
+    @message_send_buffer.clear
   
   #Create the message
-    @message_send_buffer << slave_address.chr << slave_address.chr << @message_seq.chr << opcode.chr << parameter
-    @message_send_buffer = escape(@message_send_buffer)
+    @message_send_buffer << @master_address.chr << slave_address.chr << @message_seq.chr << opcode.chr << parameter
 
     #Incerement message seq 
     @message_seq < 255 ? @message_seq += 1 : @message_seq = 0
 
+    @message_send_buffer = (@message_send_buffer.length+2).chr << @message_send_buffer
+    
     crc = crc16(@message_send_buffer)
     @message_send_buffer << ( crc >> 8).chr << (crc & 0xff).chr
-
+        
     # Signal train sender thread to send data
     @send_data_sema.unlock
 
     # Wait for message sending complete 
-    # Sending complete changes bus direction
-    # so it is possible to start listening afterwards
     @train_thread.join
     @train_thread = nil
 
@@ -183,11 +212,11 @@ class Buscomm
    return response[OPCODE] == ECHO
  end
  
- def set_comm_paremeters(portnum,parity,stopbits,baud,databits)
+ def set_host_paremeters(portnum,parity,stopbits,baud,databits)
     @sp.modem_params=({"parity"=>parity, "stop_bits"=>stopbits, "baud"=>baud, "data_bits"=>databits})
  end
           
- def set_comm_speed(baud)
+ def set_host_comm_speed(baud)
     @sp.modem_params=({"baud"=>baud})
  end
   
@@ -198,18 +227,12 @@ private
   def start_train_thread
     return unless @train_thread == nil
     @train_thread = Thread.new do
-      comm_direction(MASTER_SENDS)
-      n=0
       while true
         if @send_data_sema.try_lock
-          n=n+1
           @sp.write(@message_send_buffer)
           @sp.write(TRAIN_CHR)
-          @sp.write(TRAIN_CHR)
-          comm_direction(MASTER_LISTENS)
           Thread.exit
         else
-          n=n+1
           @sp.write(TRAIN_CHR)
         end
        end
@@ -230,9 +253,9 @@ private
    byte_recieved = 0
    response_state = WAITING_FOR_TRAIN
    escape_char_received = false
-   timeout_start = Time.now.to_f 
+   timeout_start = Time.now.to_f
    return_value = nil
-
+   
    # Start another thread to read from the serial port as
    # all read calls to serialport are blocking
    start_serial_reader_thread
@@ -241,7 +264,7 @@ private
    while true
 
      # Handle timeout
-     (Time.now.to_f - timeout_start) > RESPONSE_RECIEVE_TIMEOUT.to_f/1000 and return_value = {"Return_code" => MESSAGING_TIMEOUT, "Content" => nil}
+     (Time.now.to_f - timeout_start) > COMM_DATA[@comm_speed][TIMEOUT_DATA].to_f / 1000 and return_value = {"Return_code" => MESSAGING_TIMEOUT, "Content" => nil}
 
      # If return_value is set then return it otherwise continue receiving
      unless return_value == nil
@@ -286,35 +309,22 @@ private
            # start processig the message: change state
            response_state = RECEIVING_MESSAGE;
            response << byte_recieved
-           escape_char_received = false
+           msg_size = byte_recieved
          end
        end
          
      when RECEIVING_MESSAGE
        if response.size > MAX_MESSAGE_LENGTH
          return_value = {"Return_code" => MESSAGE_TOO_LONG, "Content" => nil}
-       elsif byte_recieved == ESCAPE_CHR && !escape_char_received
-         escape_char_received = true
-       elsif byte_recieved == TRAIN_CHR && !escape_char_received
-         response_state = RECEIVING_CRC1
-       else
-         # Receive the escaped or not escaped message character
-         # and clear the escape flag
+       elsif response.size < msg_size
+         # Receive the next message character
          response << byte_recieved
-         escape_char_received = false
-       end
-       
-     when RECEIVING_CRC1
-       crc1 = byte_recieved
-       response_state = RECEIVING_CRC2
-      
-     when RECEIVING_CRC2
-       crc2 = byte_recieved
-
-       if crc16(message) != ((crc1 <<8 ) | crc2) or response[OPCODE] == CRC_ERROR
-         return_value = {"Return_code" => COMM_CRC_ERROR, "Content" => message}
        else
-         return_value = {"Return_code" => NO_ERROR, "Content" => message}
+         if crc16(message[0,message.length-2]) != ((message[message.length-1].ord << 8 ) | message[message.length].ord) or response[OPCODE] == CRC_ERROR
+           return_value = {"Return_code" => COMM_CRC_ERROR, "Content" => message}
+         else
+           return_value = {"Return_code" => NO_ERROR, "Content" => message}
+         end
        end
      end
    end
@@ -326,7 +336,6 @@ private
       @serial_read_mutex.synchronize { @serial_response_buffer=[] }
       while true
         byte_read = @sp.getc
-        print byte_read ," "
         @serial_read_mutex.synchronize do
           @serial_response_buffer.push(byte_read)
           # Discard characers not read for a long time
@@ -341,27 +350,7 @@ private
     @serial_reader_thread = nil
   end
   
-  def get_comm_direction
-    return @sp.rts
-  end
-  
-  def comm_direction(direction)
-    @sp.rts = direction
-  end
-    
-  def escape(message)
-    escaped = ""
-    message.each_char do |c|
-      if c == ESCAPE_CHR  or c == TRAIN_CHR
-        escaped << ESCAPE_CHR << c  
-      else 
-        escaped << c
-      end
-    end
-    return escaped
-  end
-  
-  def flip_bits(char)
+  def reverse_bits(char)
     retval = char.unpack('B*').pack('b*').unpack("C")[0] 
     return retval 
   end
@@ -371,7 +360,7 @@ private
     crc = 0xffff
     tmp = []
     buf.each_char do |b|
-      crc = ((crc << 8) & 0xffff) ^ CRC_LOOKUP[(crc >> 8) ^ flip_bits(b) & 0xff]
+      crc = ((crc << 8) & 0xffff) ^ CRC_LOOKUP[(crc >> 8) ^ reverse_bits(b) & 0xff]
     end
     return crc
   end
@@ -410,48 +399,34 @@ private
     0xef1f, 0xff3e, 0xcf5d, 0xdf7c, 0xaf9b, 0xbfba, 0x8fd9, 0x9ff8,
     0x6e17, 0x7e36, 0x4e55, 0x5e74, 0x2e93, 0x3eb2, 0x0ed1, 0x1ef0
     ]
-
-    MASTER_SENDS = 1
-    MASTER_LISTENS = 0
 end
 
 STDOUT.sync = true
 
 #Parameters
-SERIALPORT_NUM=0
-PARITY=0
-STOPBITS=1
-BAUD=4800
-DATABITS=8
+SERIALPORT_NUM = 0
+COMM_SPEED = Buscomm::COMM_SPEED_4800_L
+MASTER_ADDRESS = 1
 
-port = SerialPort.new(0)
-port.modem_params=({"parity"=>0, "stop_bits"=>1, "baud"=>4800, "data_bits"=>8})
-port.binmode
-
-port.flow_control = SerialPort::NONE
-port.sync = true
-
-
-message =""
-message << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr
-message << 0x08.chr << 0x01.chr << 0x01.chr << 0x36.chr << 0x02.chr << 0x04.chr << 0x2c.chr << 0xd8.chr << 0xff.chr << 0xff.chr
-
-
-port.write(message)
+#port = SerialPort.new(0)
+#port.modem_params=({"parity"=>0, "stop_bits"=>1, "baud"=>4800, "data_bits"=>8})
+#port.binmode
+#
+#port.flow_control = SerialPort::NONE
+#port.sync = true
+#
+#
+#message =""
+#message << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr
+#message << 0x08.chr << 0x01.chr << 0x01.chr << 0x36.chr << 0x02.chr << 0x04.chr << 0x2c.chr << 0xd8.chr << 0xff.chr << 0xff.chr
+#
+#
+#port.write(message)
 
 
- 
-  
-  
- 
+my_comm = Buscomm.new(1,SERIALPORT_NUM,COMM_SPEED)
 
 while true
-  print port.getc.ord, " "
+  print my_comm.send_message(1,Buscomm::PING,"ping"),"\n"
+  sleep 0.01
 end
-
-#my_comm = Buscomm.new(SERIALPORT_NUM,PARITY,STOPBITS,BAUD,DATABITS)
-#
-#while true
-#  print my_comm.send_message(1,Buscomm::PING,"ping"),"\n"
-#  sleep 0.01
-#end
