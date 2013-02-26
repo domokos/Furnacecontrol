@@ -46,8 +46,11 @@ class Buscomm
   PING = 5
   # Set communication speed
   SET_COMM_SPEED = 6
+  # Host pings master - master does not forward the message to the bus, responds with a MASTER_ECHO
+  PING_MASTER = 7
+
   
-  
+    
   #
   # COMMAND PARAMETERS
   #
@@ -112,6 +115,8 @@ COMM_DATA = [
   ECHO = 3
   # timeout report to the host by the master
   TIMEOUT = 4
+  # Master responsd with echo to host
+  MASTER_ECHO = 5
   
   
 #   **********************************************************************************
