@@ -48,7 +48,8 @@ class Buscomm
   SET_COMM_SPEED = 6
   # Host pings master - master does not forward the message to the bus, responds with a MASTER_ECHO
   PING_MASTER = 7
-
+  # Return the number of CRC error messages seen
+  GET_DEVICE_CRC_ERROR_COUNTER = 8
   
     
   #
@@ -81,7 +82,7 @@ COMM_DATA = [
   [300,2100], # COMM_SPEED_300_L 
   [1200,600], # COMM_SPEED_1200_L 
   [2400,350], # COMM_SPEED_2400_L 
-  [4800,225], # COMM_SPEED_4800_L 
+  [4800,550], # COMM_SPEED_4800_L 
   [9600,163], # COMM_SPEED_9600_L 
   [14400,142], # COMM_SPEED_14400_L 
   [28800,121], # COMM_SPEED_28800_L 
@@ -404,16 +405,35 @@ MASTER_ADDRESS = 1
 
 my_comm = Buscomm.new(1,SERIALPORT_NUM,COMM_SPEED)
 
+a = 0
 
 while true
-  ret = my_comm.send_message(1,Buscomm::PING,"p")
+  ret = my_comm.send_message(1,Buscomm::READ_REGISTER,0x01.chr)
   print   "Code: ",ret["Return_code"]
   if ret["Return_code"] == Buscomm::NO_ERROR 
     print " Content: "
     ret["Content"].each_char do |c|
           print c.ord.to_s(16) , " "
         end
+    c = "" << ret["Content"][5] << ret["Content"][6]
+    print "\n", c.unpack("s")[0]*0.0625,"\n"
+    a += 1
+    if (a % 10) == 0
+      ret = my_comm.send_message(1,Buscomm::GET_DEVICE_CRC_ERROR_COUNTER,"")
+      print " CRC: "
+          ret["Content"].each_char do |c|
+                print c.ord.to_s(16) , " "
+              end
+          
+    end
+     
   end
-    print "\n\n"
+  print "\n"
+#  if ret["Return_code"] == Buscomm::NO_ERROR 
+#    print "Temp: "
+#    print ret["Content"][4].ord.to_s(16), ret["Content"][5].ord.to_s(16)
+#      #print c
+#    #print c.unpack("s")[0]*0.0625, " C\n"
+#  end
   sleep 0.01
 end
