@@ -9,8 +9,8 @@ class Buscomm
   MAX_MESSAGE_LENGTH = 15
   SERIAL_RECIEVE_BUFFER_LIMIT = 100
 
-  TRAIN_LENGTH_RCV  = 8
-  TRAIN_LENGTH_SND = 15
+  TRAIN_LENGTH_RCV  = 2
+  TRAIN_LENGTH_SND = 8
   
   # Messaging states
   WAITING_FOR_TRAIN = 0
@@ -405,35 +405,40 @@ MASTER_ADDRESS = 1
 
 my_comm = Buscomm.new(1,SERIALPORT_NUM,COMM_SPEED)
 
-a = 0
+total_seen = timeout_seen = 0.0
 
 while true
   ret = my_comm.send_message(1,Buscomm::READ_REGISTER,0x01.chr)
-  print   "Code: ",ret["Return_code"]
-  if ret["Return_code"] == Buscomm::NO_ERROR 
-    print " Content: "
-    ret["Content"].each_char do |c|
-          print c.ord.to_s(16) , " "
-        end
-    c = "" << ret["Content"][5] << ret["Content"][6]
-    print "\n", c.unpack("s")[0]*0.0625,"\n"
-    a += 1
-    if (a % 10) == 0
-      ret = my_comm.send_message(1,Buscomm::GET_DEVICE_CRC_ERROR_COUNTER,"")
-      print " CRC: "
-          ret["Content"].each_char do |c|
-                print c.ord.to_s(16) , " "
-              end
-          
-    end
-     
-  end
-  print "\n"
+  total_seen += 1.0
+#  print   "Code: ",ret["Return_code"]
 #  if ret["Return_code"] == Buscomm::NO_ERROR 
-#    print "Temp: "
-#    print ret["Content"][4].ord.to_s(16), ret["Content"][5].ord.to_s(16)
-#      #print c
-#    #print c.unpack("s")[0]*0.0625, " C\n"
+#    print " Content: "
+#    ret["Content"].each_char do |c|
+#          print c.ord.to_s(16) , " "
+#        end
+#    c = "" << ret["Content"][5] << ret["Content"][6]
+#    print "\n", c.unpack("s")[0]*0.0625,"\n"
+#     
 #  end
+#  print "\n"
+  
+  if ret["Return_code"] == Buscomm::NO_ERROR 
+    
+    if ret["Content"][Buscomm::OPCODE].ord == Buscomm::COMMAND_SUCCESS
+    
+    print "\nTemp: "
+    
+    c = "" << ret["Content"][5] << ret["Content"][6]
+    print c.unpack("s")[0]*0.0625, " C\n"
+    else
+      print "Nooooooooooow "
+      print " Content: "
+      ret["Content"].each_char do |c|
+         print c.ord.to_s(16) , " "
+      timeout_seen += 1.0
+    end
+   end
+  end
+  print "Error rate: ", timeout_seen / total_seen*100,"%\n"
   sleep 0.01
 end
