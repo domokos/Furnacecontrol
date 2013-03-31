@@ -40,16 +40,14 @@ class Buscomm
   IDENTTIFY_REGISTER = 2
   # Reset the device to its basic state
   RESET_DEVICE = 3
-  # Perform tests
-  COMM_TEST_REVERSE_MESSAGE = 4
   # PING - master expects an echo and the same payload
-  PING = 5
+  PING = 4
   # Set communication speed
-  SET_COMM_SPEED = 6
+  SET_COMM_SPEED = 5
   # Host pings master - master does not forward the message to the bus, responds with a MASTER_ECHO
-  PING_MASTER = 7
+  PING_MASTER = 6
   # Return the number of CRC error messages seen
-  GET_DEVICE_CRC_ERROR_COUNTER = 8
+  GET_DEVICE_CRC_ERROR_COUNTER = 7
   
     
   #
@@ -118,6 +116,8 @@ COMM_DATA = [
   TIMEOUT = 4
   # Master responsd with echo to host
   MASTER_ECHO = 5
+  # Undefined response - should never occur - indicates coding issue
+  RESPONSE_UNDEFINED = 6
   
   
 #   **********************************************************************************
