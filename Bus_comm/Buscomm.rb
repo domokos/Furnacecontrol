@@ -441,4 +441,13 @@ while true
   end
   print "Error rate: ", timeout_seen / total_seen*100,"%\n"
   sleep 0.01
-end
+ # my_comm.send_message(1,Buscomm::SET_REGISTER,0x03.chr+0x23.chr+0x004.chr+0x01.chr)
+  my_comm.send_message(1,Buscomm::SET_REGISTER,0x03.chr+0x00.chr+0x00.chr+0x00.chr)
+#  my_comm.send_message(1,Buscomm::SET_REGISTER,0x04.chr+0x00.chr)
+  my_comm.send_message(1,Buscomm::SET_REGISTER,0x05.chr+0x01.chr)
+ my_comm.send_message(1,Buscomm::SET_REGISTER,0x06.chr+0x01.chr)
+  my_comm.send_message(1,Buscomm::SET_REGISTER,0x07.chr+0x00.chr)
+#  my_comm.send_message(1,Buscomm::SET_REGISTER,0x08.chr+0x00.chr)
+  my_comm.send_message(1,Buscomm::SET_REGISTER,0x09.chr+0x01.chr)
+  
+ end
