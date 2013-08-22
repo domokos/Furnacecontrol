@@ -190,7 +190,7 @@ COMM_DATA = [
    #Create the message
     @message_send_buffer << @master_address.chr << slave_address.chr << @message_seq.chr << opcode.chr << parameter
 
-    #Incerement message seq 
+    #Increment message seq 
     @message_seq < 255 ? @message_seq += 1 : @message_seq = 0
 
     @message_send_buffer = (@message_send_buffer.length+3).chr + @message_send_buffer
@@ -242,9 +242,6 @@ private
      # Handle timeout
      (Time.now.to_f - timeout_start) > COMM_DATA[@comm_speed][TIMEOUT_DATA].to_f / 1000 and return_value = {"Return_code" => MESSAGING_TIMEOUT, "Content" => nil}
 
-#    print "Clock: ",(Time.now.to_f - timeout_start),"\n"
-#    print "Limit: ",COMM_DATA[@comm_speed][TIMEOUT_DATA].to_f / 1000,"\n"  
-       
      # If return_value is set then return it otherwise continue receiving
      unless return_value == nil
        stop_serial_reader_thread
@@ -255,12 +252,12 @@ private
      @serial_read_mutex.synchronize { byte_recieved = @serial_response_buffer.shift }
 
      if byte_recieved == nil
-       # Save the processor :)
+       # Save the processor
        sleep 0.005
        next
      end
 
-     # Character recieved - process it   
+     # Character received - process it   
      case response_state
        
      when WAITING_FOR_TRAIN
@@ -268,12 +265,12 @@ private
          train_length = 0
          response_state = RECEIVING_TRAIN
        else 
-         # Ignore what happens
+         # Ignore anything received
        end
 
      when RECEIVING_TRAIN, IN_SYNC
-       # Recieved the expected character increase the
-       # train length seen so far and cahge state if
+       # Received the expected character increase the
+       # train length seen so far and change state if
        # enough train is seen
        if byte_recieved == TRAIN_CHR
          train_length += 1
@@ -387,22 +384,6 @@ SERIALPORT_NUM = 0
 COMM_SPEED = Buscomm::COMM_SPEED_4800_L
 MASTER_ADDRESS = 1
 
-#port = SerialPort.new(0)
-#port.modem_params=({"parity"=>0, "stop_bits"=>1, "baud"=>4800, "data_bits"=>8})
-#port.binmode
-#
-#port.flow_control = SerialPort::NONE
-#port.sync = true
-#
-#
-#message =""
-#message << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr << 0xff.chr
-#message << 0x08.chr << 0x01.chr << 0x01.chr << 0x36.chr << 0x02.chr << 0x04.chr << 0x2c.chr << 0xd8.chr << 0xff.chr << 0xff.chr
-#
-#
-#port.write(message)
-
-
 my_comm = Buscomm.new(1,SERIALPORT_NUM,COMM_SPEED)
 
 total_seen = timeout_seen = 0.0
@@ -410,26 +391,14 @@ total_seen = timeout_seen = 0.0
 while true
   ret = my_comm.send_message(1,Buscomm::READ_REGISTER,0x01.chr)
   total_seen += 1.0
-#  print   "Code: ",ret["Return_code"]
-#  if ret["Return_code"] == Buscomm::NO_ERROR 
-#    print " Content: "
-#    ret["Content"].each_char do |c|
-#          print c.ord.to_s(16) , " "
-#        end
-#    c = "" << ret["Content"][5] << ret["Content"][6]
-#    print "\n", c.unpack("s")[0]*0.0625,"\n"
-#     
-#  end
-#  print "\n"
   
   if ret["Return_code"] == Buscomm::NO_ERROR 
     
     if ret["Content"][Buscomm::OPCODE].ord == Buscomm::COMMAND_SUCCESS
     
-    print "\nTemp: "
-    
-    c = "" << ret["Content"][5] << ret["Content"][6]
-    print c.unpack("s")[0]*0.0625, " C\n"
+      print "\nTemp: "
+      c = "" << ret["Content"][5] << ret["Content"][6]
+      print c.unpack("s")[0]*0.0625, " C\n"
     else
       print "Nooooooooooow "
       print " Content: "
@@ -441,7 +410,8 @@ while true
   end
   print "Error rate: ", timeout_seen / total_seen*100,"%\n"
   sleep 0.01
- # my_comm.send_message(1,Buscomm::SET_REGISTER,0x03.chr+0x23.chr+0x004.chr+0x01.chr)
+
+  # my_comm.send_message(1,Buscomm::SET_REGISTER,0x03.chr+0x23.chr+0x004.chr+0x01.chr)
   my_comm.send_message(1,Buscomm::SET_REGISTER,0x03.chr+0x00.chr+0x00.chr+0x00.chr)
 #  my_comm.send_message(1,Buscomm::SET_REGISTER,0x04.chr+0x00.chr)
   my_comm.send_message(1,Buscomm::SET_REGISTER,0x05.chr+0x01.chr)
