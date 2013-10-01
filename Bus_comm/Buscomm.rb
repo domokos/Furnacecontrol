@@ -62,15 +62,17 @@ class Buscomm
   COMM_SPEED_9600_L = 4
   COMM_SPEED_14400_L = 5
   COMM_SPEED_28800_L = 6
-  COMM_SPEED_300_H = 7
-  COMM_SPEED_1200_H = 8
-  COMM_SPEED_2400_H = 9
-  COMM_SPEED_4800_H = 10
-  COMM_SPEED_9600_H = 11
-  COMM_SPEED_14400_H = 12
-  COMM_SPEED_19200_H = 13
-  COMM_SPEED_28800_H = 14
-  COMM_SPEED_57600_H = 15
+  COMM_SPEED_57600_L = 7
+  COMM_SPEED_300_H = 8
+  COMM_SPEED_1200_H = 9
+  COMM_SPEED_2400_H = 10
+  COMM_SPEED_4800_H = 11
+  COMM_SPEED_9600_H = 12
+  COMM_SPEED_14400_H = 13
+  COMM_SPEED_19200_H = 14
+  COMM_SPEED_28800_H = 15
+  COMM_SPEED_57600_H = 16
+  COMM_SPEED_115200_H = 17
   
   
 BAUD_DATA = 0
@@ -84,6 +86,7 @@ COMM_DATA = [
   [9600,163], # COMM_SPEED_9600_L 
   [14400,142], # COMM_SPEED_14400_L 
   [28800,121], # COMM_SPEED_28800_L 
+  [57600,110], #	COMM_SPEED_57600_L
   
   [300,2100], # COMM_SPEED_300_H 
   [1200,600], # COMM_SPEED_1200_H 
@@ -93,7 +96,8 @@ COMM_DATA = [
   [14400,142], # COMM_SPEED_14400_H 
   [19200,131], # COMM_SPEED_19200_H 
   [28800,121], # COMM_SPEED_28800_H 
-  [57600,110] ] # COMM_SPEED_57600_H
+  [57600,110],  # COMM_SPEED_57600_H
+  [115200,100]] # COMM_SPEED_115200_H
       
   #
   # Response opcodes
@@ -381,22 +385,26 @@ STDOUT.sync = true
 
 #Parameters
 SERIALPORT_NUM = 0
-COMM_SPEED = Buscomm::COMM_SPEED_4800_L
+COMM_SPEED = Buscomm::COMM_SPEED_115200_H
 MASTER_ADDRESS = 1
 
 my_comm = Buscomm.new(1,SERIALPORT_NUM,COMM_SPEED)
 
-total_seen = timeout_seen = 0.0
+total_seen = timeout_seen = error_seen = 0.0
+
+reg_addr = 1
 
 while true
-  ret = my_comm.send_message(1,Buscomm::READ_REGISTER,0x01.chr)
+  ret = my_comm.send_message(10,Buscomm::READ_REGISTER,reg_addr.chr)
   total_seen += 1.0
+  
+  print ret
   
   if ret["Return_code"] == Buscomm::NO_ERROR 
     
     if ret["Content"][Buscomm::OPCODE].ord == Buscomm::COMMAND_SUCCESS
     
-      print "\nTemp: "
+      print "\nTemp of register ", reg_addr, ": "
       c = "" << ret["Content"][5] << ret["Content"][6]
       print c.unpack("s")[0]*0.0625, " C\n"
     else
@@ -405,19 +413,16 @@ while true
       ret["Content"].each_char do |c|
          print c.ord.to_s(16) , " "
       timeout_seen += 1.0
+      end
     end
+   else
+    error_seen += 1
    end
-  end
-  print "Error rate: ", timeout_seen / total_seen*100,"%\n"
+  print "Error rate: ", (timeout_seen+error_seen) / total_seen*100,"%\n"
   sleep 0.01
-
-  # my_comm.send_message(1,Buscomm::SET_REGISTER,0x03.chr+0x23.chr+0x004.chr+0x01.chr)
-  my_comm.send_message(1,Buscomm::SET_REGISTER,0x03.chr+0x00.chr+0x00.chr+0x00.chr)
-#  my_comm.send_message(1,Buscomm::SET_REGISTER,0x04.chr+0x00.chr)
-  my_comm.send_message(1,Buscomm::SET_REGISTER,0x05.chr+0x01.chr)
- my_comm.send_message(1,Buscomm::SET_REGISTER,0x06.chr+0x01.chr)
-  my_comm.send_message(1,Buscomm::SET_REGISTER,0x07.chr+0x00.chr)
-#  my_comm.send_message(1,Buscomm::SET_REGISTER,0x08.chr+0x00.chr)
-  my_comm.send_message(1,Buscomm::SET_REGISTER,0x09.chr+0x01.chr)
-  
+  if reg_addr < 6
+	  reg_addr +=1
+  else
+	  reg_addr = 1
+  end
  end
