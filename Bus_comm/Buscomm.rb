@@ -431,11 +431,13 @@ if false
 end
 
 reg_addr = 11
+wiper_val = 0
 
 while true
+if true
   ret = my_comm.send_message(11,Buscomm::READ_REGISTER,reg_addr.chr)
   if ret["Return_code"] == Buscomm::NO_ERROR 
-    print " Content: "
+    print "Read response content: "
     ret["Content"].each_char do |c|
        print c.ord.to_s(16) , " "
     end   
@@ -445,7 +447,29 @@ while true
     print ret["Return_code"]
     
   end
-  
+
   print "\n"
+end  
+  ret = my_comm.send_message(11,Buscomm::SET_REGISTER,11.chr+0.chr+wiper_val.chr+0.chr)
+  if ret["Return_code"] == Buscomm::NO_ERROR 
+    print "Write response content: "
+    ret["Content"].each_char do |c|
+       print c.ord.to_s(16) , " "
+    end   
+    if wiper_val<255
+      wiper_val += 1
+    else
+      wiper_val = 0
+    end
+    
+  else
+    print "Error code: "
+    print ret["Return_code"]
+    
+  end
+
+  
+    
+  print "\n\n"
 end
 
