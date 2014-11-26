@@ -385,7 +385,7 @@ STDOUT.sync = true
 
 #Parameters
 SERIALPORT_NUM = 0
-COMM_SPEED = Buscomm::COMM_SPEED_115200_H
+COMM_SPEED = Buscomm::COMM_SPEED_9600_H
 MASTER_ADDRESS = 1
 
 my_comm = Buscomm.new(1,SERIALPORT_NUM,COMM_SPEED)
@@ -394,35 +394,58 @@ total_seen = timeout_seen = error_seen = 0.0
 
 reg_addr = 1
 
-while true
-  ret = my_comm.send_message(10,Buscomm::READ_REGISTER,reg_addr.chr)
-  total_seen += 1.0
-  
-  print ret
-  
-  if ret["Return_code"] == Buscomm::NO_ERROR 
-    
-    if ret["Content"][Buscomm::OPCODE].ord == Buscomm::COMMAND_SUCCESS
-    
-      print "\nTemp of register ", reg_addr, ": "
-      c = "" << ret["Content"][5] << ret["Content"][6]
-      print c.unpack("s")[0]*0.0625, " C\n"
-    else
-      print "Nooooooooooow "
-      print " Content: "
-      ret["Content"].each_char do |c|
-         print c.ord.to_s(16) , " "
-      timeout_seen += 1.0
+
+if false
+    while true
+      ret = my_comm.send_message(10,Buscomm::READ_REGISTER,reg_addr.chr)
+      total_seen += 1.0
+      
+      print ret
+      
+      if ret["Return_code"] == Buscomm::NO_ERROR 
+        
+        if ret["Content"][Buscomm::OPCODE].ord == Buscomm::COMMAND_SUCCESS
+        
+          print "\nTemp of register ", reg_addr, ": "
+          c = "" << ret["Content"][5] << ret["Content"][6]
+          print c.unpack("s")[0]*0.0625, " C\n"
+        else
+          print "Nooooooooooow "
+          print " Content: "
+          ret["Content"].each_char do |c|
+             print c.ord.to_s(16) , " "
+          timeout_seen += 1.0
+          end
+        end
+       else
+        error_seen += 1
+       end
+      print "Error rate: ", (timeout_seen+error_seen) / total_seen*100,"%\n"
+      sleep 0.01
+      if reg_addr < 6
+    	  reg_addr +=1
+      else
+    	  reg_addr = 1
       end
-    end
-   else
-    error_seen += 1
-   end
-  print "Error rate: ", (timeout_seen+error_seen) / total_seen*100,"%\n"
-  sleep 0.01
-  if reg_addr < 6
-	  reg_addr +=1
+     end
+end
+
+reg_addr = 11
+
+while true
+  ret = my_comm.send_message(11,Buscomm::READ_REGISTER,reg_addr.chr)
+  if ret["Return_code"] == Buscomm::NO_ERROR 
+    print " Content: "
+    ret["Content"].each_char do |c|
+       print c.ord.to_s(16) , " "
+    end   
+    
   else
-	  reg_addr = 1
+    print "Error code: "
+    print ret["Return_code"]
+    
   end
- end
+  
+  print "\n"
+end
+
