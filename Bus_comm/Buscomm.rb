@@ -392,49 +392,9 @@ my_comm = Buscomm.new(1,SERIALPORT_NUM,COMM_SPEED)
 
 total_seen = timeout_seen = error_seen = 0.0
 
-reg_addr = 1
-
-
-if false
-    while true
-      ret = my_comm.send_message(10,Buscomm::READ_REGISTER,reg_addr.chr)
-      total_seen += 1.0
-      
-      print ret
-      
-      if ret["Return_code"] == Buscomm::NO_ERROR 
-        
-        if ret["Content"][Buscomm::OPCODE].ord == Buscomm::COMMAND_SUCCESS
-        
-          print "\nTemp of register ", reg_addr, ": "
-          c = "" << ret["Content"][5] << ret["Content"][6]
-          print c.unpack("s")[0]*0.0625, " C\n"
-        else
-          print "Nooooooooooow "
-          print " Content: "
-          ret["Content"].each_char do |c|
-             print c.ord.to_s(16) , " "
-          timeout_seen += 1.0
-          end
-        end
-       else
-        error_seen += 1
-       end
-      print "Error rate: ", (timeout_seen+error_seen) / total_seen*100,"%\n"
-      sleep 0.01
-      if reg_addr < 6
-    	  reg_addr +=1
-      else
-    	  reg_addr = 1
-      end
-     end
-end
-
 reg_addr = 11
-wiper_val = 0
+wiper_val = 56
 
-while true
-if true
   ret = my_comm.send_message(11,Buscomm::READ_REGISTER,reg_addr.chr)
   if ret["Return_code"] == Buscomm::NO_ERROR 
     print "Read response content: "
@@ -449,27 +409,32 @@ if true
   end
 
   print "\n"
-end  
+
   ret = my_comm.send_message(11,Buscomm::SET_REGISTER,11.chr+0.chr+wiper_val.chr+0.chr)
   if ret["Return_code"] == Buscomm::NO_ERROR 
     print "Write response content: "
     ret["Content"].each_char do |c|
        print c.ord.to_s(16) , " "
     end   
-    if wiper_val<255
-      wiper_val += 1
-    else
-      wiper_val = 0
-    end
     
   else
     print "Error code: "
     print ret["Return_code"]
     
   end
-
-  
     
   print "\n\n"
-end
 
+  heater_state = 1
+  while true
+    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,10.chr+heater_state.chr)
+    sleep 2
+    if  heater_state == 1
+      heater_state = 0
+      print "On\n"
+    else
+      heater_state = 1
+      print "Off\n"
+    end
+ 
+  end
