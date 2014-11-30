@@ -1,4 +1,4 @@
-#!/usr/bin/ruby
+#!/usr/local/rvm/rubies/ruby-2.1.5/bin/ruby
 
 $stdout.sync = true
 require 'rubygems'
@@ -392,7 +392,7 @@ my_comm = Buscomm.new(1,SERIALPORT_NUM,COMM_SPEED)
 
 total_seen = timeout_seen = error_seen = 0.0
 
-reg_addr = 11
+reg_addr = 12
 wiper_val = 56
 
   ret = my_comm.send_message(11,Buscomm::READ_REGISTER,reg_addr.chr)
@@ -410,7 +410,7 @@ wiper_val = 56
 
   print "\n"
 
-  ret = my_comm.send_message(11,Buscomm::SET_REGISTER,11.chr+0.chr+wiper_val.chr+0.chr)
+  ret = my_comm.send_message(11,Buscomm::SET_REGISTER,12.chr+0.chr+wiper_val.chr+0.chr)
   if ret["Return_code"] == Buscomm::NO_ERROR 
     print "Write response content: "
     ret["Content"].each_char do |c|
@@ -427,7 +427,7 @@ wiper_val = 56
 
   heater_state = 1
   while true
-    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,10.chr+heater_state.chr)
+    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,11.chr+heater_state.chr)
     sleep 2
     if  heater_state == 1
       heater_state = 0
