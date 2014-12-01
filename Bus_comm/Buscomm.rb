@@ -1,5 +1,7 @@
 #!/usr/local/rvm/rubies/ruby-2.1.5/bin/ruby
 
+Encoding.default_internal = Encoding.find('ASCII-8BIT')
+
 $stdout.sync = true
 require 'rubygems'
 require 'serialport'
@@ -394,7 +396,7 @@ total_seen = timeout_seen = error_seen = 0.0
 
 reg_addr = 12
 wiper_val = 56
-
+if false
   ret = my_comm.send_message(11,Buscomm::READ_REGISTER,reg_addr.chr)
   if ret["Return_code"] == Buscomm::NO_ERROR 
     print "Read response content: "
@@ -438,3 +440,43 @@ wiper_val = 56
     end
  
   end
+end
+
+#mode = "do HW"
+mode = "do heat"
+
+if mode == "do heat"
+# Turn on Basement floor valve
+    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,9.chr+1.chr)
+# Turn on Basement radiator valve
+    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,10.chr+0.chr)
+# Turn on Rad pump
+    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,5.chr+1.chr)
+# Floor heating: Turn on hidr shift pump and floor pump and off HW pump
+    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,7.chr+1.chr)
+    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,6.chr+1.chr)
+    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,8.chr+0.chr)
+elsif mode == "do HW"
+# Turn off Rad pump
+    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,5.chr+0.chr)
+# Floor heating: Turn off hidr shift pump and floor pump and on HW pump
+    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,7.chr+0.chr)
+    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,6.chr+0.chr)
+    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,8.chr+1.chr)
+    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,5.chr+0.chr)
+end
+
+
+# HW making: Turn ff hidr shift pump and floor pump and on HW pump
+#    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,7.chr+0.chr)
+#    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,6.chr+0.chr)
+#    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,8.chr+1.chr)
+
+#    case 5: // Radiator pump P1_4
+#    case 6: // Floor pump P1_5
+#    case 7: // Hidraulic Shifter pump P1_3
+#    case 8: // HW pump P1_6
+#    case 9: // Basement floor valve P1_2
+#    case 10: // Basement radiator valve P1_1
+#    case 11: // Heater relay P3_5
+
