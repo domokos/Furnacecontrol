@@ -444,18 +444,29 @@ end
 
 #mode = "do HW"
 mode = "do heat"
+#mode = "test"
+
+print "Mode: " + mode + "\n"
 
 if mode == "do heat"
 # Turn on Basement floor valve
     ret = my_comm.send_message(11,Buscomm::SET_REGISTER,9.chr+1.chr)
 # Turn on Basement radiator valve
-    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,10.chr+0.chr)
+    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,10.chr+1.chr)
 # Turn on Rad pump
     ret = my_comm.send_message(11,Buscomm::SET_REGISTER,5.chr+1.chr)
-# Floor heating: Turn on hidr shift pump and floor pump and off HW pump
-    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,7.chr+1.chr)
+# Hidr shift pump 
+   ret = my_comm.send_message(11,Buscomm::SET_REGISTER,7.chr+1.chr)
+# Floor pump
     ret = my_comm.send_message(11,Buscomm::SET_REGISTER,6.chr+1.chr)
+# HW pump
     ret = my_comm.send_message(11,Buscomm::SET_REGISTER,8.chr+0.chr)
+# Turn on heater relay
+    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,11.chr+1.chr)
+# Set water temp
+    wiper_val = 0xa8
+    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,12.chr+0x0.chr+wiper_val.chr+0.chr)
+
 elsif mode == "do HW"
 # Turn off Rad pump
     ret = my_comm.send_message(11,Buscomm::SET_REGISTER,5.chr+0.chr)
@@ -464,6 +475,56 @@ elsif mode == "do HW"
     ret = my_comm.send_message(11,Buscomm::SET_REGISTER,6.chr+0.chr)
     ret = my_comm.send_message(11,Buscomm::SET_REGISTER,8.chr+1.chr)
     ret = my_comm.send_message(11,Buscomm::SET_REGISTER,5.chr+0.chr)
+# Turn on heater relay
+    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,11.chr+1.chr)
+# Set water temp
+# 0xa0 = 36 C?
+# 0xa8 - 36 C?
+# 0xb0 - 36 C?
+# 0xb8 - 37 C
+# 0xc0 - 40 C
+# 0xc8 - 44 C
+# 0xd0 = 48 C
+# 0xd8 - 53 C
+# 0xe0 = 58 C
+# 0xe5 = 61 C
+# 0xea = 66 C
+# 0xf0 = 74 C
+# 0xf6 = 82 C
+# 0xff = 85 C
+
+    wiper_val = 0xff
+    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,12.chr+0x0.chr+wiper_val.chr+0.chr)
+
+elsif mode == "test"
+
+    wiper_val = 0xe8
+    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,12.chr+0x0.chr+wiper_val.chr+0.chr)
+    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,5.chr+0.chr)
+
+
+# Turn on heater relay
+    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,11.chr+1.chr)
+
+    ret = my_comm.send_message(11,Buscomm::READ_REGISTER,12.chr+0.chr)
+
+    if ret["Return_code"] == Buscomm::NO_ERROR 
+        print "Write response content: "
+        ret["Content"].each_char do |c|
+	   print c.ord.to_s(16) , " "
+	end   
+
+	 temp = "" << ret["Content"][5] << ret["Content"][6]
+	 print "\n", temp.unpack("s")[0]*0.0625 ,"\n"
+ 
+	print "\n"
+    
+    else
+	print "Error code: "
+	print ret["Return_code"]
+    end
+
+
 end
 
 
@@ -479,4 +540,5 @@ end
 #    case 9: // Basement floor valve P1_2
 #    case 10: // Basement radiator valve P1_1
 #    case 11: // Heater relay P3_5
+#    case 12: // Wiper value
 
