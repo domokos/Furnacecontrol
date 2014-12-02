@@ -464,24 +464,28 @@ if mode == "do heat"
 # Turn on heater relay
     ret = my_comm.send_message(11,Buscomm::SET_REGISTER,11.chr+1.chr)
 # Set water temp
-    wiper_val = 0xa8
+    wiper_val = 0xb8
     ret = my_comm.send_message(11,Buscomm::SET_REGISTER,12.chr+0x0.chr+wiper_val.chr+0.chr)
 
 elsif mode == "do HW"
 # Turn off Rad pump
     ret = my_comm.send_message(11,Buscomm::SET_REGISTER,5.chr+0.chr)
-# Floor heating: Turn off hidr shift pump and floor pump and on HW pump
+# Hidr shift pump
     ret = my_comm.send_message(11,Buscomm::SET_REGISTER,7.chr+0.chr)
+# Floor pump
     ret = my_comm.send_message(11,Buscomm::SET_REGISTER,6.chr+0.chr)
+# HW pump
     ret = my_comm.send_message(11,Buscomm::SET_REGISTER,8.chr+1.chr)
+# RAd pump
     ret = my_comm.send_message(11,Buscomm::SET_REGISTER,5.chr+0.chr)
 # Turn on heater relay
     ret = my_comm.send_message(11,Buscomm::SET_REGISTER,11.chr+1.chr)
 # Set water temp
 # 0xa0 = 36 C?
-# 0xa8 - 36 C?
+# 0xa8 - 36 C
 # 0xb0 - 36 C?
 # 0xb8 - 37 C
+# 0xb9 - 39 C
 # 0xc0 - 40 C
 # 0xc8 - 44 C
 # 0xd0 = 48 C
