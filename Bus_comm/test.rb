@@ -1,6 +1,6 @@
 #!/usr/local/rvm/rubies/ruby-2.1.5/bin/ruby
 
-require "Buscomm"
+require "./Buscomm"
 require "rubygems"
 
 STDOUT.sync = true
@@ -13,7 +13,7 @@ MASTER_ADDRESS = 1
 my_comm = Buscomm.new(1,SERIALPORT_NUM,COMM_SPEED)
 
 #mode = "do HW"
-#mode = "do heat"
+mode = "do heat"
 #mode = "off"
 #mode = "test"
 
@@ -21,7 +21,7 @@ print "Mode: " + mode + "\n"
 
 if mode == "do heat"
 # Turn on Basement floor valve
-    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,9.chr+1.chr)
+    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,9.chr+0.chr)
 # Turn on Basement radiator valve
     ret = my_comm.send_message(11,Buscomm::SET_REGISTER,10.chr+1.chr)
 # Turn on Rad pump
@@ -104,7 +104,8 @@ elsif mode == "test"
 #    wiper_val = 0xff
 #    ret = my_comm.send_message(11,Buscomm::SET_REGISTER,12.chr+0x0.chr+wiper_val.chr+0.chr)
 
-    ret = my_comm.send_message(11,Buscomm::READ_REGISTER,12.chr+0.chr)
+#    ret = my_comm.send_message(11,Buscomm::READ_REGISTER,12.chr+0.chr)
+    ret = my_comm.send_message(11,Buscomm::READ_REGISTER,4.chr)
 
     my_comm.printret(ret)
 

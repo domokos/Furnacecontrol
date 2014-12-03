@@ -227,14 +227,15 @@ COMM_DATA = [
 
  def printret(ret)
     if ret["Return_code"] == Buscomm::NO_ERROR 
-        print "Write response content: "
-        ret["Content"].each_char do |c|
-        print c.ord.to_s(16) , " "
-	   end   
-    	temp = "" << ret["Content"][5] << ret["Content"][6]
+        print "Success - Response content: [ "
+        ret["Content"].each_byte do |b|
+        print b.to_s(16) , " "
+	   end
+	print "]"
+    	temp = "" << ret["Content"][PARAMETER_START] << ret["Content"][PARAMETER_START+1]
         print "\nTemp: ", temp.unpack("s")[0]*0.0625 ,"\n"
     else
-        print "Error code: "
+        print "Comm error - Error code: "
 	print ret["Return_code"]
     end
  end
