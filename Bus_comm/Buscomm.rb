@@ -233,7 +233,7 @@ COMM_DATA = [
 	   end
 	print "]"
     	temp = "" << ret["Content"][PARAMETER_START] << ret["Content"][PARAMETER_START+1]
-        print "\nTemp: ", temp.unpack("s")[0]*0.0625 ,"\n"
+        print "\nTemp: ", temp.unpack("s")[0]*0.0625 ," C\n"
     else
         print "Comm error - Error code: "
 	print ret["Return_code"]
