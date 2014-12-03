@@ -482,7 +482,7 @@ if mode == "do heat"
 # Turn on heater relay
     ret = my_comm.send_message(11,Buscomm::SET_REGISTER,11.chr+1.chr)
 # Set water temp
-    wiper_val = 0x99
+    wiper_val = 0x96
     ret = my_comm.send_message(11,Buscomm::SET_REGISTER,12.chr+0x0.chr+wiper_val.chr+0.chr)
 
 # 0xff - 85
@@ -497,8 +497,8 @@ if mode == "do heat"
 # 0xd0 - 49
 # 0xc0 - 42
 # 0xa9 - 44
-# 0x99 - 38
-# 0x90 - 34
+# 0x99 - 39
+# 0x96 - 34
 # 0x10 - <27 C
 # 0x60 - >26 C - turns on from 26 30?
 
