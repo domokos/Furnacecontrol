@@ -11,8 +11,10 @@ class Buscomm
   MAX_MESSAGE_LENGTH = 15
   SERIAL_RECIEVE_BUFFER_LIMIT = 100
 
+  # Messaging parameters
   TRAIN_LENGTH_RCV  = 2
   TRAIN_LENGTH_SND = 8
+  MESSAGING_RETRY_COUNT = 4
   
   # Messaging states
   WAITING_FOR_TRAIN = 0
@@ -187,27 +189,38 @@ COMM_DATA = [
 
   def send_message(slave_address,opcode,parameter)
 # Communicate in a synchronized manner 
-# only one communication session is allowed on the bus so 
+# only one communication session is allowed on a single the bus so 
 # synchronize it across potentially multiple use of the same Buscomm object
 # to make it Thread safe
   @busmutex.synchronize do
-    @message_send_buffer.clear
+    retry_count = 0
+    success = false
+    
+    while retry_count < MESSAGING_RETRY_COUNT and !success
+      @message_send_buffer.clear
+    
+     #Create the message
+      @message_send_buffer << @master_address.chr << slave_address.chr << @message_seq.chr << opcode.chr << parameter
   
-   #Create the message
-    @message_send_buffer << @master_address.chr << slave_address.chr << @message_seq.chr << opcode.chr << parameter
-
-    #Increment message seq 
-    @message_seq < 255 ? @message_seq += 1 : @message_seq = 0
-
-    @message_send_buffer = (@message_send_buffer.length+3).chr + @message_send_buffer
-    
-    crc = crc16(@message_send_buffer)
-    
-    @message_send_buffer = @train + @message_send_buffer + ( crc >> 8).chr + (crc & 0xff).chr + TRAIN_CHR.chr
-
-    @sp.write(@message_send_buffer)
-        
-    @response = wait_for_response
+      #Increment message seq 
+      @message_seq < 255 ? @message_seq += 1 : @message_seq = 0
+  
+      @message_send_buffer = (@message_send_buffer.length+3).chr + @message_send_buffer
+      
+      crc = crc16(@message_send_buffer)
+      
+      @message_send_buffer = @train + @message_send_buffer + ( crc >> 8).chr + (crc & 0xff).chr + TRAIN_CHR.chr
+  
+      @sp.write(@message_send_buffer)
+          
+      @response = wait_for_response
+      
+      if @response["Return_code"] != Buscomm::NO_ERROR
+        retry_count += 1
+      else
+        success = true
+      end
+    end
   end
   return @response
  end
@@ -281,49 +294,47 @@ private
      # Character received - process it   
      case response_state
        
-     when WAITING_FOR_TRAIN
-       if byte_recieved  == TRAIN_CHR 
-         train_length = 0
-         response_state = RECEIVING_TRAIN
-       else 
-         # Ignore anything received
-       end
+       when WAITING_FOR_TRAIN
+         if byte_recieved  == TRAIN_CHR 
+           train_length = 0
+           response_state = RECEIVING_TRAIN
+         else 
+           # Ignore anything received
+         end
 
-     when RECEIVING_TRAIN, IN_SYNC
-       # Received the expected character increase the
-       # train length seen so far and change state if
-       # enough train is seen
-       if byte_recieved == TRAIN_CHR
-         train_length += 1
-         train_length == TRAIN_LENGTH_RCV and response_state = IN_SYNC
-       else
-         if response_state == RECEIVING_TRAIN
-           # Not a train character is received, not yet synced
-           # Go back to Waiting for train state
-           response_state = WAITING_FOR_TRAIN;
+       when RECEIVING_TRAIN, IN_SYNC
+         # Received the expected character increase the
+         # train length seen so far and change state if
+         # enough train is seen
+         if byte_recieved == TRAIN_CHR
+           train_length += 1
+           train_length == TRAIN_LENGTH_RCV and response_state = IN_SYNC
          else
-           # Got a non-train character when synced -
-           # start processig the message: change state
-           response_state = RECEIVING_MESSAGE;
+           if response_state == RECEIVING_TRAIN
+             # Not a train character is received, not yet synced
+             # Go back to Waiting for train state
+             response_state = WAITING_FOR_TRAIN;
+           else
+             # Got a non-train character when synced -
+             # start processig the message: change state
+             response_state = RECEIVING_MESSAGE;
+             response << byte_recieved
+             msg_size = byte_recieved
+           end
+         end
+         
+       when RECEIVING_MESSAGE
+         if response.size > MAX_MESSAGE_LENGTH
+           return_value = {"Return_code" => MESSAGE_TOO_LONG, "Content" => nil}
+         elsif response.size < msg_size.ord
+           # Receive the next message character
            response << byte_recieved
-           msg_size = byte_recieved
+         elsif crc16(response[0,msg_size.ord-2]) != ((response[msg_size.ord-2].ord << 8 ) | response[msg_size.ord-1].ord) or response[OPCODE] == CRC_ERROR
+             return_value = {"Return_code" => COMM_CRC_ERROR, "Content" => response}
+         else
+             return_value = {"Return_code" => NO_ERROR, "Content" => response}
          end
        end
-         
-     when RECEIVING_MESSAGE
-       if response.size > MAX_MESSAGE_LENGTH
-         return_value = {"Return_code" => MESSAGE_TOO_LONG, "Content" => nil}
-       elsif response.size < msg_size.ord
-         # Receive the next message character
-         response << byte_recieved
-       elsif crc16(response[0,msg_size.ord-2]) != ((response[msg_size.ord-2].ord << 8 ) | response[msg_size.ord-1].ord) or response[OPCODE] == CRC_ERROR
-           return_value = {"Return_code" => COMM_CRC_ERROR, "Content" => response}
-             print "CRC_ERROR "
-             print response[0,msg_size.ord-2].inspect,"\n"
-       else
-           return_value = {"Return_code" => NO_ERROR, "Content" => response}
-       end
-     end
    end
   end
    
