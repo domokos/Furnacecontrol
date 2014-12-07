@@ -31,7 +31,9 @@ class Buscomm
   MESSAGE_TOO_LONG = 2 # Receive buffer length exceeded
   MESSAGING_TIMEOUT = 3 # Timeout occured - expected but no communication is seen on the bus
   COMM_CRC_ERROR = 4 # Frame with CRC error received
-  
+
+  RESPONSE_TEXT = ["No error","No train received", "Message too long", "Messaging timeout", "CRC error"]
+    
   #
   # Command opcodes
   #

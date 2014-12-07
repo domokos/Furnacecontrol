@@ -5,8 +5,8 @@ require "./boiler_base"
 require "rubygems"
 require "robustthread"
 
-$logger.log(Globals::WARN,'Proba W')
-$logger.log(Globals::INFO,'Proba I')
-$logger.log(Globals::ERROR,'Proba E')
 
+switch = BusDevice::Switch.new("Test switch","At a mock location",1,1,false)
 
+while true
+end
