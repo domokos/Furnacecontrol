@@ -1,44 +1,8 @@
 
 require "./Buscomm"
+require "./Globals"
 require "rubygems"
 require "robustthread"
-
-BOILER_LOGFILE = './boiler_controller.log'
-
- module Globals
-
-   class BoilerLogger < Logger
-     def initialize(logfile)
-       if File.exists?(logfile) and !File.writable?(logfile)
-         puts 'Startup error: Logfile "'+logfile+'" is not writable. Aborting.'
-         exit
-       end
-       
-       begin
-         logfile = File.new(logfile,"a")
-         logfile.write(Time.now.strftime("%Y-%m-%d %H:%M:%S.%L")+" [INFO] Boiler controller startup\n")
-       rescue Exception => e
-         puts "Startup error: Logfile cannot be opened. "+e.message+" Aborting."
-         exit
-       end
-       logfile.sync = true
-       super(logfile, 10, 1024000)
-     end
-         
-    #End of Class BoilerLogger
-   end
-   
-   $logger = Logger.new(BOILER_LOGFILE)
-   
-   $logger.formatter = proc { |severity, datetime, progname, msg|
-     if caller[4].class == String
-       "#{datetime.to_s.sub!(/^(.*) \+.*$/,'\1')} #{severity} #{caller[4].sub!(/^.*\/(.*)$/,'\1')} #{msg}\n"
-     else
-       "#{datetime.to_s.sub!(/^(.*) \+.*$/,'\1')} #{severity} #{caller[4]} #{msg}\n"
-     end
-     }
-# End of module Globals          
- end
 
 module BusDevice
 
@@ -56,7 +20,7 @@ module BusDevice
     end
 
     def register_checker(process,object)
-      @@check_process_mutex.synchronize {@@check_list.push({"Proc"=>process,"Obj"=>object})}
+      @@check_process_mutex.synchronize {@@check_list.push({:Proc=>process,:Obj=>object})}
       start_check_process
     end
         
@@ -69,14 +33,14 @@ module BusDevice
           actual_check_list.each do |element|
             # Distribute checking each object across CHECK_INTERVAL_PERIOD_SEC evenly 
             sleep CHECK_INTERVAL_PERIOD_SEC / actual_check_list.size
-            $logger.debug("Bus device consistency checker process: Checking '"+element["Obj"].name+"'")
+            $logger.debug("Bus device consistency checker process: Checking '"+element[:Obj].name+"'")
               
             # Check if the checker process is accessible 
-            if (defined? element["Proc"]) != nil
+            if (defined? element[:Proc]) != nil
               
               # Call the checker process and capture result
-              result = element["Proc"].call 
-              $logger.debug("Bus device consistency checker process: Checkresult for '"+element["Obj"].name+"':"+result.to_s)
+              result = element[:Proc].call 
+              $logger.debug("Bus device consistency checker process: Checkresult for '"+element[:Obj].name+"':"+result.to_s)
             else
               
               # Log that the checker process is not accessible, and forcibly unregister it
@@ -85,7 +49,7 @@ module BusDevice
             end
             
             # Just log the result - the checker process itself is expected to take the appropriate action upon failure
-            $logger.debug("Bus device consistency checker process: Check method result for: '"+element["Obj"].name+": "+result)
+            $logger.debug("Bus device consistency checker process: Check method result for: '"+element[:Obj].name+": "+result.to_s)
           end
         end
        end
@@ -95,23 +59,23 @@ module BusDevice
   end
     
   class Switch < DeviceBase
-    attr_accessor :do_tests
+    attr_accessor :dry_run
     attr_reader :state, :name, :slave_address, :location
   
     CHECK_RETRY_COUNT = 5
     
-    def initialize(name, location, slave_address, register_address, do_tests)
+    def initialize(name, location, slave_address, register_address, dry_run)
       @name = name
       @slave_address = slave_address 
       @location = location
       @register_address = register_address
-      @do_tests = do_tests
+      @dry_run = dry_run
   
       super()
       
       # Initialize state to off
-      @state = "off"
-      !@do_tests and write_device(0)
+      @state = :off
+      !@dry_run and write_device(0)
       register_check_process
     end
       
@@ -126,10 +90,9 @@ module BusDevice
     # Turn the device on           
     def on
       @state_semaphore.synchronize do
-        if @state != "on"
-          @state = "on"
-          write_device(1)
-          $logger.info("Succesfully turned Switch "+@name+" on.")
+        if @state != :on
+          @state = :on
+          write_device(1) == :Success and $logger.debug("Succesfully turned Switch '"+@name+"' on.")
         end
       end
     end
@@ -137,10 +100,9 @@ module BusDevice
     # Turn the device off
     def off
       @state_semaphore.synchronize do
-        if @state != "off"
-          @state = "off"
-          write_device(0)
-          $logger.info("Succesfully turned Switch "+@name+" off.")
+        if @state != :off
+          @state = :off
+          write_device(1) == :Success and $logger.debug("Succesfully turned Switch '"+@name+"' off.")
         end
       end
     end
@@ -148,17 +110,22 @@ module BusDevice
     private
 
     # Write the value of the parameter to the device on the bus
-    # Bail out on unrecoverable communication error
+    # Request fatal shutdown on unrecoverable communication error
     def write_device(value)
-      if !@do_tests 
-        retval = @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+value.chr)
-        if retval["Return_code"] != Buscomm::NO_ERROR
-          $logger.fatal("Unrecoverable communication error on bus, writing "+@name+" ERRNO: "+retval["Return_code"].to_s+" - "+Buscomm::RESPONSE_TEXT[retval["Return_code"]])
-          $shutdown_fatal_requested = true
+      if !@dry_run 
+        begin
+          retval = @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+value.chr)
+          $logger.debug("Sucessfully written "+value.to_s+" to register '"+@name+"'")
+        rescue MessagingError => e
+          retval = e.return_message
+          $logger.fatal("Unrecoverable communication error on bus, writing '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
+          $shutdown_requested = Globals::FATAL_SHUTDOWN
+          return :Failure
         end
       else
-      $logger.debug("In do_tests - writing "+value+" to register in "+@name)
+        $logger.debug("Dry run - writing "+value.to_s+" to register '"+@name+"'")
       end
+      return :Success
     end
 
     alias :register_at_super :register_checker
@@ -170,46 +137,54 @@ module BusDevice
     end
     
     def check_process
-      check_result = "Success"
-      # Check what value the device knows of itself
-      retval = @@comm_interface.send_message(@slave_address,Buscomm::READ_REGISTER,@register_address.chr)
+      check_result = :Success
       
-      # Exception is raised inside the block for fatal errors
       begin
-        raise "Unrecoverable communication error on bus, reading "+@name+" ERRNO: "+retval["Return_code"].to_s+" - "+Buscomm::RESPONSE_TEXT[retval["Return_code"]] if retval["Return_code"] != Buscomm::NO_ERROR
+        # Check what value the device knows of itself
+        retval = @@comm_interface.send_message(@slave_address,Buscomm::READ_REGISTER,@register_address.chr)
+
         retry_count = 1
         
         # Temp variable state_val holds the server side state binary value
-        @state == "on" ? state_val = 1 : state_val = 0
-        while retval["Content"][PARAMETER_START] != state_val
+        @state == :on ? state_val = 1 : state_val = 0
+        while retval[:Content][Buscomm::PARAMETER_START] != state_val or retry_count <= CHECK_RETRY_COUNT
 
-          $logger.error("Mismatch during check between expected switch with Name: "+@name+" Location: "+@location) 
-          $logger.error("Known state: "+state_val.to_s+" device returned state: "+ret["Content"][PARAMETER_START]) 
+          $logger.error("Mismatch during check between expected switch with Name: '"+@name+"' Location: '"+@location+"'") 
+          $logger.error("Known state: "+state_val.to_s+" device returned state: "+ret[:Content][Buscomm::PARAMETER_START]) 
           $logger.error("Trying to set device to the known state - attempt no: "+ retry_count.to_s)
 
-          # Bail out if resetting trial fails more than CHECK_RETRY_COUNT times
-          raise "Unable to recover device mismatch. Potential HW failure - bailing out" if retry_count > CHECK_RETRY_COUNT
-          
-          # Retry setting the server side known state on the device
+          # Try setting the server side known state to the device
           retval = @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+state_val.chr)
-          raise "Unrecoverable communication error on bus writing "+@name+", ERRNO: "+retval["Return_code"].to_s+" - "+Buscomm::RESPONSE_TEXT[retval["Return_code"]] if retval["Return_code"] != Buscomm::NO_ERROR
-          
-          retry_count += 1
-        end
-      rescue Exception => e
-        # Fatal error bail out
-        $logger.fatal(e.inspect)
 
-        # Signal the main thread for shutdown
-        $shutdown_fatal_requested = true
-        check_result = "Failure"
+          retry_count += 1
+          # Sleep more and more - hoping that the mismatch error resolves itself
+          sleep retry_count * 0.23
+        end
+
+        # Bail out if comparison/resetting trial fails CHECK_RETRY_COUNT times
+        if retry_count > CHECK_RETRY_COUNT
+          $logger.fatal("Unable to recover device mismatch. Potential HW failure - bailing out")
+          $shutdown_requested = Globals::FATAL_SHUTDOWN
+          check_result = :Failure
+        end
+
+      rescue MessagingError => e
+        # Log the messaging error
+        retval = e.return_message
+        $logger.fatal("Unrecoverable communication error on bus communicating with '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
+          
+        # Signal the main thread for fatal error shutdown
+        $shutdown_requested = Globals::FATAL_SHUTDOWN
+        check_result = :Failure
       end
+
       return check_result
      end
 
   #End of class Switch    
   end
 
+ 
   class TempSensor < DeviceBase
     attr_reader :name, :slave_address, :location
   
@@ -219,7 +194,7 @@ module BusDevice
       @slave_address = slave_address 
       @location = location
       @register_address = register_address
-      @do_tests = do_tests
+      @dry_run = dry_run
   
       @delay_timer = Timer.new(min_communication_delay,"Temp Sensor Delay timer: "+@name)
            
@@ -242,19 +217,23 @@ module BusDevice
     
     private
     def read_temp
-      # Reat the register on the bus
-      retval = @@comm_interface.send_message(@slave_address,Buscomm::READ_REGISTER,@register_address.chr)
-      
-      # Evaluate response success
-      if retval["Return_code"] != Buscomm::NO_ERROR
-        $logger.fatal("Unrecoverable communication error on bus, reading "+@name+" ERRNO: "+retval["Return_code"].to_s+" - "+Buscomm::RESPONSE_TEXT[retval["Return_code"]])
-        $shutdown_fatal_requested = true
-        return -199.0
-      else
+      begin
+        # Reat the register on the bus
+        retval = @@comm_interface.send_message(@slave_address,Buscomm::READ_REGISTER,@register_address.chr)
+        $logger.debug("Succesful read from temp register of '"+@name+"'")
+        
+        # Calculate temperature value from the data returned
+        temp = "" << retval[:Content][Buscomm::PARAMETER_START] << retval[:Content][Buscomm::PARAMETER_START+1]
+        return temp.unpack("s")[0]*0.0625
 
-      # Calculate temperature value from the data returned
-      temp = "" << ret["Content"][PARAMETER_START] << ret["Content"][PARAMETER_START+1]
-      return temp.unpack("s")[0]*0.0625
+      rescue MessagingError => e
+        # Log the messaging error
+        retval = e.return_message
+        $logger.fatal("Unrecoverable communication error on bus reading '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
+          
+        # Signal the main thread for fatal error shutdown
+        $shutdown_requested = Globals::FATAL_SHUTDOWN
+        return 40.0
       end
     end
 
@@ -262,17 +241,17 @@ module BusDevice
   end
     
 class WaterTemp < DeviceBase
-   attr_accessor :do_tests
-   attr_reader :value, :name, :slave_address, :location
+   attr_accessor :dry_run
+   attr_reader :value, :name, :slave_address, :location, :temp_reqired
  
    CHECK_RETRY_COUNT = 5
    
-   def initialize(name, location, slave_address, register_address, do_tests)
+   def initialize(name, location, slave_address, register_address, dry_run)
      @name = name
      @slave_address = slave_address 
      @location = location
      @register_address = register_address
-     @do_tests = do_tests
+     @dry_run = dry_run
  
      super()
      
@@ -281,18 +260,17 @@ class WaterTemp < DeviceBase
      
      # Initialize the volatile value to the device
      @value = 0x00
+     @temp_reqired = 27.0 
      write_value(@value,0x01)
      register_check_process
    end
      
    # Set the required water temp value            
    def set_water_temp(temp_requested)
-     
-     if @state != "on"
-       @state = "on"
-       write_device(1)
-       $logger.info("Succesfully turned Switch "+@name+" on.")
-     end
+     @value = wiper_lookup(temp_requested)
+     @temp_reqired = temp_requested
+     write_device(@value,0x00)
+     $logger.info("Water temperature wiper rheostat set to value "+@value.to_s+" requiring water temperature "+@temp_required.to_s+" C on '"+@name+"'")
    end
    
    private
@@ -344,7 +322,7 @@ class WaterTemp < DeviceBase
        return 0xa4
      elsif temp_value > 34
        return ((0xa4-0x96) / (37.0-34.0) * (temp_value-34.0) + 0x96).round
-     elsif temp_value > 34
+     elsif temp_value == 34
        return 0x96
      else
        return 0x80
@@ -358,16 +336,15 @@ class WaterTemp < DeviceBase
    # Write the value of the parameter to the device on the bus
    # Bail out on unrecoverable communication error
    def write_value(value, is_volatile)
-     if !@do_tests
-       retval = @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+0x00.chr+value.chr+is_volatile.chr)
-  
-       # Evaluate response success
-       if retval["Return_code"] != Buscomm::NO_ERROR
-         $logger.fatal("Unrecoverable communication error on bus, writing "+@name+" ERRNO: "+retval["Return_code"].to_s+" - "+Buscomm::RESPONSE_TEXT[retval["Return_code"]])
-         $shutdown_fatal_requested = true
+     if !@dry_run
+       begin
+         @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+0x00.chr+value.chr+is_volatile.chr)
+         $logger.debug("Dry run - writing "+value.to_s(16)+" to wiper register with is_volatile flag set to "+is_volatile+" in '"+@name+"'")
+       rescue MessagingError => e
+         retval = e.return_message
+         $logger.fatal("Unrecoverable communication error on bus, writing '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
+         $shutdown_fatal_requested = Globals::FATAL_SHUTDOWN
        end
-     else
-       $logger.debug("In do_tests - writing "+value.to_s(16)+" to wiper register with is_volatile flag set to "+is_volatile+" in"+@name)
      end
    end
 
@@ -386,14 +363,14 @@ class WaterTemp < DeviceBase
      
      # Exception is raised inside the block for fatal errors
      begin
-       raise "Unrecoverable communication error on bus, reading "+@name+" ERRNO: "+retval["Return_code"].to_s+" - "+Buscomm::RESPONSE_TEXT[retval["Return_code"]] if retval["Return_code"] != Buscomm::NO_ERROR
+       raise "Unrecoverable communication error on bus, reading '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]] if retval[:Return_code] != Buscomm::NO_ERROR
        retry_count = 1
        
        # Loop until there is no difference or retry_count is reached
-       while retval["Content"][PARAMETER_START].ord != @value
+       while retval[:Content][Buscomm::PARAMETER_START].ord != @value
 
-         $logger.error("Mismatch during check between expected water_temp: "+@name+" Location: "+@location)
-         $logger.error("Known value: "+@value.to_s+" device returned state: "+ret["Content"][PARAMETER_START]) 
+         $logger.error("Mismatch during check between expected water_temp: '"+@name+"' Location: "+@location)
+         $logger.error("Known value: "+@value.to_s+" device returned state: "+ret[:Content][Buscomm::PARAMETER_START]) 
          $logger.error("Trying to set device to the known state - attempt no: "+ retry_count.to_s)
 
          # Bail out if resetting trial fails more than CHECK_RETRY_COUNT times
@@ -401,7 +378,7 @@ class WaterTemp < DeviceBase
          
          # Retry setting the server side known state on the device
          retval = @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+0x00.chr+@value.chr+0x00.chr)
-         raise "Unrecoverable communication error on bus writing "+@name+", ERRNO: "+retval["Return_code"].to_s+" - "+Buscomm::RESPONSE_TEXT[retval["Return_code"]] if retval["Return_code"] != Buscomm::NO_ERROR
+         raise "Unrecoverable communication error on bus writing '"+@name+"', ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]] if retval[:Return_code] != Buscomm::NO_ERROR
        
          retry_count += 1
        end
@@ -418,8 +395,6 @@ class WaterTemp < DeviceBase
 
  #End of class WaterTemp    
  end
-
-  
-  
+ 
 #End of module BusDevice
 end

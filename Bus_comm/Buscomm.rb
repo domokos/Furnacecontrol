@@ -6,6 +6,17 @@ $stdout.sync = true
 require 'rubygems'
 require 'serialport'
 require 'thread'
+require "./Globals"
+
+# The custom exception of messaging that can hold the 
+# return message of the messaging subsystem
+class MessagingError < StandardError
+  attr_accessor :return_message
+  def initialize(message)
+    @return_message = message
+    super
+  end
+end
 
 class Buscomm
   MAX_MESSAGE_LENGTH = 15
@@ -198,7 +209,7 @@ COMM_DATA = [
     retry_count = 0
     success = false
     
-    while retry_count < MESSAGING_RETRY_COUNT and !success
+    while true
       @message_send_buffer.clear
     
      #Create the message
@@ -214,17 +225,22 @@ COMM_DATA = [
       @message_send_buffer = @train + @message_send_buffer + ( crc >> 8).chr + (crc & 0xff).chr + TRAIN_CHR.chr
   
       @sp.write(@message_send_buffer)
-          
+      $logger.debug("Message sent waiting for response")
+      
       @response = wait_for_response
       
-      if @response["Return_code"] != Buscomm::NO_ERROR
-        retry_count += 1
-      else
-        success = true
-      end
+      @response[:Return_code] == Buscomm::NO_ERROR and return @response
+
+      # Increase retry count and raise exception 
+      retry_count += 1
+      $logger.error("Messaging retry #"+retry_count.to_s+" Error code: "+@response[:Return_code].to_s+" - "+RESPONSE_TEXT[@response[:Return_code]])
+
+      raise MessagingError.new(@response), "Messaging retry failed at retry # "+retry_count.to_s+" giving up." if retry_count > MESSAGING_RETRY_COUNT
+      
+      # Sleep more and more - maybe the communication error resolves itself
+      sleep retry_count * 0.23
     end
   end
-  return @response
  end
 
  def ping(slave_address)
@@ -241,18 +257,17 @@ COMM_DATA = [
  end
 
  def printret(ret)
-    if ret["Return_code"] == Buscomm::NO_ERROR 
-        print "Success - Response content: [ "
-        ret["Content"].each_byte do |b|
-        print b.to_s(16) , " "
-	   end
-	print "]"
-    	temp = "" << ret["Content"][PARAMETER_START] << ret["Content"][PARAMETER_START+1]
-        print "\nTemp: ", temp.unpack("s")[0]*0.0625 ," C\n"
-    else
-        print "Comm error - Error code: "
-	print ret["Return_code"]
+  if ret[:Return_code] == Buscomm::NO_ERROR
+    print "Success - Response content: [ "
+    ret[:Content].each_byte do |b|
+      print b.to_s(16) , " "
     end
+    print "]"
+    temp = "" << ret[:Content][PARAMETER_START] << ret[:Content][PARAMETER_START+1]
+    print "\nTemp: ", temp.unpack("s")[0]*0.0625 ," C\n"
+  else
+    print "Comm error - Error code: "+ret[:Return_code].to_s+" - "+ RESPONSE_TEXT[retval[:Return_code]]
+  end
  end
 
 private
@@ -276,7 +291,7 @@ private
    while true
 
      # Handle timeout
-     (Time.now.to_f - timeout_start) > COMM_DATA[@comm_speed][TIMEOUT_DATA].to_f / 1000 and return_value = {"Return_code" => MESSAGING_TIMEOUT, "Content" => nil}
+     (Time.now.to_f - timeout_start) > COMM_DATA[@comm_speed][TIMEOUT_DATA].to_f / 1000 and return_value = {:Return_code => MESSAGING_TIMEOUT, :Content => nil}
 
      # If return_value is set then return it otherwise continue receiving
      unless return_value == nil
@@ -327,14 +342,14 @@ private
          
        when RECEIVING_MESSAGE
          if response.size > MAX_MESSAGE_LENGTH
-           return_value = {"Return_code" => MESSAGE_TOO_LONG, "Content" => nil}
+           return_value = {:Return_code => MESSAGE_TOO_LONG, :Content => nil}
          elsif response.size < msg_size.ord
            # Receive the next message character
            response << byte_recieved
          elsif crc16(response[0,msg_size.ord-2]) != ((response[msg_size.ord-2].ord << 8 ) | response[msg_size.ord-1].ord) or response[OPCODE] == CRC_ERROR
-             return_value = {"Return_code" => COMM_CRC_ERROR, "Content" => response}
+             return_value = {:Return_code => COMM_CRC_ERROR, :Content => response}
          else
-             return_value = {"Return_code" => NO_ERROR, "Content" => response}
+             return_value = {:Return_code => NO_ERROR, :Content => response}
          end
        end
    end
