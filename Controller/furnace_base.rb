@@ -1,16 +1,5 @@
 #!/usr/bin/ruby
 
-
-#	Define the modes of the heating
-class Mode
-	def initialize(name,description)
-		@name = name
-		@description = description
-	end
-	attr_accessor :description
-end
-
-
 #	The class of the states
 class State
 	def initialize(name,description)
