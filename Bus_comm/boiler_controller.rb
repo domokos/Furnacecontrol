@@ -48,6 +48,8 @@ class Heating_State_Machine
     @config = []
     
     read_config
+    
+    @logger_timer = Globals::Timer.new(@config[:timer_delay],"Logging Delay Timer")
       
     # Define the operation modes of the furnace
     @mode_Off = BoilerBase::Mode.new("Switched off","Switched off state, frost and anti-legionella protection")
@@ -539,6 +541,9 @@ class Heating_State_Machine
   end
   
   def heating_logging
+    return unless @logger_timer.expired?
+    @logger_timer.reset
+    
     $heating_logger.debug("LOGITEM BEGIN @"+Time.now.asctime)
     $heating_logger.debug("Active state: "+@state.name.to_s)
     sth=""
@@ -585,7 +590,7 @@ class Heating_State_Machine
   def control_pumps_and_valves
     $app_logger.debug("Controlling valves and pumps")
     case determine_power_needed
-      when "HW" # Only Hot water supplies on
+      when :HW # Only Hot water supplies on
         # Only HW pump on
         @hot_water_pump.on
         @radiator_pump.off
@@ -598,7 +603,7 @@ class Heating_State_Machine
         @living_floor_valve.delayed_close
         @upstairs_floor_valve.delayed_close
   
-      when "Rad" # Only Radiator pumps on
+      when :RAD # Only Radiator pumps on
   
         @basement_floor_valve.delayed_close
         @living_floor_valve.delayed_close
@@ -621,7 +626,7 @@ class Heating_State_Machine
         # Floor heating off
         @floor_pump.off
   
-      when "RadFloor"
+      when :RADFLOOR
         # decide on living floor valve based on external temperature
         if @living_floor_thermostat.is_on?
           @living_floor_valve.open
@@ -654,7 +659,7 @@ class Heating_State_Machine
         # Radiator pump on
         @radiator_pump.on
       
-      when "Floor"
+      when :FLOOR
         # decide on living floor valve based on external temperature
         if @living_floor_thermostat.state == "on"
           @living_floor_valve.open
