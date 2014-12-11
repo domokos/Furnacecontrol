@@ -661,21 +661,21 @@ class Heating_State_Machine
       
       when :FLOOR
         # decide on living floor valve based on external temperature
-        if @living_floor_thermostat.state == "on"
+        if @living_floor_thermostat.is_on?
           @living_floor_valve.open
         else
           @living_floor_valve.delayed_close
         end
   
         # decide on upstairs floor valve based on external temperature
-        if @upstairs_floor_thermostat.state == "on"
+        if @upstairs_floor_thermostat.is_on?
           @upstairs_floor_valve.open
         else
           @upstairs_floor_valve.delayed_close
         end
         
         # decide on basement valve based on basement temperature
-        if @basement_thermostat.state == "on"
+        if @basement_thermostat.is_on?
           @basement_floor_valve.open
         else
           @basement_floor_valve.delayed_close
