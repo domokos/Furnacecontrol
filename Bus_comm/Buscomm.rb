@@ -6,7 +6,7 @@ $stdout.sync = true
 require 'rubygems'
 require 'serialport'
 require 'thread'
-require "./Globals"
+require "/usr/local/lib/boiler_controller/Globals"
 
 # The custom exception of messaging that can hold the 
 # return message of the messaging subsystem

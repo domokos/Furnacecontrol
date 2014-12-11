@@ -4,7 +4,7 @@
 #   - Initial coding work for RS485 bus based communication for the condensing boiler 
 #   
 
-require "./boiler_base"
+require "/usr/local/lib/boiler_controller/boiler_base"
 require "rubygems"
 require "robustthread"
 require "yaml"

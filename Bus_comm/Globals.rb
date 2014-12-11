@@ -4,11 +4,10 @@ require "robustthread"
 
 module Globals
 
-  BOILER_LOGFILE = "./boiler_controller.log"
-  HEATING_LOGFILE = "./boiler_heating.log"
+  BOILER_LOGFILE = "/var/log/boiler_controller.log"
+  HEATING_LOGFILE = "/var/log/boiler_heating.log"
   DAEMON_LOGFILE = "/var/log/boiler_daemonlog"
-  #PIDFILE = "/var/run/boiler_controller.pid"
-  PIDFILE = "boiler_controller.pid"
+  PIDFILE = "/var/run/boiler_controller.pid"
 
   NO_SHUTDOWN = "No Shutdown"
   NORMAL_SHUTDOWN = "Normal Shutdown"

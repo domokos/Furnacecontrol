@@ -1,6 +1,6 @@
 
-require "./Buscomm"
-require "./Globals"
+require "/usr/local/lib/boiler_controller/Buscomm"
+require "/usr/local/lib/boiler_controller/Globals"
 require "rubygems"
 require "robustthread"
 
@@ -10,7 +10,7 @@ module BusDevice
   
     CHECK_INTERVAL_PERIOD_SEC = 600
     MASTER_ADDRESS = 1
-    SERIALPORT_NUM = "/dev/pts/1" #0
+    SERIALPORT_NUM = 0
     COMM_SPEED = Buscomm::COMM_SPEED_9600_H
 
     # Delayed close magnetic valve close delay in secs

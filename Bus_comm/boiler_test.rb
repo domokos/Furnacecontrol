@@ -1,7 +1,7 @@
 #!/usr/local/rvm/rubies/ruby-2.1.5/bin/ruby
 
 require "./Buscomm"
-require "./boiler_base"
+require "/usr/local/lib/boiler_controller/boiler_base"
 require "rubygems"
 require "robustthread"
 
