@@ -393,7 +393,7 @@ module BusDevice
      if !@dry_run
        begin
          @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+0x00.chr+value.chr+is_volatile.chr)
-         $app_logger.debug("Dry run - writing "+value.to_s(16)+" to wiper register with is_volatile flag set to "+is_volatile+" in '"+@name+"'")
+         $app_logger.debug("Dry run - writing "+value.to_s(16)+" to wiper register with is_volatile flag set to "+is_volatile.to_s+" in '"+@name+"'")
        rescue MessagingError => e
          # Get the returned message
          retval = e.return_message
