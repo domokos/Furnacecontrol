@@ -9,6 +9,11 @@ module Globals
   DAEMON_LOGFILE = "/var/log/boiler_daemonlog"
   PIDFILE = "/var/run/boiler_controller.pid"
 
+  #Config file paths
+  CONFIG_FILE_PATH = "/etc/boiler_conrtoller/boiler_controller.yml"
+  TEST_CONTROL_FILE_PATH = "/etc/boiler_conrtoller/boiler_test_controls.yml"
+
+  
   NO_SHUTDOWN = "No Shutdown"
   NORMAL_SHUTDOWN = "Normal Shutdown"
   FATAL_SHUTDOWN = "Shutdown on Fatal Error"

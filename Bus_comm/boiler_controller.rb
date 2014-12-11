@@ -35,10 +35,6 @@ end
 
 class Heating_State_Machine
   
-  #Config file path
-  CONFIG_FILE_PATH = "boiler_controller.yml"
-  TEST_CONTROL_FILE_PATH = "boiler_test_controls.yml"
-  
   def initialize(initial_state,initial_mode)
 
     # Init class variables
@@ -726,9 +722,9 @@ class Heating_State_Machine
 
   def read_config
     begin
-      @config = YAML.load_file(CONFIG_FILE_PATH)
+      @config = YAML.load_file(Globals::CONFIG_FILE_PATH)
     rescue
-      $app_logger.fatal("Cannot open config file: "+CONFIG_FILE_PATH+" Shutting down.")
+      $app_logger.fatal("Cannot open config file: "+Globals::CONFIG_FILE_PATH+" Shutting down.")
       $shutdown_reason = Globals::FATAL_SHUTDOWN
     end  
   end
@@ -741,9 +737,9 @@ class Heating_State_Machine
     sleep(0.5)
 
     begin
-      @test_controls = YAML.load_file(TEST_CONTROL_FILE_PATH)
+      @test_controls = YAML.load_file(Globals::TEST_CONTROL_FILE_PATH)
     rescue
-      $app_logger.fatal("Cannot open config file: "+TEST_CONTROL_FILE_PATH+" Shutting down.")
+      $app_logger.fatal("Cannot open config file: "+Globals::TEST_CONTROL_FILE_PATH+" Shutting down.")
       $shutdown_reason = Globals::FATAL_SHUTDOWN
     end  
             
