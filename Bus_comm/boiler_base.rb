@@ -113,7 +113,7 @@ module BusDevice
       @state_semaphore.synchronize do
         if @state != :off
           @state = :off
-          write_device(1) == :Success and $app_logger.debug("Succesfully turned Switch '"+@name+"' off.")
+          write_device(0) == :Success and $app_logger.debug("Succesfully turned Switch '"+@name+"' off.")
         end
       end
     end
@@ -215,18 +215,14 @@ module BusDevice
     alias_method :parent_on, :on
     
     def delayed_close
-      return unless @state == :on
+      return unless @delay_semaphore.try_lock
       Thread.new do
-        @delay_semaphore.synchronize do
-          sleep DELAYED_CLOSE_VALVE_DELAY
-          parent_off
-        end
+        sleep DELAYED_CLOSE_VALVE_DELAY
+        parent_off
       end
+      @delay_semaphore.unlock
     end
   
-    def on
-      @delay_semaphore.synchronize{ parent_on }
-    end
   # End of class DelayedCloseMagneticValve
   end
   
