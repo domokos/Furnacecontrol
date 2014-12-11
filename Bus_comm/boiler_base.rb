@@ -234,14 +234,14 @@ module BusDevice
     attr_reader :name, :slave_address, :location
   
     ONE_BIT_TEMP_VALUE = 0.0625
-    DEFAULT_TEMP_VALUE = 40.0
-    
-    def initialize(name, location, slave_address, register_address, min_communication_delay, dry_run)
+     
+    def initialize(name, location, slave_address, register_address, min_communication_delay, dry_run, mock_temp)
       @name = name
       @slave_address = slave_address 
       @location = location
       @register_address = register_address
       @dry_run = dry_run
+      @mock_temp = mock_temp
   
       @delay_timer = Globals::Timer.new(min_communication_delay,"Temp Sensor Delay timer: "+@name)
            
@@ -263,7 +263,7 @@ module BusDevice
     private
     def read_temp
       # Return if in testing
-      return DEFAULT_TEMP_VALUE if @dry_run 
+      return @mock_temp if @dry_run 
 
       begin
         # Reat the register on the bus
@@ -281,7 +281,7 @@ module BusDevice
           
         # Signal the main thread for fatal error shutdown
         $shutdown_reason = Globals::FATAL_SHUTDOWN
-        return DEFAULT_TEMP_VALUE
+        return @mock_temp
       end
     end
 

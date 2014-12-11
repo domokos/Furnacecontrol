@@ -8,3 +8,10 @@
 :magnetic_valve_movement_logfile: var/log/bboiler_controller/oiler_valve_log
 :logger_delay_whole_sec: 2
 :main_loop_delay: 0.5
+:forward_mock_temp: 37.0
+:return_mock_temp: 31.0
+:HW_mock_temp: 55.0
+:living_mock_temp: 23.0
+:upstairs_mock_temp: 23.0
+:basement_mock_temp: 26.0
+:external_mock_temp: 4.0
