@@ -80,7 +80,8 @@ module BusDevice
       @location = location
       @register_address = register_address
       @dry_run = dry_run
-  
+      @state_semaphore = Mutex.new
+      
       super()
       
       # Initialize state to off
@@ -129,7 +130,7 @@ module BusDevice
         rescue MessagingError => e
           retval = e.return_message
           $app_logger.fatal("Unrecoverable communication error on bus, writing '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
-          $shutdown_requested = Globals::FATAL_SHUTDOWN
+          $shutdown_reason = Globals::FATAL_SHUTDOWN
           return :Failure
         end
       else
@@ -182,7 +183,7 @@ module BusDevice
         # Bail out if comparison/resetting trial fails CHECK_RETRY_COUNT times
         if retry_count >= CHECK_RETRY_COUNT
           $app_logger.fatal("Unable to recover "+@name+" device mismatch. Potential HW failure - bailing out")
-          $shutdown_requested = Globals::FATAL_SHUTDOWN
+          $shutdown_reason = Globals::FATAL_SHUTDOWN
           check_result = :Failure
         end
 
@@ -192,7 +193,7 @@ module BusDevice
         $app_logger.fatal("Unrecoverable communication error on bus communicating with '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
           
         # Signal the main thread for fatal error shutdown
-        $shutdown_requested = Globals::FATAL_SHUTDOWN
+        $shutdown_reason = Globals::FATAL_SHUTDOWN
         check_result = :Failure
       end
 
@@ -251,13 +252,11 @@ module BusDevice
     end
          
     def temp
-      if !@delay_timer.expired?
-        return @lasttemp
-      else
+      if @delay_timer.expired?
         @lasttemp = read_temp
         @delay_timer.reset
-        return @lasttemp
       end
+      @lasttemp
     end
     
     private
@@ -280,7 +279,7 @@ module BusDevice
         $app_logger.fatal("Unrecoverable communication error on bus reading '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
           
         # Signal the main thread for fatal error shutdown
-        $shutdown_requested = Globals::FATAL_SHUTDOWN
+        $shutdown_reason = Globals::FATAL_SHUTDOWN
         return DEFAULT_TEMP_VALUE
       end
     end
@@ -288,7 +287,7 @@ module BusDevice
   # End of Class definition TempSensor  
   end
     
-class WaterTemp < DeviceBase
+  class WaterTemp < DeviceBase
    attr_accessor :dry_run
    attr_reader :value, :name, :slave_address, :location, :temp_required
  
@@ -306,18 +305,18 @@ class WaterTemp < DeviceBase
      super()
      
      # Set non-volatile wiper value to 0x00 to ensure that we are safe when the device wakes up ucontrolled
-     write_value(0x00,VOLATILE)
+     write_device(0x00,VOLATILE)
      
      # Initialize the volatile value to the device
      @value = 0x00
-     @temp_reqired = 20.0 
-     write_value(@value, NON_VOLATILE)
+     @temp_required = 20.0 
+     write_device(@value, NON_VOLATILE)
      register_check_process
    end
      
    # Set the required water temp value            
    def set_water_temp(temp_requested)
-     @temp_reqired = temp_requested
+     @temp_required = temp_requested
      value_requested = wiper_lookup(temp_requested)
      
      # Only write new value if it differs from the actual value to spare bus time 
@@ -390,7 +389,7 @@ class WaterTemp < DeviceBase
    
    # Write the value of the parameter to the device on the bus
    # Bail out on unrecoverable communication error
-   def write_value(value, is_volatile)
+   def write_device(value, is_volatile)
      if !@dry_run
        begin
          @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+0x00.chr+value.chr+is_volatile.chr)
@@ -401,7 +400,7 @@ class WaterTemp < DeviceBase
          
          # Log the error and bail out
          $app_logger.fatal("Unrecoverable communication error on bus, writing '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
-         $shutdown_requested = Globals::FATAL_SHUTDOWN
+         $shutdown_reason = Globals::FATAL_SHUTDOWN
        end
      end
    end
@@ -447,7 +446,7 @@ class WaterTemp < DeviceBase
        # Bail out if comparison/resetting trial fails CHECK_RETRY_COUNT times
        if retry_count >= CHECK_RETRY_COUNT
          $app_logger.fatal("Unable to recover "+@name+" device value mismatch. Potential HW failure - bailing out")
-         $shutdown_requested = Globals::FATAL_SHUTDOWN
+         $shutdown_reason = Globals::FATAL_SHUTDOWN
          check_result = :Failure
        end
        
@@ -457,7 +456,7 @@ class WaterTemp < DeviceBase
        $app_logger.fatal("Unrecoverable communication error on bus communicating with '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
           
        # Signal the main thread for fatal error shutdown
-       $shutdown_requested = Globals::FATAL_SHUTDOWN
+       $shutdown_reason = Globals::FATAL_SHUTDOWN
        check_result = :Failure
      end
      return check_result
@@ -493,7 +492,7 @@ module BoilerBase
     end
     def activate
       if @procblock.nil?
-        print "Error: No activation action set for state ",@name,"\n"
+        $logger.error("No activation action set for state "+@name)
         return nil
       else
         @procblock.call
@@ -556,6 +555,14 @@ module BoilerBase
       end
     end
   
+    def is_on?
+      @state == :on
+    end
+
+    def is_off?
+      @state == :off
+    end
+
     def update
       @sample_filter.input_sample(@sensor.temp)
       determine_state
@@ -572,7 +579,7 @@ module BoilerBase
     end
 
     def temp
-      return @sample_filter.value
+      @sample_filter.value
     end
 
   # End of class definition Thermostat base
@@ -709,9 +716,17 @@ module BoilerBase
     end 
   
     def temp
-      return @sample_filter.value
+      @sample_filter.value
     end
-  
+
+    def is_on?
+      @state == :on
+    end
+
+    def is_off?
+      @state == :off
+    end
+
     def set_target (target)
       # Request thread cycle restart if newly initialized
       @@newly_initialized_thermostat_present = (@@newly_initialized_thermostat_present or (@target == nil and @sample_filter.value != nil))

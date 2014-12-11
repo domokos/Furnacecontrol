@@ -1,0 +1,19 @@
+--- # Boiler controller test control file
+#
+# The test fact temperatures
+#
+:boiler_temp: 38.0
+:return_temp: 31.0
+:HW_temp: 54.0
+:living_temp: 22.5
+:upstairs_temp: 21.3
+:basement_temp: 25.8
+:external_temp: 5.5
+#
+# The target temperatures
+#
+:target_living_temp: 21.0
+:target_upstairs_temp: 21.0
+:target_basement_temp: 25.5
+:target_HW_temp: 51.0
+:target_boiler_temp: 36.0

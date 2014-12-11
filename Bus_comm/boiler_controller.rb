@@ -11,30 +11,33 @@ require "yaml"
 
 $stdout.sync = true
 
-$app_logger.level = Logger:DEBUG
+$app_logger.level = Logger::INFO
+$heating_logger.level = Logger::INFO
+
 DRY_RUN = true
-$shutdown_requested = Globals::NO_SHUTDOWN
+$shutdown_reason = Globals::NO_SHUTDOWN
 $low_floor_temp_mode = false
 
 Signal.trap("USR1") do
-  $app_logger.level = Logger:FATAL
-  $heating_logger.level = Logger:DEBUG
+  $app_logger.level = Logger::INFO
+  $heating_logger.level = Logger::DEBUG
 end
 
 Signal.trap("USR2") do
-  $app_logger.level = Logger:FATAL
-  $heating_logger.level = Logger:FATAL
+  $app_logger.level = Logger::INFO
+  $heating_logger.level = Logger::INFO
 end
 
 Signal.trap("URG") do
-  $app_logger.level = Logger:DEBUG
-  $heating_logger.level = Logger:DEBUG
+  $app_logger.level = Logger::DEBUG
+  $heating_logger.level = Logger::DEBUG
 end
 
 class Heating_State_Machine
   
   #Config file path
   CONFIG_FILE_PATH = "boiler_controller.yml"
+  TEST_CONTROL_FILE_PATH = "boiler_test_controls.yml"
   
   def initialize(initial_state,initial_mode)
 
@@ -129,7 +132,7 @@ class Heating_State_Machine
             
     # Create thermostats, with default threshold values and hysteresis values
     @living_thermostat = BoilerBase::Symmetric_thermostat.new(@living_sensor,0.3,0.0,8)
-    @HW_thermostat = BoilerBase::Asymmetric_thermostat.new(@HW_sensor,2,2,0.0,1)
+    @HW_thermostat = BoilerBase::Asymmetric_thermostat.new(@HW_sensor,2,2,0.0,8)
     @living_floor_thermostat = BoilerBase::PwmThermostat.new(@external_sensor,10,@living_floor_thermostat_valueproc,@is_HW_or_valve_proc)
     @mode_thermostat = BoilerBase::Symmetric_thermostat.new(@external_sensor,0.8,5.0,8)
     @upstairs_floor_thermostat = BoilerBase::PwmThermostat.new(@external_sensor,10,@upstairs_floor_thermostat_valueproc,@is_HW_or_valve_proc)
@@ -141,20 +144,20 @@ class Heating_State_Machine
     @living_floor_thermostat.set_target(0)
     
     # Create magnetic valves
-    @basement_floor_valve = BoilerBase::DelayedCloseMagneticValve.new("Basement floor valve","Contact 5 on main board" ,11 , 9, DRY_RUN)
-    @basement_radiator_valve = BoilerBase::DelayedCloseMagneticValve.new("Basement radiator valve","Contact 8 on main board", 11, 10, DRY_RUN)
-    @living_floor_valve = BoilerBase::DelayedCloseMagneticValve.new("Living level floor valve","In the living floor water distributor", 12 , 1, true)
-    @upstairs_floor_valve = BoilerBase::DelayedCloseMagneticValve.new("Upstairs floor valve","In the upstairs water distributor",12, 3, true)
+    @basement_floor_valve = BusDevice::DelayedCloseMagneticValve.new("Basement floor valve","Contact 5 on main board" ,11 , 9, DRY_RUN)
+    @basement_radiator_valve = BusDevice::DelayedCloseMagneticValve.new("Basement radiator valve","Contact 8 on main board", 11, 10, DRY_RUN)
+    @living_floor_valve = BusDevice::DelayedCloseMagneticValve.new("Living level floor valve","In the living floor water distributor", 12 , 1, true)
+    @upstairs_floor_valve = BusDevice::DelayedCloseMagneticValve.new("Upstairs floor valve","In the upstairs water distributor",12, 3, true)
 
     # Create heater relay valves
-    @heater_relay = BoilerBase::Switch("Heater relay","Heater contact on main panel", 11, 11, DRY_RUN)
+    @heater_relay = BusDevice::Switch.new("Heater relay","Heater contact on main panel", 11, 11, DRY_RUN)
     @watertemp = BusDevice::WaterTemp.new("Boiler water temp regulator", "Wiper contact on main panel", 11, 12, DRY_RUN)
 
     # Define the states of the furnace
-    @state_Off = State.new(:Off,"Boiler switched off")
-    @state_Heat = State.new(:Heat,"Heating to the target temperature with PD controll")
-    @state_Postheat = State.new(:Postheat,"Post ciculation with heating")
-    @state_PostHW = State.new(:PostHW,"Post circulation w/o heating")
+    @state_Off = BoilerBase::State.new(:Off,"Boiler switched off")
+    @state_Heat = BoilerBase::State.new(:Heat,"Heating to the target temperature with PD controll")
+    @state_Postheat = BoilerBase::State.new(:Postheat,"Post ciculation with heating")
+    @state_PostHW = BoilerBase::State.new(:PostHW,"Post circulation w/o heating")
 
     # Define the activating actions of each state
     # Activation actions for Off satate
@@ -274,8 +277,8 @@ class Heating_State_Machine
       $app_logger.debug("\tIf furnace temp increases and furnace above HW temp + 7 C not in HW mode then -> PostHeat")        
       $app_logger.debug("\tElse: Stay in Off state")
       if determine_power_needed != :NONE
-        $debuglevel > 0 and $app_logger.debug("Decision: Need power changing state to Heat")
-        $debuglevel > 1 and $app_logger.debug("determine_power_needed: "+determine_power_needed.to_s)
+        $app_logger.debug("Decision: Need power changing state to Heat")
+        $app_logger.debug("determine_power_needed: "+determine_power_needed.to_s)
         @state = @state_Heat
         @state.activate()
       else
@@ -373,7 +376,7 @@ class Heating_State_Machine
   
 # Read the target temperatures, determine targets and operating mode
   def determine_targets
-#   Determine the target temperatures
+    # Read the config file
     read_config
     
     @living_thermostat.set_threshold(@config[:target_living_temp])
@@ -382,7 +385,7 @@ class Heating_State_Machine
     @mode_thermostat.set_threshold(@config[:mode_threshold])
     @HW_thermostat.set_threshold(@config[:target_HW_temp])
 
-    if @mode_thermostat.state == :on
+    if @mode_thermostat.is_on?
        @state.name != :Heat and @mode = @mode_Heat
     else
        @state.name != :Heat and @mode = @mode_HW
@@ -393,16 +396,9 @@ class Heating_State_Machine
     when :HW
       @target_boiler_temp = 85.0
 
-    when :RAD
-      @target_boiler_temp = -4.5/2.0*@living_floor_thermostat.temp+65.0
-      if @target_boiler_temp > 70.0
-        @target_boiler_temp = 70.0
-      elsif @target_boiler_temp < 34.0
-        @target_boiler_temp = 34.0
-      end
-
-    when :RADFLOOR
-      @target_boiler_temp = -4.5/2.0*@living_floor_thermostat.temp+65.0
+    when :RAD, :RADFLOOR
+      # Use @living_floor_thermostat.temp to get a filtered external temperature
+      @target_boiler_temp = -0.83*@living_floor_thermostat.temp+37.5
       if @target_boiler_temp > 70.0
         @target_boiler_temp = 70.0
       elsif @target_boiler_temp < 35.0
@@ -416,6 +412,8 @@ class Heating_State_Machine
       @target_boiler_temp = 7.0
 
     end  
+    
+    
   end
 
   
@@ -425,7 +423,7 @@ class Heating_State_Machine
     @state_history = Array.new(4,[@state.name, determine_power_needed])
       
     # Do the main loop until shutdown is requested
-    while($shutdown_requested == Globals::NO_SHUTDOWN) do
+    while($shutdown_reason == Globals::NO_SHUTDOWN) do
 
       $app_logger.debug("Main boiler loop cycle: "+@cycle.to_s)
 
@@ -486,13 +484,13 @@ class Heating_State_Machine
     # And we are just after 10 o'clock
       ((Time.now.to_i % (24*60*60))+ 60*60) > (10*60*60)
         @moving_valves_required = true
-        $debuglevel >0 and print "Setting moving_valves_required to true\n";
+        $app_logger.debug("Setting moving_valves_required to true")
     end
     @move_logfile.close
   end
 
   def do_magnetic_valve_movement
-    $debuglevel >0 and print "Moving valves\n";
+    $app_logger.debug("Moving valves")
 
     @radiator_pump.off
     @floor_pump.off
@@ -522,16 +520,18 @@ class Heating_State_Machine
         @upstairs_floor_valve.open
         @radiator_pump.on
         @floor_pump.on
-        
-        sleep 10
+        @hidr_shift_pump.on
+      
+        sleep 20
         @radiator_pump.off
         @floor_pump.off
+        @hidr_shift_pump.off
         sleep 2
         @basement_floor_valve.close
         @basement_radiator_valve.close
         @living_floor_valve.close
         @upstairs_floor_valve.close
-        sleep 1
+        sleep 2
         repeat = repeat-1
     end 
     @move_logfile = File.new("/var/log/furnace_valve_log","a+")
@@ -544,132 +544,117 @@ class Heating_State_Machine
   
   def heating_logging
     $heating_logger.debug("LOGITEM BEGIN @"+Time.now.asctime)
-    $heating_logger.debug("Active state: "+@state.name)
+    $heating_logger.debug("Active state: "+@state.name.to_s)
     sth=""
     @state_history.each {|e| sth+= ") => ("+e*","}
     $heating_logger.debug("State and entering determine_power_needed history : "+sth[5,1000]+")")
-    $heating_logger.debug("Boiler temperature: "+@forward_temp.to_s)
+    $heating_logger.debug("Forwared temperature: "+@forward_temp.to_s)
     $heating_logger.debug("Return water temperature: "+@return_temp.to_s)
     $heating_logger.debug("Delta T on the Boiler: "+(@forward_temp-@return_temp).to_s)
     $heating_logger.debug("Target boiler temp: "+@target_boiler_temp.to_s)
 
-    $heating_logger.debug("HW temperature: "+@HW_thermostat.temp.to_s)
+    $heating_logger.debug("\nHW temperature: "+@HW_thermostat.temp.to_s)
     $heating_logger.debug("External temperature: "+@living_floor_thermostat.temp.to_s)
 
+    $heating_logger.debug("\nOperating mode: "+@mode.description)
     $heating_logger.debug("Need power: "+determine_power_needed.to_s)
-    $heating_logger.debug("Operating mode: "+@mode.description)
 
-    $heating_logger.debug("HW pump: "+@hot_water_pump.state.to_s)
+    $heating_logger.debug("\nHW pump: "+@hot_water_pump.state.to_s)
     $heating_logger.debug("Radiator pump: "+@radiator_pump.state.to_s)
     $heating_logger.debug("Floor pump: "+@floor_pump.state.to_s)
     $heating_logger.debug("Hidr shift pump: "+@hidr_shift_pump.state.to_s)
+
+    $heating_logger.debug("\nLiving temperature: "+@living_thermostat.temp.to_s)
+    $heating_logger.debug("Upstairs temperature: "+@upstairs_thermostat.temp.to_s)
     
-    $heating_logger.debug("Living floor PWM value: "+@living_floor_thermostat.value.to_s)
+    $heating_logger.debug("\nLiving floor PWM value: "+@living_floor_thermostat.value.to_s)
     $heating_logger.debug("Living floor valve: "+@living_floor_valve.state.to_s)
     $heating_logger.debug("Living floor thermostat status: "+@living_floor_thermostat.state.to_s)
 
-    $heating_logger.debug("Upstairs floor PWM value: "+@upstairs_floor_thermostat.value.to_s)
+    $heating_logger.debug("\nUpstairs floor PWM value: "+@upstairs_floor_thermostat.value.to_s)
     $heating_logger.debug("Upstairs floor valve: "+@upstairs_floor_valve.state.to_s)
     $heating_logger.debug("Upstairs floor thermostat status: "+@upstairs_floor_thermostat.state.to_s)
     
+    $heating_logger.debug("\nBasement temperature: "+@basement_thermostat.temp.to_s)
     $heating_logger.debug("Basement PWM value: "+@basement_thermostat.value.to_s)
     $heating_logger.debug("Basement valve: "+@basement_floor_valve.state.to_s)
     $heating_logger.debug("Basement thermostat status: "+@basement_thermostat.state.to_s)
-
-    $heating_logger.debug("Basement temperature: "+@basement_thermostat.temp.to_s)
-    $heating_logger.debug("Living temperature: "+@living_thermostat.temp.to_s)
-    $heating_logger.debug("Upstairs temperature: "+@upstairs_thermostat.temp.to_s)
-          
-    $heating_logger.debug("Boiler relay: "+@heater_relay.state.to_s)
+         
+    $heating_logger.debug("\nBoiler relay: "+@heater_relay.state.to_s)
     $heating_logger.debug("Boiler required temperature: "+@watertemp.temp_required.to_s)
     $heating_logger.debug("LOGITEM END\n")
   end
 
   # This function controls valves and pumps during heating by evaluating the required power
   def control_pumps_and_valves
-    $debuglevel >1 and puts "Controlling valves and pumps"
-    if @forward_temp > $overheat_log_threshold # Overheat protection
-      # All valves are open
-      @basement_floor_valve.open
-      @basement_radiator_valve.open
-      @living_floor_valve.open
-      @upstairs_floor_valve.open
-
-      # All pumps except HW pump on
-      @radiator_pump.on
-      @floor_pump.on
-      @hidr_shift_pump.on
-      @hot_water_pump.off
-    elsif @forward_temp > 42.0 # If furnace above 42C turn heating on
-      $debuglevel > 0 and puts "Outgoing water above 42C turning on pumps and valves"
-      case determine_power_needed
+    $app_logger.debug("Controlling valves and pumps")
+    case determine_power_needed
       when "HW" # Only Hot water supplies on
         # Only HW pump on
+        @hot_water_pump.on
         @radiator_pump.off
         @floor_pump.off
         @hidr_shift_pump.off
-        @hot_water_pump.on
-
+  
         # All valves are closed
         @basement_floor_valve.delayed_close
         @basement_radiator_valve.delayed_close
         @living_floor_valve.delayed_close
         @upstairs_floor_valve.delayed_close
-
+  
       when "Rad" # Only Radiator pumps on
-
+  
         @basement_floor_valve.delayed_close
         @living_floor_valve.delayed_close
         @upstairs_floor_valve.delayed_close
-
+  
         #  decide on basement radiator valve
-        if @basement_thermostat.state == "on"
+        if @basement_thermostat.is_on?
           @basement_radiator_valve.open
         else
           @basement_radiator_valve.delayed_close
         end
-
+  
         # Control basic pumps
         @hidr_shift_pump.on
         @hot_water_pump.off
-
+  
         # Radiator pump on
         @radiator_pump.on
-
+  
         # Floor heating off
         @floor_pump.off
-
-
+  
       when "RadFloor"
         # decide on living floor valve based on external temperature
-        if @living_floor_thermostat.state == "on"
+        if @living_floor_thermostat.is_on?
           @living_floor_valve.open
         else
           @living_floor_valve.delayed_close
         end
-
+  
         # decide on upstairs floor valve based on external temperature
-        if @upstairs_floor_thermostat.state == "on"
+        if @upstairs_floor_thermostat.is_on?
           @upstairs_floor_valve.open
         else
           @upstairs_floor_valve.delayed_close
         end
-
+  
         # decide on basement valves based on basement temperature
-        if @basement_thermostat.state == "on"
+        if @basement_thermostat.is_on?
           @basement_radiator_valve.open
           @basement_floor_valve.open
         else
           @basement_radiator_valve.delayed_close
           @basement_floor_valve.delayed_close
         end
-
+  
         @hidr_shift_pump.on
         @hot_water_pump.off
       
         # Floor heating on
         @floor_pump.on
-
+  
         # Radiator pump on
         @radiator_pump.on
       
@@ -680,7 +665,7 @@ class Heating_State_Machine
         else
           @living_floor_valve.delayed_close
         end
-
+  
         # decide on upstairs floor valve based on external temperature
         if @upstairs_floor_thermostat.state == "on"
           @upstairs_floor_valve.open
@@ -694,56 +679,43 @@ class Heating_State_Machine
         else
           @basement_floor_valve.delayed_close
         end
-
+  
         @basement_radiator_valve.delayed_close
-
+  
         @hidr_shift_pump.on
         @hot_water_pump.off
         @radiator_pump.off
-
+  
         # Floor heating on
         @floor_pump.on
-
       end
-    elsif @forward_temp < 40.0 # All pumps and valves off - Histeresis
-      $debuglevel > 0 and puts "Outgoing water below 42C turning off pumps and valves"
-      # All pumps off
-      @radiator_pump.off
-      @floor_pump.off
-      @hidr_shift_pump.off
-      @hot_water_pump.off
-      # All valves are closed
-      @basement_floor_valve.delayed_close
-      @basement_radiator_valve.delayed_close
-      @living_floor_valve.delayed_close
-      @upstairs_floor_valve.delayed_close
-    end
+
   end
 
   # This function tells what kind of  power is needed
   def determine_power_needed
     if @moving_valves_required
       return :NONE
-    elsif @mode != @mode_Off and @HW_thermostat.state == :on
+    elsif @mode != @mode_Off and @HW_thermostat.is_on?
       # Power needed for hot water - overrides Heat power need
       return :HW
-    elsif @mode == @mode_Heat and (@upstairs_thermostat.state == :on or \
-      @living_thermostat.state == :on ) and \
-      @living_floor_thermostat.state == :off and \
-      @upstairs_floor_thermostat.state == :off and \
-      @basement_thermostat.state == :off
+    elsif @mode == @mode_Heat and (@upstairs_thermostat.is_on? or \
+      @living_thermostat.is_on? ) and \
+      @living_floor_thermostat.is_off? and \
+      @upstairs_floor_thermostat.is_off? and \
+      @basement_thermostat.is_off?
       # Power needed for heating
       return :RAD
-    elsif @mode == @mode_Heat and (@upstairs_thermostat.state == :on or \
-      @living_thermostat.state == :on ) and \
-      (@living_floor_thermostat.state == :on or \
-       @upstairs_floor_thermostat.state == :on or \
-             @basement_thermostat.state == :on)
+    elsif @mode == @mode_Heat and (@upstairs_thermostat.is_on? or \
+      @living_thermostat.is_on? ) and \
+      (@living_floor_thermostat.is_on? or \
+       @upstairs_floor_thermostat.is_on? or \
+             @basement_thermostat.is_on?)
       # Power needed for heating and floor heating
       return :RADFLOOR
-    elsif @living_floor_thermostat.state == :on or \
-      @upstairs_floor_thermostat.state == :on or \
-      @basement_thermostat.state == :on
+    elsif @living_floor_thermostat.is_on? or \
+      @upstairs_floor_thermostat.is_on? or \
+      @basement_thermostat.is_on?
       # Power needed for floor heating only
       return :FLOOR
     else
@@ -756,8 +728,8 @@ class Heating_State_Machine
     begin
       @config = YAML.load_file(CONFIG_FILE_PATH)
     rescue
-      $app_logger.fatal("Cannot open configh file. Exiting")
-      $shutdown_requested = Globals::FATAL_SHUTDOWN
+      $app_logger.fatal("Cannot open config file: "+CONFIG_FILE_PATH+" Shutting down.")
+      $shutdown_reason = Globals::FATAL_SHUTDOWN
     end  
   end
   
@@ -768,69 +740,36 @@ class Heating_State_Machine
 
     sleep(0.5)
 
-    file = File.new("furnace_temp","r")
-    @forward_temp = file.readline.to_f
-    file.close()
+    begin
+      @test_controls = YAML.load_file(TEST_CONTROL_FILE_PATH)
+    rescue
+      $app_logger.fatal("Cannot open config file: "+TEST_CONTROL_FILE_PATH+" Shutting down.")
+      $shutdown_reason = Globals::FATAL_SHUTDOWN
+    end  
+            
+    @forward_temp = @test_controls[:boiler_temp]
+    @return_temp = @test_controls[:return_temp]
 
-    file = File.new("return_temp","r")
-    @return_temp = file.readline.to_f
-    file.close()
+    @HW_thermostat.test_update(@test_controls[:HW_temp])
+    @living_thermostat.test_update(@test_controls[:living_temp])
+      
+    @upstairs_thermostat.test_update(@test_controls[:upstairs_temp])
+    @basement_thermostat.test_update(@test_controls[:basement_temp])
+    @basement_thermostat.set_target(@test_controls[:target_basement_temp])
 
-    file = File.new("HW_temp","r")
-    @HW_thermostat.test_update(file.readline.to_f)
-    file.close()
+        
+    @living_floor_thermostat.test_update(@test_controls[:external_temp])
+    @upstairs_floor_thermostat.test_update(@test_controls[:external_temp])
 
-    file = File.new("living_temp","r")
-    @living_thermostat.test_update(file.readline.to_f)
-    file.close()
+    @living_thermostat.set_threshold(@test_controls[:target_living_temp])
+    @upstairs_thermostat.set_threshold(@test_controls[:target_upstairs_temp])
 
-    file = File.new("upstairs_temp","r")
-    @upstairs_thermostat.test_update(file.readline.to_f)
-    file.close()
+    @HW_thermostat.set_threshold(@test_controls[:target_HW_temp])
+    @target_boiler_temp = @test_controls[:target_boiler_temp]
 
-    file = File.new("basement_temp","r")
-#   @basement_thermostat.test_update(file.readline.to_f)
-    @basement_thermostat.update
-    file.close()
-
-    file = File.new("external_temp","r")
-    @living_floor_thermostat.test_update(file.readline.to_f)
-    file.close()
-
-    file = File.new("external_temp","r")
-    @upstairs_floor_thermostat.test_update(file.readline.to_f)
-    file.close()
-    
-    file = File.new("target_living_temp","r")
-    @living_thermostat.set_threshold(file.readline.to_f)
-    file.close()
-
-    file = File.new("target_upstairs_temp","r")
-    @upstairs_thermostat.set_threshold(file.readline.to_f)
-    file.close()
-
-    file = File.new("target_basement_temp","r")
-    @basement_thermostat.set_threshold(file.readline.to_f)
-    file.close()
-
-    file = File.new("target_HW_temp","r")
-    @HW_thermostat.set_threshold(file.readline.to_f)
-    file.close()
-
-    file = File.new("target_furnace_temp","r")
-    @target_boiler_temp = file.readline.to_f
-    file.close()
-
-    if @test_cycle_cnt == 0
-    end
-
-    print "Living floor PWM thermostat value: "
-    puts @living_floor_thermostat.value
-    print "Living floor PWM thermostat state: "
-    puts @living_floor_thermostat.state
-    puts "Power needed: " + determine_power_needed.to_s
-    print "\n"
-
+    $app_logger.debug("Living floor PWM thermostat value: "+@living_floor_thermostat.value.to_s)
+    $app_logger.debug("Living floor PWM thermostat state: "+@living_floor_thermostat.state.to_s)
+    $app_logger.debug("Power needed: " + determine_power_needed.to_s)
     @test_cycle_cnt += 1
   
   end
@@ -838,7 +777,7 @@ class Heating_State_Machine
   def shutdown
     @state = @state_Off
     @state.activate
-    puts " Shutting down."
+    $app_logger.info("Shutting down. Shutdown reason: "+$shutdown_reason)
     command="rm -f "+$pidpath
     system(command)
   end
@@ -849,10 +788,10 @@ end
 
 Thread.current["thread_name"] = "Main thread"
 
-RobustThread.logger = Logger.new('/var/log/furnace_daemonlog')
+RobustThread.logger = $daemon_logger
 
 Signal.trap("TERM") do
-  $shutdown_requested = true
+  $shutdown_reason = Globals::NORMAL_SHUTDOWN
 end
 
 pid = fork do
@@ -863,17 +802,17 @@ pid = fork do
     if ARGV[0] != nil
       $pidpath = ARGV[0]
     else
-      $pidpath = "/var/run/furnacecontrol.pid"
+      $pidpath = Globals::PIDFILE
     end
     pidfile=File.new($pidpath,"w")
     pidfile.write(Process.pid.to_s)
     pidfile.close
   
     # Set the initial state
-    furnace = State_Machine.new("Off","Heat")
-    # furnace.test_walk_states
-
-    furnace.operate
+    boiler_control = Heating_State_Machine.new(:Off,:Heat)
+    $app_logger.info("Controller initialized - starting operation")
+    
+    boiler_control.operate
   end
 end
 Process.detach pid
