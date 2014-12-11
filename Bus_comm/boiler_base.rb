@@ -212,7 +212,6 @@ module BusDevice
     end
     
     alias_method :parent_off, :off
-    alias_method :parent_on, :on
     
     def delayed_close
       return unless @delay_semaphore.try_lock

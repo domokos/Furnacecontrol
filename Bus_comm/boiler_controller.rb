@@ -444,7 +444,7 @@ class Heating_State_Machine
       end
 
       # Record state history for 4 states
-      if @state_history.last[0] != @state.name
+      if @state_history.last[0] != @state.name or @state_history.last[1] != determine_power_needed  
         @state_history.shift
         @state_history.push([@state.name,determine_power_needed])
       end
@@ -550,7 +550,7 @@ class Heating_State_Machine
     $heating_logger.debug("Active state: "+@state.name.to_s)
     sth=""
     @state_history.each {|e| sth+= ") => ("+e*","}
-    $heating_logger.debug("State and entering determine_power_needed history : "+sth[5,1000]+")")
+    $heating_logger.debug("State and determine_power_needed history : "+sth[5,1000]+")")
     $heating_logger.debug("Forwared temperature: "+@forward_temp.to_s)
     $heating_logger.debug("Return water temperature: "+@return_temp.to_s)
     $heating_logger.debug("Delta T on the Boiler: "+(@forward_temp-@return_temp).to_s)
