@@ -215,13 +215,14 @@ module BusDevice
     alias_method :parent_on, :on
     
     def delayed_close
-       Thread.new do
-         @delay_semaphore.synchronize do
-           sleep DELAYED_CLOSE_VALVE_DELAY
-           parent_off
-         end
-       end
-     end
+      return unless @state == :on
+      Thread.new do
+        @delay_semaphore.synchronize do
+          sleep DELAYED_CLOSE_VALVE_DELAY
+          parent_off
+        end
+      end
+    end
   
     def on
       @delay_semaphore.synchronize{ parent_on }
