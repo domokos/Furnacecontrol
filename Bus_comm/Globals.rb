@@ -6,12 +6,12 @@ module Globals
 
   BOILER_LOGFILE = "/var/log/boiler_controller/boiler_controller.log"
   HEATING_LOGFILE = "/var/log/boiler_controller/boiler_heating.log"
-  DAEMON_LOGFILE = "/var/log/boiler_controller/boiler_daemonlog"
+  DAEMON_LOGFILE = "/var/log/boiler_controller/boiler_daemonlog.log"
   PIDFILE = "/var/run/boiler_controller.pid"
 
   #Config file paths
-  CONFIG_FILE_PATH = "/etc/boiler_conrtoller/boiler_controller.yml"
-  TEST_CONTROL_FILE_PATH = "/etc/boiler_conrtoller/boiler_test_controls.yml"
+  CONFIG_FILE_PATH = "/etc/boiler_controller/boiler_controller.yml"
+  TEST_CONTROL_FILE_PATH = "/etc/boiler_controller/boiler_test_controls.yml"
 
   
   NO_SHUTDOWN = "No Shutdown"
