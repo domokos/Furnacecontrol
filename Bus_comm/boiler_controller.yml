@@ -6,5 +6,5 @@
 :target_HW_temp: 51.0
 :magnetic_valve_movement_days: 3
 :magnetic_valve_movement_logfile: var/log/bboiler_controller/oiler_valve_log
-:logger_delay: 2
+:logger_delay_whole_sec: 2
 :main_loop_delay: 0.5

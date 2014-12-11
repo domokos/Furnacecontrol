@@ -49,8 +49,7 @@ class Heating_State_Machine
     
     read_config
     
-    @logger_timer = Globals::Timer.new(@config[:logger_delay],"Logging Delay Timer")
-    @main_loop_delay_timer = Globals::Timer.new(@config[:main_loop_delay],"Main Loop Delay Timer")
+    @logger_timer = Globals::Timer.new(@config[:logger_delay_whole_sec],"Logging Delay Timer")
       
     # Define the operation modes of the furnace
     @mode_Off = BoilerBase::Mode.new("Switched off","Switched off state, frost and anti-legionella protection")
@@ -426,8 +425,7 @@ class Heating_State_Machine
 
       $app_logger.debug("Main boiler loop cycle: "+@cycle.to_s)
 
-      next unless @main_loop_delay_timer.expired?
-      @main_loop_delay_timer.reset
+      sleep @config[:main_loop_delay]
       
       if !DRY_RUN
         read_sensors
