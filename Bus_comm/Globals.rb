@@ -4,9 +4,9 @@ require "robustthread"
 
 module Globals
 
-  BOILER_LOGFILE = "/var/log/boiler_controller.log"
-  HEATING_LOGFILE = "/var/log/boiler_heating.log"
-  DAEMON_LOGFILE = "/var/log/boiler_daemonlog"
+  BOILER_LOGFILE = "/var/log/boiler_controller/boiler_controller.log"
+  HEATING_LOGFILE = "/var/log/boiler_controller/boiler_heating.log"
+  DAEMON_LOGFILE = "/var/log/boiler_controller/boiler_daemonlog"
   PIDFILE = "/var/run/boiler_controller.pid"
 
   #Config file paths
