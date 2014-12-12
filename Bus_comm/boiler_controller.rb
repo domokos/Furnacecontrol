@@ -480,6 +480,14 @@ class Heating_State_Machine
 
 
   def magnetic_valve_move_evaluation
+    # If there is no logfile we need to move
+    if !File.exists?(@config[:magnetic_valve_movement_logfile])
+      @moving_valves_required = true
+      $app_logger.debug("No movement log file found - Setting moving_valves_required to true for the first time")
+      return
+    end
+    
+    # If there is a logfile we need to read it and evaluate movement need based on last log entry
     @move_logfile = File.new(@config[:magnetic_valve_movement_logfile],"a+")
     @move_logfile.seek(0,IO::SEEK_SET)
     while (!@move_logfile.eof)
