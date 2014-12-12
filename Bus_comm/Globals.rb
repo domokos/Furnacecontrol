@@ -18,9 +18,6 @@ module Globals
   NORMAL_SHUTDOWN = "Normal Shutdown"
   FATAL_SHUTDOWN = "Shutdown on Fatal Error"
   
-  
-  applogfile = File.new(BOILER_LOGFILE,'a+')
-  applogfile.sync = true
   $app_logger = Logger.new(BOILER_LOGFILE, 6 , 1000000)
   
   $app_logger.formatter = proc { |severity, datetime, progname, msg|
@@ -31,18 +28,12 @@ module Globals
     end
     }
 
-  heatinglogfile = File.new(HEATING_LOGFILE,'a+')
-  heatinglogfile.sync = true
-          
-  $heating_logger = Logger.new(heatinglogfile, 6, 1000000)
+  $heating_logger = Logger.new(HEATING_LOGFILE, 6, 1000000)
   $heating_logger.formatter = proc { |severity, datetime, progname, msg|
       "#{msg}\n"
   }
     
-  daemonlogfile = File.new(DAEMON_LOGFILE,'a+')
-  daemonlogfile.sync = true
-
-  $daemon_logger = Logger.new(daemonlogfile, 6, 1000000)
+  $daemon_logger = Logger.new(DAEMON_LOGFILE, 6, 1000000)
   $daemon_logger.formatter = proc { |severity, datetime, progname, msg|
     if caller[4].class == String
       "#{datetime.to_s.sub!(/^(.*) \+.*$/,'\1')} #{severity} #{caller[4].sub!(/^.*\/(.*)$/,'\1')} #{msg}\n"
