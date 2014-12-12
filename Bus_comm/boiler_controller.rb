@@ -589,7 +589,10 @@ class Heating_State_Machine
     $heating_logger.debug("Hidr shift pump: "+@hidr_shift_pump.state.to_s)
 
     $heating_logger.debug("\nLiving temperature: "+@living_thermostat.temp.round(2).to_s)
-    $heating_logger.debug("Upstairs temperature: "+@upstairs_thermostat.temp.round(2).to_s)
+    $heating_logger.debug("Living thermostat status: "+@living_thermostat.state.to_s)
+        
+    $heating_logger.debug("\nUpstairs temperature: "+@upstairs_thermostat.temp.round(2).to_s)
+    $heating_logger.debug("Upstairs thermostat status: "+@upstairs_thermostat.state.to_s)
     
     $heating_logger.debug("\nLiving floor PWM value: "+@living_floor_thermostat.value.round(2).to_s)
     $heating_logger.debug("Living floor valve: "+@living_floor_valve.state.to_s)
