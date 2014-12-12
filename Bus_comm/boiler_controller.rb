@@ -768,14 +768,14 @@ class Heating_State_Machine
       $shutdown_reason = Globals::FATAL_SHUTDOWN
     end  
 
-    @forward_sensor.mock_temp = @config[:forward_mock_temp]
-    @return_sensor.mock_temp = @config[:return_mock_temp]
-    @HW_sensor.mock_temp = @config[:HW_mock_temp]
+    @forward_sensor.mock_temp = @config[:forward_mock_temp] if (defined? @forward_sensor != nil) 
+    @return_sensor.mock_temp = @config[:return_mock_temp] if (defined? @return_sensor != nil)
+    @HW_sensor.mock_temp = @config[:HW_mock_temp] if (defined? @HW_sensor != nil)
 
-    @living_sensor.mock_temp = @config[:living_mock_temp]
-    @upstairs_sensor.mock_temp = @config[:upstairs_mock_temp]
-    @basement_sensor.mock_temp = @config[:basement_mock_temp]
-    @external_sensor.mock_temp = @config[:external_mock_temp]
+    @living_sensor.mock_temp = @config[:living_mock_temp] if (defined? @living_sensor != nil)
+    @upstairs_sensor.mock_temp = @config[:upstairs_mock_temp] if (defined? @upstairs_sensor != nil)
+    @basement_sensor.mock_temp = @config[:basement_mock_temp] if (defined? @basement_sensor != nil)
+    @external_sensor.mock_temp = @config[:external_mock_temp] if (defined? @external_sensor != nil)
   end
   
 # Walk through states to test the state machine
