@@ -4,7 +4,7 @@ require "robustthread"
 
 module Globals
 
-  BOILER_LOGFILE = "/var/log/boiler_controller/boiler_controller.log"
+  APPLOG_LOGFILE = "/var/log/boiler_controller/boiler_controller.log"
   HEATING_LOGFILE = "/var/log/boiler_controller/boiler_heating.log"
   DAEMON_LOGFILE = "/var/log/boiler_controller/boiler_daemonlog.log"
   PIDFILE = "/var/run/boiler_controller/boiler_controller.pid"
@@ -18,7 +18,7 @@ module Globals
   NORMAL_SHUTDOWN = "Normal Shutdown"
   FATAL_SHUTDOWN = "Shutdown on Fatal Error"
   
-  $app_logger = Logger.new(BOILER_LOGFILE, 6 , 1000000)
+  $app_logger = Logger.new(APPLOG_LOGFILE, 6 , 1000000)
   
   $app_logger.formatter = proc { |severity, datetime, progname, msg|
     if caller[4].class == String
