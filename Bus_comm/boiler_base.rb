@@ -560,8 +560,11 @@ module BoilerBase
       @histeresis = histeresis
       @threshold = threshold
       @sample_filter = Filter.new(filtersize)
-      @state == :off
-      update
+      if @sensor.temp >= @threshold
+        @state = :off
+      else
+        @state = :on
+      end
     end
   
     def is_on?
@@ -611,7 +614,7 @@ module BoilerBase
       @down_histeresis = down_histeresis
       @threshold = threshold
       @sample_filter = Filter.new(filtersize)
-      if sensor.temp >= @threshold
+      if @sensor.temp >= @threshold
         @state = :off
       else
         @state = :on
