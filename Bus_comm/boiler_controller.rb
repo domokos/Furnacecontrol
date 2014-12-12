@@ -54,7 +54,7 @@ class Heating_State_Machine
     # Define the operation modes of the furnace
     @mode_Off = BoilerBase::Mode.new("Switched off","Switched off state, frost and anti-legionella protection")
     @mode_HW = BoilerBase::Mode.new("HW","Hot water only")
-    @mode_Heat = BoilerBase::Mode.new("Heat","Heating and hot water")
+    @mode_Heat_HW_HW = BoilerBase::Mode.new("Heat","Heating and hot water")
     
     # Create pumps
     @radiator_pump = BusDevice::Switch.new("Radiator pump", "In the basement boiler room - Contact 1 on Main Panel", 11, 5, DRY_RUN)
@@ -260,7 +260,7 @@ class Heating_State_Machine
     elsif initial_mode == :HW
       @mode = @mode_HW
     elsif initial_mode == :Heat
-      @mode = @mode_Heat
+      @mode = @mode_Heat_HW
     else
       $app_logger.fatal("Illegal initial mode. Aborting.")
       exit
@@ -393,7 +393,7 @@ class Heating_State_Machine
     @HW_thermostat.set_threshold(@config[:target_HW_temp])
 
     if @mode_thermostat.is_on?
-       @state.name != :Heat and @mode = @mode_Heat
+       @state.name != :Heat and @mode = @mode_Heat_HW
     else
        @state.name != :Heat and @mode = @mode_HW
     end
@@ -739,14 +739,14 @@ class Heating_State_Machine
     elsif @mode != @mode_Off and @HW_thermostat.is_on?
       # Power needed for hot water - overrides Heat power need
       return :HW
-    elsif @mode == @mode_Heat and (@upstairs_thermostat.is_on? or \
+    elsif @mode == @mode_Heat_HW and (@upstairs_thermostat.is_on? or \
       @living_thermostat.is_on? ) and \
       @living_floor_thermostat.is_off? and \
       @upstairs_floor_thermostat.is_off? and \
       @basement_thermostat.is_off?
       # Power needed for heating
       return :RAD
-    elsif @mode == @mode_Heat and (@upstairs_thermostat.is_on? or \
+    elsif @mode == @mode_Heat_HW and (@upstairs_thermostat.is_on? or \
       @living_thermostat.is_on? ) and \
       (@living_floor_thermostat.is_on? or \
        @upstairs_floor_thermostat.is_on? or \
