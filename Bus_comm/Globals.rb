@@ -12,7 +12,6 @@ module Globals
   #Config file paths
   CONFIG_FILE_PATH = "/etc/boiler_controller/boiler_controller.yml"
   TEST_CONTROL_FILE_PATH = "/etc/boiler_controller/boiler_test_controls.yml"
-
   
   NO_SHUTDOWN = "No Shutdown"
   NORMAL_SHUTDOWN = "Normal Shutdown"

@@ -8,7 +8,7 @@ module BusDevice
 
   class DeviceBase
   
-    CHECK_INTERVAL_PERIOD_SEC = 600
+    CHECK_INTERVAL_PERIOD_SEC = 200
     MASTER_ADDRESS = 1
     SERIALPORT_NUM = 0
     COMM_SPEED = Buscomm::COMM_SPEED_9600_H
@@ -229,8 +229,9 @@ module BusDevice
     attr_reader :name, :slave_address, :location
   
     ONE_BIT_TEMP_VALUE = 0.0625
+    TEMP_BUS_READ_TIMEOUT = 2
      
-    def initialize(name, location, slave_address, register_address, min_communication_delay, dry_run, mock_temp)
+    def initialize(name, location, slave_address, register_address, dry_run, mock_temp)
       @name = name
       @slave_address = slave_address 
       @location = location
@@ -238,8 +239,8 @@ module BusDevice
       @dry_run = dry_run
       @mock_temp = mock_temp
   
-      @delay_timer = Globals::TimerSec.new(min_communication_delay,"Temp Sensor Delay timer: "+@name)
-           
+      @delay_timer = Globals::TimerSec.new(TEMP_BUS_READ_TIMEOUT,"Temp Sensor Delay timer: "+@name)
+                 
       super()
       
       # Perform initial temperature read
@@ -252,7 +253,7 @@ module BusDevice
         @lasttemp = read_temp
         @delay_timer.reset
       end
-      @lasttemp
+      return @lasttemp
     end
     
     private
@@ -276,7 +277,7 @@ module BusDevice
           
         # Signal the main thread for fatal error shutdown
         $shutdown_reason = Globals::FATAL_SHUTDOWN
-        return @mock_temp
+        return @lasttemp
       end
     end
 
