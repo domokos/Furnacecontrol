@@ -614,7 +614,7 @@ class Heating_State_Machine
     $app_logger.debug("Controlling valves and pumps")
     case determine_power_needed
       when :HW # Only Hot water supplies on
-        $app_logger.debug("Setting valves and pumps for HW")
+        $app_logger.info("Setting valves and pumps for HW")
         # Only HW pump on
         @hot_water_pump.on
         # Wait before turning pumps off to make sure we do not lose circulation
@@ -630,7 +630,7 @@ class Heating_State_Machine
         @upstairs_floor_valve.delayed_close
   
       when :RAD # Only Radiator pumps on
-        $app_logger.debug("Setting valves and pumps for RAD")
+        $app_logger.info("Setting valves and pumps for RAD")
         @basement_floor_valve.delayed_close
         @living_floor_valve.delayed_close
         @upstairs_floor_valve.delayed_close
@@ -655,6 +655,7 @@ class Heating_State_Machine
         @floor_pump.off
   
       when :RADFLOOR
+        $app_logger.info("Setting valves and pumps for RADFLOOR")
         # decide on living floor valve based on external temperature
         if @living_floor_thermostat.is_on?
           @living_floor_valve.open
@@ -691,6 +692,7 @@ class Heating_State_Machine
         @hot_water_pump.off
       
       when :FLOOR
+        $app_logger.info("Setting valves and pumps for FLOOR")
         # decide on living floor valve based on external temperature
         if @living_floor_thermostat.is_on?
           @living_floor_valve.open
