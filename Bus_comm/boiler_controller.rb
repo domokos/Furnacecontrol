@@ -483,7 +483,7 @@ class Heating_State_Machine
     # If there is no logfile we need to move
     if !File.exists?(@config[:magnetic_valve_movement_logfile])
       @moving_valves_required = true
-      $app_logger.debug("No movement log file found - Setting moving_valves_required to true for the first time")
+      $app_logger.info("No movement log file found - Setting moving_valves_required to true for the first time")
       return
     end
     
@@ -501,13 +501,13 @@ class Heating_State_Machine
     # And we are just after 10 o'clock
       ((Time.now.to_i % (24*60*60))+ 60*60) > (10*60*60)
         @moving_valves_required = true
-        $app_logger.debug("Setting moving_valves_required to true")
+        $app_logger.info("Setting moving_valves_required to true")
     end
     @move_logfile.close
   end
 
   def do_magnetic_valve_movement
-    $app_logger.debug("Moving valves")
+    $app_logger.info("Start moving valves")
 
     @radiator_pump.off
     @floor_pump.off
@@ -550,13 +550,14 @@ class Heating_State_Machine
         @upstairs_floor_valve.close
         sleep 2
         repeat = repeat-1
-    end 
+    end
     @move_logfile = File.new("/var/log/furnace_valve_log","a+")
     @move_logfile.write(Time.now.to_s)
     @move_logfile.write("\n")
     @move_logfile.write(Time.now.to_i.to_s)
     @move_logfile.write("\n")
     @move_logfile.close
+    $app_logger.info("Moving valves finished")
   end
   
   def heating_logging
