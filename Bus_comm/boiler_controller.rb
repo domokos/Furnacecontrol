@@ -579,7 +579,8 @@ class Heating_State_Machine
 
     $heating_logger.debug("\nHW temperature: "+@HW_thermostat.temp.round(2).to_s)
     $heating_logger.debug("External temperature: "+@living_floor_thermostat.temp.round(2).to_s)
-
+    $heating_logger.debug("Mode thermostat status: "+@mode_thermostat.state.to_s)
+    
     $heating_logger.debug("\nOperating mode: "+@mode.description)
     $heating_logger.debug("Need power: "+determine_power_needed.to_s)
 
