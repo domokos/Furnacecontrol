@@ -54,7 +54,7 @@ class Heating_State_Machine
     # Define the operation modes of the furnace
     @mode_Off = BoilerBase::Mode.new("Switched off","Switched off state, frost and anti-legionella protection")
     @mode_HW = BoilerBase::Mode.new("HW","Hot water only")
-    @mode_Heat_HW_HW = BoilerBase::Mode.new("Heat","Heating and hot water")
+    @mode_Heat_HW = BoilerBase::Mode.new("Heat","Heating and hot water")
     
     # Create pumps
     @radiator_pump = BusDevice::Switch.new("Radiator pump", "In the basement boiler room - Contact 1 on Main Panel", 11, 5, DRY_RUN)
