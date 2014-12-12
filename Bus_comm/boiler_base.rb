@@ -530,7 +530,7 @@ module BoilerBase
         @value = sum.to_f / @content.size
         @dirty = false
       end
-      return @value.to_r
+      return @value
     end
   end
   
