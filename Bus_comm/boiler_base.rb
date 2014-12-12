@@ -560,6 +560,7 @@ module BoilerBase
       @histeresis = histeresis
       @threshold = threshold
       @sample_filter = Filter.new(filtersize)
+      @state == :off
       update
     end
   
