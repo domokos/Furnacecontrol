@@ -572,13 +572,13 @@ class Heating_State_Machine
     sth=""
     @state_history.each {|e| sth+= ") => ("+e*","}
     $heating_logger.debug("State and determine_power_needed history : "+sth[5,1000]+")")
-    $heating_logger.debug("Forwared temperature: "+@forward_temp.to_s)
-    $heating_logger.debug("Return water temperature: "+@return_temp.to_s)
-    $heating_logger.debug("Delta T on the Boiler: "+(@forward_temp-@return_temp).to_s)
-    $heating_logger.debug("Target boiler temp: "+@target_boiler_temp.to_s)
+    $heating_logger.debug("Forwared temperature: "+@forward_temp.round(2).to_s)
+    $heating_logger.debug("Return water temperature: "+@return_temp.round(2).to_s)
+    $heating_logger.debug("Delta T on the Boiler: "+(@forward_temp-@return_temp).round(2).to_s)
+    $heating_logger.debug("Target boiler temp: "+@target_boiler_temp.round(2).to_s)
 
-    $heating_logger.debug("\nHW temperature: "+@HW_thermostat.temp.to_s)
-    $heating_logger.debug("External temperature: "+@living_floor_thermostat.temp.to_s)
+    $heating_logger.debug("\nHW temperature: "+@HW_thermostat.temp.round(2).to_s)
+    $heating_logger.debug("External temperature: "+@living_floor_thermostat.temp.round(2).to_s)
 
     $heating_logger.debug("\nOperating mode: "+@mode.description)
     $heating_logger.debug("Need power: "+determine_power_needed.to_s)
@@ -588,24 +588,24 @@ class Heating_State_Machine
     $heating_logger.debug("Floor pump: "+@floor_pump.state.to_s)
     $heating_logger.debug("Hidr shift pump: "+@hidr_shift_pump.state.to_s)
 
-    $heating_logger.debug("\nLiving temperature: "+@living_thermostat.temp.to_s)
-    $heating_logger.debug("Upstairs temperature: "+@upstairs_thermostat.temp.to_s)
+    $heating_logger.debug("\nLiving temperature: "+@living_thermostat.temp.round(2).to_s)
+    $heating_logger.debug("Upstairs temperature: "+@upstairs_thermostat.temp.round(2).to_s)
     
-    $heating_logger.debug("\nLiving floor PWM value: "+@living_floor_thermostat.value.to_s)
+    $heating_logger.debug("\nLiving floor PWM value: "+@living_floor_thermostat.value.round(2).to_s)
     $heating_logger.debug("Living floor valve: "+@living_floor_valve.state.to_s)
     $heating_logger.debug("Living floor thermostat status: "+@living_floor_thermostat.state.to_s)
 
-    $heating_logger.debug("\nUpstairs floor PWM value: "+@upstairs_floor_thermostat.value.to_s)
+    $heating_logger.debug("\nUpstairs floor PWM value: "+@upstairs_floor_thermostat.value.round(2).to_s)
     $heating_logger.debug("Upstairs floor valve: "+@upstairs_floor_valve.state.to_s)
     $heating_logger.debug("Upstairs floor thermostat status: "+@upstairs_floor_thermostat.state.to_s)
     
-    $heating_logger.debug("\nBasement temperature: "+@basement_thermostat.temp.to_s)
-    $heating_logger.debug("Basement PWM value: "+@basement_thermostat.value.to_s)
+    $heating_logger.debug("\nBasement temperature: "+@basement_thermostat.temp.round(2).to_s)
+    $heating_logger.debug("Basement PWM value: "+@basement_thermostat.value.round(2).to_s)
     $heating_logger.debug("Basement valve: "+@basement_floor_valve.state.to_s)
     $heating_logger.debug("Basement thermostat status: "+@basement_thermostat.state.to_s)
          
     $heating_logger.debug("\nBoiler relay: "+@heater_relay.state.to_s)
-    $heating_logger.debug("Boiler required temperature: "+@watertemp.temp_required.to_s)
+    $heating_logger.debug("Boiler required temperature: "+@watertemp.temp_required.round(2).to_s)
     $heating_logger.debug("LOGITEM END\n")
   end
 
