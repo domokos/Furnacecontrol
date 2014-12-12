@@ -578,10 +578,10 @@ class Heating_State_Machine
     $heating_logger.debug("Target boiler temp: "+@target_boiler_temp.round(2).to_s)
 
     $heating_logger.debug("\nHW temperature: "+@HW_thermostat.temp.round(2).to_s)
-    $heating_logger.debug("External temperature: "+@living_floor_thermostat.temp.round(2).to_s)
-    $heating_logger.debug("Mode thermostat status: "+@mode_thermostat.state.to_s)
     
-    $heating_logger.debug("\nOperating mode: "+@mode.description)
+    $heating_logger.debug("\nExternal temperature: "+@living_floor_thermostat.temp.round(2).to_s)
+    $heating_logger.debug("Mode thermostat status: "+@mode_thermostat.state.to_s)
+    $heating_logger.debug("Operating mode: "+@mode.description)
     $heating_logger.debug("Need power: "+determine_power_needed.to_s)
 
     $heating_logger.debug("\nHW pump: "+@hot_water_pump.state.to_s)
@@ -605,7 +605,7 @@ class Heating_State_Machine
     
     $heating_logger.debug("\nBasement temperature: "+@basement_thermostat.temp.round(2).to_s)
     $heating_logger.debug("Basement PWM value: "+@basement_thermostat.value.round(2).to_s)
-    $heating_logger.debug("Basement valve: "+@basement_floor_valve.state.to_s)
+    $heating_logger.debug("Basement floor valve: "+@basement_floor_valve.state.to_s)
     $heating_logger.debug("Basement thermostat status: "+@basement_thermostat.state.to_s)
          
     $heating_logger.debug("\nBoiler relay: "+@heater_relay.state.to_s)

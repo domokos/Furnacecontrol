@@ -166,8 +166,8 @@ module BusDevice
         while retval[:Content][Buscomm::PARAMETER_START] != state_val or retry_count <= CHECK_RETRY_COUNT
 
           $app_logger.error("Mismatch during check between expected switch with Name: '"+@name+"' Location: '"+@location+"'") 
-          $app_logger.error("Known state: "+state_val.to_s+" device returned state: "+ret[:Content][Buscomm::PARAMETER_START]) 
-          $app_logger.error("Trying to set device to the known state - attempt no: "+ retry_count.to_s)
+          $app_logger.error("Known state: "+state_val.to_s+" device returned state: "+ret[:Content][Buscomm::PARAMETER_START].ord.to_s) 
+          $app_logger.error("Trying to set device to the known state - attempt no: "+retry_count.to_s)
 
           # Try setting the server side known state to the device
           retval = @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+state_val.chr)
