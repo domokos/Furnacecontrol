@@ -480,6 +480,9 @@ class Heating_State_Machine
 
 
   def magnetic_valve_move_evaluation
+    # If moving already required then return
+    return if @moving_valves_required
+    
     # If there is no logfile we need to move
     if !File.exists?(@config[:magnetic_valve_movement_logfile])
       @moving_valves_required = true
