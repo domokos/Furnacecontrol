@@ -527,10 +527,10 @@ module BoilerBase
           |element|
           sum += element
         end
-        @value = sum.to_f / @content.size
+        @value = sum.to_r / @content.size
         @dirty = false
       end
-      return @value.to_f
+      return @value.to_r
     end
   end
   
