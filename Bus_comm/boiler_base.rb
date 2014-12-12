@@ -208,20 +208,34 @@ module BusDevice
     
     def initialize(name, location, slave_address, register_address, dry_run)
       super(name, location, slave_address, register_address, dry_run)
-      @delay_semaphore = Mutex.new
+      @delayed_close_semaphore = Mutex.new
+      @modification_semaphore = Mutex.new
     end
     
     alias_method :parent_off, :off
+    alias_method :parent_on, :on
     
     def delayed_close
-      return unless @delay_semaphore.try_lock
-      Thread.new do
-        sleep DELAYED_CLOSE_VALVE_DELAY
-        parent_off
+      return unless @delayed_close_semaphore.try_lock
+      @modification_semaphore.synchronize do
+        Thread.new do
+          sleep DELAYED_CLOSE_VALVE_DELAY
+          parent_off
+        end
       end
-      @delay_semaphore.unlock
+      @delayed_close_semaphore.unlock
     end
-  
+ 
+    def on
+      @modification_semaphore.synchronize do
+        parent_on
+      end
+    end
+    def open
+      on
+    end
+    
+     
   # End of class DelayedCloseMagneticValve
   end
   
