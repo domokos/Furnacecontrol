@@ -165,9 +165,11 @@ module BusDevice
         @state == :on ? state_val = 1 : state_val = 0
         while retval[:Content][Buscomm::PARAMETER_START] != state_val or retry_count <= CHECK_RETRY_COUNT
 
-          $app_logger.error("Mismatch during check between expected switch with Name: '"+@name+"' Location: '"+@location+"'") 
-          $app_logger.error("Known state: "+state_val.to_s+" device returned state: "+ret[:Content][Buscomm::PARAMETER_START].ord.to_s) 
-          $app_logger.error("Trying to set device to the known state - attempt no: "+retry_count.to_s)
+          errorstring = "Mismatch during check between expected switch with Name: '"+@name+"' Location: '"+@location+"'\n"
+          errorstring += "Known state: "+state_val.to_s+" device returned state: "+ret[:Content][Buscomm::PARAMETER_START].ord.to_s+"\n"
+          errorstring += "Trying to set device to the known state - attempt no: "+retry_count.to_s
+          
+          $app_logger.error(errorstring) 
 
           # Try setting the server side known state to the device
           retval = @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+state_val.chr)
@@ -280,7 +282,7 @@ module BusDevice
         # Reat the register on the bus
         retval = @@comm_interface.send_message(@slave_address,Buscomm::READ_REGISTER,@register_address.chr)
         $app_logger.debug("Succesful read from temp register of '"+@name+"'")
-        
+
         # Calculate temperature value from the data returned
         temp = "" << retval[:Content][Buscomm::PARAMETER_START] << retval[:Content][Buscomm::PARAMETER_START+1]
         return temp.unpack("s")[0]*ONE_BIT_TEMP_VALUE
@@ -441,9 +443,11 @@ module BusDevice
        # Loop until there is no difference or retry_count is reached
        while retval[:Content][Buscomm::PARAMETER_START].ord != @value or retry_count <= CHECK_RETRY_COUNT
 
-         $app_logger.error("Mismatch during check between expected water_temp: '"+@name+"' Location: "+@location)
-         $app_logger.error("Known value: "+@value.to_s+" device returned state: "+ret[:Content][Buscomm::PARAMETER_START]) 
-         $app_logger.error("Trying to set device to the known state - attempt no: "+ retry_count.to_s)
+         errorstring = "Mismatch during check between expected water_temp: '"+@name+"' Location: '"+@location+"'\n"
+         errorstring += "Known value: "+@value.to_s+" device returned state: "+ret[:Content][Buscomm::PARAMETER_START]+"\n"
+         errorstring += "Trying to set device to the known state - attempt no: "+ retry_count.to_s
+         
+         $app_logger.error(errorstring)
          
          # Retry setting the server side known state on the device
          retval = @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+0x00.chr+@value.chr+0x00.chr)
