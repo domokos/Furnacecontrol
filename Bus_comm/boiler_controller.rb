@@ -49,7 +49,7 @@ class Heating_State_Machine
     
     read_config
     
-    @logger_timer = Globals::Timer.new(@config[:logger_delay_whole_sec],"Logging Delay Timer")
+    @logger_timer = Globals::TimerSec.new(@config[:logger_delay_whole_sec],"Logging Delay Timer")
       
     # Define the operation modes of the furnace
     @mode_Off = BoilerBase::Mode.new("Switched off","Switched off state, frost and anti-legionella protection")
@@ -165,6 +165,9 @@ class Heating_State_Machine
 
       # Turn off heater relay
       @heater_relay.off
+
+      # Wait before turning pumps off to make sure we do not lose circulation
+      sleep @config[:circulation_maintenance_delay]
             
       # Turn off all pumps
       @radiator_pump.off
@@ -199,9 +202,12 @@ class Heating_State_Machine
       @basement_radiator_valve.open
 
       # Radiator pumps on
-      @radiator_pump.on
-      @floor_pump.off
       @hidr_shift_pump.on
+      @radiator_pump.on
+
+      # Wait before turning pumps off to make sure we do not lose circulation
+      sleep @config[:circulation_maintenance_delay]
+      @floor_pump.off
       @hot_water_pump.off
 
       # All floor valves closed
@@ -218,12 +224,15 @@ class Heating_State_Machine
 
       # Turn off heater relay
       @heater_relay.off
+
+      @hot_water_pump.on
+      # Wait before turning pumps off to make sure we do not lose circulation
+      sleep @config[:circulation_maintenance_delay]
       
       # Only HW pump on
       @radiator_pump.off
       @floor_pump.off
       @hidr_shift_pump.off
-      @hot_water_pump.on
 
       # All valves are closed
       @basement_floor_valve.delayed_close
@@ -593,8 +602,11 @@ class Heating_State_Machine
     $app_logger.debug("Controlling valves and pumps")
     case determine_power_needed
       when :HW # Only Hot water supplies on
+        $app_logger.debug("Setting valves and pumps for HW")
         # Only HW pump on
         @hot_water_pump.on
+        # Wait before turning pumps off to make sure we do not lose circulation
+        sleep @config[:circulation_maintenance_delay]
         @radiator_pump.off
         @floor_pump.off
         @hidr_shift_pump.off
@@ -606,7 +618,7 @@ class Heating_State_Machine
         @upstairs_floor_valve.delayed_close
   
       when :RAD # Only Radiator pumps on
-  
+        $app_logger.debug("Setting valves and pumps for RAD")
         @basement_floor_valve.delayed_close
         @living_floor_valve.delayed_close
         @upstairs_floor_valve.delayed_close
@@ -620,11 +632,13 @@ class Heating_State_Machine
   
         # Control basic pumps
         @hidr_shift_pump.on
-        @hot_water_pump.off
-  
         # Radiator pump on
         @radiator_pump.on
-  
+
+        # Wait before turning pumps off to make sure we do not lose circulation
+        sleep @config[:circulation_maintenance_delay]
+        @hot_water_pump.off
+ 
         # Floor heating off
         @floor_pump.off
   
@@ -653,13 +667,16 @@ class Heating_State_Machine
         end
   
         @hidr_shift_pump.on
-        @hot_water_pump.off
-      
+
         # Floor heating on
         @floor_pump.on
-  
+
         # Radiator pump on
         @radiator_pump.on
+        
+        # Wait before turning pumps off to make sure we do not lose circulation
+        sleep @config[:circulation_maintenance_delay]
+        @hot_water_pump.off
       
       when :FLOOR
         # decide on living floor valve based on external temperature
@@ -686,11 +703,13 @@ class Heating_State_Machine
         @basement_radiator_valve.delayed_close
   
         @hidr_shift_pump.on
-        @hot_water_pump.off
-        @radiator_pump.off
-  
         # Floor heating on
         @floor_pump.on
+        
+        # Wait before turning pumps off to make sure we do not lose circulation
+        sleep @config[:circulation_maintenance_delay]
+        @hot_water_pump.off
+        @radiator_pump.off
       end
 
   end

@@ -1,13 +1,21 @@
 --- # Boiler controller config file
+# Targets
 :target_living_temp: 22.0
 :target_upstairs_temp: 22.0
 :target_basement_temp: 25.5
 :mode_threshold: 15.0
 :target_HW_temp: 51.0
+#
+# Magnetic valve parameters
 :magnetic_valve_movement_days: 3
 :magnetic_valve_movement_logfile: var/log/bboiler_controller/oiler_valve_log
-:logger_delay_whole_sec: 2
-:main_loop_delay: 0.5
+#
+# Operation delays
+:logger_delay_whole_sec: 1
+:main_loop_delay: 0.2
+:circulation_maintenance_delay: 0.3
+#
+# Mock values for non-existent/dry run sensors
 :forward_mock_temp: 37.0
 :return_mock_temp: 31.0
 :HW_mock_temp: 55.0

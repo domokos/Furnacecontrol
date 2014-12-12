@@ -238,7 +238,7 @@ module BusDevice
       @dry_run = dry_run
       @mock_temp = mock_temp
   
-      @delay_timer = Globals::Timer.new(min_communication_delay,"Temp Sensor Delay timer: "+@name)
+      @delay_timer = Globals::TimerSec.new(min_communication_delay,"Temp Sensor Delay timer: "+@name)
            
       super()
       
