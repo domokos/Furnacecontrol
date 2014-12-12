@@ -8,7 +8,7 @@
 #
 # Magnetic valve parameters
 :magnetic_valve_movement_days: 3
-:magnetic_valve_movement_logfile: var/log/bboiler_controller/oiler_valve_log
+:magnetic_valve_movement_logfile: var/log/boiler_controller/boiler_valve_log
 #
 # Operation delays
 :logger_delay_whole_sec: 1
