@@ -21,7 +21,7 @@ module Globals
   
   applogfile = File.new(BOILER_LOGFILE,'a+')
   applogfile.sync = true
-  $app_logger = Logger.new(applogfile, 6 , 1000000)
+  $app_logger = Logger.new(BOILER_LOGFILE, 6 , 1000000)
   
   $app_logger.formatter = proc { |severity, datetime, progname, msg|
     if caller[4].class == String
@@ -31,7 +31,7 @@ module Globals
     end
     }
 
-  heatinglogfile = File.new(BOILER_LOGFILE,'a+')
+  heatinglogfile = File.new(HEATING_LOGFILE,'a+')
   heatinglogfile.sync = true
           
   $heating_logger = Logger.new(heatinglogfile, 6, 1000000)
@@ -39,7 +39,7 @@ module Globals
       "#{msg}\n"
   }
     
-  daemonlogfile = File.new(BOILER_LOGFILE,'a+')
+  daemonlogfile = File.new(DAEMON_LOGFILE,'a+')
   daemonlogfile.sync = true
 
   $daemon_logger = Logger.new(daemonlogfile, 6, 1000000)
