@@ -241,7 +241,8 @@ module BusDevice
   
   class TempSensor < DeviceBase
     attr_reader :name, :slave_address, :location
-  
+    attr_accessor :mock_temp
+      
     ONE_BIT_TEMP_VALUE = 0.0625
     TEMP_BUS_READ_TIMEOUT = 2
      

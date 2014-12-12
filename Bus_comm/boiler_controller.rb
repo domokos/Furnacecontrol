@@ -767,6 +767,15 @@ class Heating_State_Machine
       $app_logger.fatal("Cannot open config file: "+Globals::CONFIG_FILE_PATH+" Shutting down.")
       $shutdown_reason = Globals::FATAL_SHUTDOWN
     end  
+
+    @forward_sensor.mock_temp = @config[:forward_mock_temp]
+    @return_sensor.mock_temp = @config[:return_mock_temp]
+    @HW_sensor.mock_temp = @config[:HW_mock_temp]
+
+    @living_sensor.mock_temp = @config[:living_mock_temp]
+    @upstairs_sensor.mock_temp = @config[:upstairs_mock_temp]
+    @basement_sensor.mock_temp = @config[:basement_mock_temp]
+    @external_sensor.mock_temp = @config[:external_mock_temp]
   end
   
 # Walk through states to test the state machine
