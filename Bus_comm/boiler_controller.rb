@@ -269,7 +269,7 @@ class Heating_State_Machine
     # Prefill sensors and thermostats to ensure smooth startup operation
     for i in 0..20 do
       read_sensors
-      determine_targets
+      determine_targets(determine_power_needed)
       sleep 1.5
     end
 
@@ -279,7 +279,7 @@ class Heating_State_Machine
 
 # The function evaluating states and performing necessary
 # transitions basd on the current value of sensors
-  def evaluate_state_change
+  def evaluate_state_change(power_needed)
     case @state.name
     # The evaluation of the Off state
     when :Off
@@ -288,9 +288,9 @@ class Heating_State_Machine
       $app_logger.debug("\tIf furnace temp increases and furnace above HW temp + 7 C in HW mode then -> PostHW")
       $app_logger.debug("\tIf furnace temp increases and furnace above HW temp + 7 C not in HW mode then -> PostHeat")        
       $app_logger.debug("\tElse: Stay in Off state")
-      if determine_power_needed != :NONE
+      if power_needed != :NONE
         $app_logger.debug("Decision: Need power changing state to Heat")
-        $app_logger.debug("determine_power_needed: "+determine_power_needed.to_s)
+        $app_logger.debug("determine_power_needed: "+power_needed.to_s)
         @state = @state_Heat
         @state.activate()
       else
@@ -302,24 +302,21 @@ class Heating_State_Machine
       $app_logger.debug("\tControl valves and pumps based on measured temperatures")
       $app_logger.debug("\tControl burners to maintain target furnace temperature")
       $app_logger.debug("\tIf not need power anymore then -> Postheat or PostHW based on operating mode")
-
-      # Control valves and pumps based on measured temperatures
-      control_pumps_and_valves()
-
-      # Control target furnace temperature
-      do_furnace_heat_control()
-
+   
       # If not need power anymore then -> Postheat or PostHW
-      if determine_power_needed == :NONE and @mode == @mode_HW
+      if power_needed == :NONE and @mode == @mode_HW
         $app_logger.debug("Decision: No more power needed in HW mode - changing state to PostHW")
         $app_logger.debug("determine_power_needed: NONE")
         @state = @state_PostHW
         @state.activate()
-      elsif determine_power_needed == :NONE
+      elsif power_needed == :NONE
         $app_logger.debug("Decision: No more power needed not in HW mode - changing state to Postheat")
         $app_logger.debug("determine_power_needed: NONE")
         @state = @state_Postheat
         @state.activate()
+      else
+        # Control valves, pumps and boiler based on measured temperatures
+        control_pumps_valves_and_heat(power_needed)
       end
 
     when :Postheat
@@ -333,8 +330,8 @@ class Heating_State_Machine
         @state = @state_Off
         @state.activate()
       # If need power then -> Heat
-      elsif determine_power_needed != :NONE
-        $app_logger.debug("Decision: Need power is "+determine_power_needed.to_s+" - changing state to Heat")
+      elsif power_needed != :NONE
+        $app_logger.debug("Decision: Need power is "+power_needed.to_s+" - changing state to Heat")
         @state = @state_Heat
         @state.activate()
       end
@@ -356,21 +353,12 @@ class Heating_State_Machine
           @state = @state_Off
           @state.activate()        
       # If need power then -> Heat
-      elsif determine_power_needed != :NONE
-        $app_logger.debug("Decision: Need power is "+determine_power_needed.to_s+" - changing state to Heat")
+      elsif power_needed != :NONE
+        $app_logger.debug("Decision: Need power is "+power_needed.to_s+" - changing state to Heat")
         @state = @state_Heat
         @state.activate()
       end   
     end
-  end
-
-  def do_furnace_heat_control
-    
-    # Set required water temperature of the boiler
-    @watertemp.set_water_temp(@target_boiler_temp)
-
-    # Turn on heater relay of the boiler to activate heating
-    @heater_relay.on
   end
 
   # Read the temperature sensors
@@ -387,7 +375,7 @@ class Heating_State_Machine
   end
   
 # Read the target temperatures, determine targets and operating mode
-  def determine_targets
+  def determine_targets(power_needed)
     # Read the config file
     read_config
     
@@ -404,7 +392,7 @@ class Heating_State_Machine
     end
     @HW_thermostat.set_histeresis(2,2)
 
-    case determine_power_needed
+    case power_needed
     when :HW
       @target_boiler_temp = 85.0
 
@@ -443,13 +431,14 @@ class Heating_State_Machine
       
       if !DRY_RUN
         read_sensors
-        determine_targets
+        power_needed = determine_power_needed
+        determine_targets(power_needed)
       else
         apply_test_control
       end
 
       # Call the state machine state transition decision method
-      evaluate_state_change
+      evaluate_state_change(power_needed)
 
       # If magnetic valve movement is required then carry out moving process
       if @moving_valves_required and @state.name == :Off
@@ -618,13 +607,11 @@ class Heating_State_Machine
     $heating_logger.debug("LOGITEM END\n")
   end
 
-  # This function controls valves and pumps during heating by evaluating the required power
-  def control_pumps_and_valves
+  # This function controls valves, pumps and heat during heating by evaluating the required power
+  def control_pumps_valves_and_heat(power_needed)
     $app_logger.debug("Controlling valves and pumps")
     
-    # If there was a state change do not do anything
-    return if @state_history.last[1] == determine_power_needed and @state_history.last[0] == @state.name 
-    case determine_power_needed
+    case power_needed
       when :HW # Only Hot water supplies on
         $app_logger.info("Setting valves and pumps for HW")
         # Only HW pump on
@@ -738,7 +725,19 @@ class Heating_State_Machine
         @hot_water_pump.off
         @radiator_pump.off
       end
-
+      if power_needed != :NONE
+        # Set required water temperature of the boiler
+        @watertemp.set_water_temp(@target_boiler_temp)
+    
+        # Turn on heater relay of the boiler to activate heating
+        @heater_relay.on
+      else
+        # Set required water temperature of the boiler
+        @watertemp.set_water_temp(@target_boiler_temp)
+    
+        # Turn on heater relay of the boiler to activate heating
+        @heater_relay.off
+      end
   end
 
   # This function tells what kind of  power is needed
