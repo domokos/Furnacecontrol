@@ -388,9 +388,9 @@ module BusDevice
        return ((0xb0-0xa4) / (40.0-37.0) * (temp_value-37.0) + 0xa4).round
      elsif temp_value == 37
        return 0xa4
-     elsif temp_value > 35
-       return ((0xa4-0x96) / (37.0-35.0) * (temp_value-35.0) + 0x96).round
-     elsif temp_value == 35
+     elsif temp_value > 34
+       return ((0xa4-0x96) / (37.0-34.0) * (temp_value-34.0) + 0x96).round
+     elsif temp_value == 34
        return 0x96
      else
        return 0x00

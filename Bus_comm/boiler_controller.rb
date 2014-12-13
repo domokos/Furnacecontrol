@@ -402,12 +402,12 @@ class Heating_State_Machine
       @target_boiler_temp = -0.83*@living_floor_thermostat.temp+37.5
       if @target_boiler_temp > 70.0
         @target_boiler_temp = 70.0
-      elsif @target_boiler_temp < 35.0
-        @target_boiler_temp = 35.0
+      elsif @target_boiler_temp < 34.0
+        @target_boiler_temp = 34.0
       end
     
     when :FLOOR
-      @target_boiler_temp = 35.0
+      @target_boiler_temp = 34.0
 
     when :NONE
       @target_boiler_temp = 7.0
@@ -567,7 +567,7 @@ class Heating_State_Machine
     sth=""
     @state_history.each {|e| sth+= ") => ("+e*","}
     $heating_logger.debug("State and power_needed history : "+sth[5,1000]+")")
-    $heating_logger.debug("Forwared temperature: "+@forward_temp.round(2).to_s)
+    $heating_logger.debug("Forward temperature: "+@forward_temp.round(2).to_s)
     $heating_logger.debug("Return water temperature: "+@return_temp.round(2).to_s)
     $heating_logger.debug("Delta T on the Boiler: "+(@forward_temp-@return_temp).round(2).to_s)
     $heating_logger.debug("Target boiler temp: "+@target_boiler_temp.round(2).to_s)
