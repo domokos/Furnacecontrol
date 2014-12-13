@@ -233,7 +233,7 @@ COMM_DATA = [
 
       # Increase retry count and raise exception 
       retry_count += 1
-      $app_logger.warn("Messaging retry #"+retry_count.to_s+" Error code: "+@response[:Return_code].to_s+" - "+RESPONSE_TEXT[@response[:Return_code]])
+      $app_logger.warn("Messaging retry #"+retry_count.to_s+" Error code: "+@response[:Return_code].to_s+" - "+RESPONSE_TEXT[@response[:Return_code]]) if retry_count > 1
 
       raise MessagingError.new(@response), "Messaging retry failed at retry # "+retry_count.to_s+" giving up." if retry_count > MESSAGING_RETRY_COUNT
       
