@@ -247,6 +247,7 @@ module BusDevice
 
     ONE_BIT_TEMP_VALUE = 0.0625
     TEMP_BUS_READ_TIMEOUT = 2
+    ONEWIRE_TEMP_FAIL = "" << 0x0f.chr << 0xaf.chr
      
     def initialize(name, location, slave_address, register_address, dry_run, mock_temp, debug=false)
       @name = name
@@ -268,7 +269,8 @@ module BusDevice
          
     def temp
       if @delay_timer.expired?
-        @lasttemp = read_temp
+        temp_tmp = read_temp
+        @lasttemp = temp_tmp unless temp_tmp == ONEWIRE_TEMP_FAIL or temp_tmp < -5 or temp_tmp > 85   
         @delay_timer.reset
       end
       return @lasttemp
@@ -286,13 +288,13 @@ module BusDevice
 
         # Calculate temperature value from the data returned
         temp = "" << retval[:Content][Buscomm::PARAMETER_START] << retval[:Content][Buscomm::PARAMETER_START+1]
-        $heating_logger.info("Low level HW "+@name+" value: "+temp.unpack("h*")) if @debug
+        $heating_logger.info("Low level HW "+@name+" value: "+temp.unpack("h*")[0]) if @debug
         return temp.unpack("s")[0]*ONE_BIT_TEMP_VALUE
 
       rescue MessagingError => e
         # Log the messaging error
         retval = e.return_message
-        $app_logger.fatal("Unrecoverable communication error on bus reading '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
+        $app_logger.fatal("Unrecoverable communication error on bus reading '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]]+" Device return code: "+retval[:DeviceResponseCode].to_s)
           
         # Signal the main thread for fatal error shutdown
         $shutdown_reason = Globals::FATAL_SHUTDOWN
