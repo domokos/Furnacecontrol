@@ -423,11 +423,11 @@ class Heating_State_Machine
   def operate
     @cycle = 0
     @state_history = Array.new(4,{:state=>@state.name, :power=>determine_power_needed})
-      
+
+    prev_power_needed = nil
+
     # Do the main loop until shutdown is requested
     while($shutdown_reason == Globals::NO_SHUTDOWN) do
-
-      prev_power_needed = power_needed = {:state=>@state.name(), :power=>determine_power_needed}
 
       $app_logger.debug("Main boiler loop cycle: "+@cycle.to_s)
 
