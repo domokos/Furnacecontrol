@@ -248,13 +248,14 @@ module BusDevice
     ONE_BIT_TEMP_VALUE = 0.0625
     TEMP_BUS_READ_TIMEOUT = 2
      
-    def initialize(name, location, slave_address, register_address, dry_run, mock_temp)
+    def initialize(name, location, slave_address, register_address, dry_run, mock_temp, debug=false)
       @name = name
       @slave_address = slave_address 
       @location = location
       @register_address = register_address
       @dry_run = dry_run
       @mock_temp = mock_temp
+      @debug = debug
   
       @delay_timer = Globals::TimerSec.new(TEMP_BUS_READ_TIMEOUT,"Temp Sensor Delay timer: "+@name)
                  
@@ -285,6 +286,7 @@ module BusDevice
 
         # Calculate temperature value from the data returned
         temp = "" << retval[:Content][Buscomm::PARAMETER_START] << retval[:Content][Buscomm::PARAMETER_START+1]
+        $heating_logger.info("Low level HW "+@name+" value: "+temp.unpack("h*")) if @debug
         return temp.unpack("s")[0]*ONE_BIT_TEMP_VALUE
 
       rescue MessagingError => e
