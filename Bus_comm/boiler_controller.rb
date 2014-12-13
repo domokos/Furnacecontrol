@@ -852,18 +852,20 @@ Signal.trap("TERM") do
   $shutdown_reason = Globals::NORMAL_SHUTDOWN
 end
 
-daemonize = ARGV.find_index["--daemon"] != nil
+daemonize = ARGV.find_index("--daemon") != nil
 
 pid = fork do
   main_rt = RobustThread.new(:label => "Main daemon thread") do
 
     Signal.trap("HUP", "IGNORE")
   
-    if ARGV[0] != nil
-      $pidpath = ARGV[0]
+    pidfile_index = ARGV.find_index("--pidfile")
+    if pidfile_index != nil and ARGV[pidfile_index+1] != nil
+      $pidpath = ARGV[pidfile_index+1]
     else
       $pidpath = Globals::PIDFILE
     end
+
     pidfile=File.new($pidpath,"w")
     pidfile.write(Process.pid.to_s)
     pidfile.close
