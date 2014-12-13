@@ -103,7 +103,7 @@ module BusDevice
       @state_semaphore.synchronize do
         if @state != :on
           @state = :on
-          write_device(1) == :Success and $app_logger.debug("Succesfully turned Switch '"+@name+"' on.")
+          write_device(1) == :Success and $app_logger.info("Succesfully turned Switch '"+@name+"' on.")
         end
       end
     end
@@ -113,7 +113,7 @@ module BusDevice
       @state_semaphore.synchronize do
         if @state != :off
           @state = :off
-          write_device(0) == :Success and $app_logger.debug("Succesfully turned Switch '"+@name+"' off.")
+          write_device(0) == :Success and $app_logger.info("Succesfully turned Switch '"+@name+"' off.")
         end
       end
     end

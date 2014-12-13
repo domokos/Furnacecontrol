@@ -267,10 +267,10 @@ class Heating_State_Machine
     end
 
     # Prefill sensors and thermostats to ensure smooth startup operation
-    for i in 0..15 do
+    for i in 0..20 do
       read_sensors
       determine_targets
-      sleep 0.4
+      sleep 1.5
     end
 
     $app_logger.debug("Boiler controller initialized initial state set to: "+@state.description+", Initial mode set to: "+@mode.description)
@@ -621,11 +621,15 @@ class Heating_State_Machine
   # This function controls valves and pumps during heating by evaluating the required power
   def control_pumps_and_valves
     $app_logger.debug("Controlling valves and pumps")
+    
+    # If there was a state change do not do anything
+    return if @state_history.last[1] == determine_power_needed
     case determine_power_needed
       when :HW # Only Hot water supplies on
-        $app_logger.debug("Setting valves and pumps for HW")
+        $app_logger.info("Setting valves and pumps for HW")
         # Only HW pump on
         @hot_water_pump.on
+
         # Wait before turning pumps off to make sure we do not lose circulation
         sleep @config[:circulation_maintenance_delay]
         @radiator_pump.off
