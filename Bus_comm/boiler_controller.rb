@@ -290,7 +290,7 @@ class Heating_State_Machine
       $app_logger.debug("\tElse: Stay in Off state")
       if power_needed != :NONE
         $app_logger.debug("Decision: Need power changing state to Heat")
-        $app_logger.debug("determine_power_needed: "+power_needed.to_s)
+        $app_logger.debug("power_needed: "+power_needed.to_s)
         @state = @state_Heat
         @state.activate()
       else
@@ -306,12 +306,12 @@ class Heating_State_Machine
       # If not need power anymore then -> Postheat or PostHW
       if power_needed == :NONE and @mode == @mode_HW
         $app_logger.debug("Decision: No more power needed in HW mode - changing state to PostHW")
-        $app_logger.debug("determine_power_needed: NONE")
+        $app_logger.debug("power_needed: NONE")
         @state = @state_PostHW
         @state.activate()
       elsif power_needed == :NONE
         $app_logger.debug("Decision: No more power needed not in HW mode - changing state to Postheat")
-        $app_logger.debug("determine_power_needed: NONE")
+        $app_logger.debug("power_needed: NONE")
         @state = @state_Postheat
         @state.activate()
       else
@@ -447,9 +447,9 @@ class Heating_State_Machine
       end
 
       # Record state history for 4 states
-      if @state_history.last[0] != @state.name or @state_history.last[1] != determine_power_needed  
+      if @state_history.last[0] != @state.name or @state_history.last[1] != power_needed  
         @state_history.shift
-        @state_history.push([@state.name,determine_power_needed])
+        @state_history.push([@state.name,power_needed])
       end
 
       # Increment the cycle and reset it if 40 cycles is reached
@@ -459,9 +459,9 @@ class Heating_State_Machine
       $app_logger.debug("Forward boiler temp: "+@forward_temp.to_s)
       $app_logger.debug("Return temp: "+@return_temp.to_s)
       $app_logger.debug("HW temp: "+@HW_thermostat.temp.to_s)
-      $app_logger.debug("Need power: "+determine_power_needed.to_s)
+      $app_logger.debug("Need power: "+power_needed.to_s)
       
-      heating_logging
+      heating_logging(power_needed)
       
       # Check Move if time is between 11:00 and 11:15 in the morning
       if (((Time.now.to_i % (24*60*60))+ 60*60) > (10*60*60)) and
@@ -557,7 +557,7 @@ class Heating_State_Machine
     $app_logger.info("Moving valves finished")
   end
   
-  def heating_logging
+  def heating_logging(power_needed)
     return unless @logger_timer.expired?
     @logger_timer.reset
     
@@ -565,7 +565,7 @@ class Heating_State_Machine
     $heating_logger.debug("Active state: "+@state.name.to_s)
     sth=""
     @state_history.each {|e| sth+= ") => ("+e*","}
-    $heating_logger.debug("State and determine_power_needed history : "+sth[5,1000]+")")
+    $heating_logger.debug("State and power_needed history : "+sth[5,1000]+")")
     $heating_logger.debug("Forwared temperature: "+@forward_temp.round(2).to_s)
     $heating_logger.debug("Return water temperature: "+@return_temp.round(2).to_s)
     $heating_logger.debug("Delta T on the Boiler: "+(@forward_temp-@return_temp).round(2).to_s)
@@ -576,7 +576,7 @@ class Heating_State_Machine
     $heating_logger.debug("\nExternal temperature: "+@living_floor_thermostat.temp.round(2).to_s)
     $heating_logger.debug("Mode thermostat status: "+@mode_thermostat.state.to_s)
     $heating_logger.debug("Operating mode: "+@mode.description)
-    $heating_logger.debug("Need power: "+determine_power_needed.to_s)
+    $heating_logger.debug("Need power: "+power_needed.to_s)
 
     $heating_logger.debug("\nHW pump: "+@hot_water_pump.state.to_s)
     $heating_logger.debug("Radiator pump: "+@radiator_pump.state.to_s)
