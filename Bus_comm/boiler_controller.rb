@@ -623,7 +623,7 @@ class Heating_State_Machine
     $app_logger.debug("Controlling valves and pumps")
     
     # If there was a state change do not do anything
-    return if @state_history.last[1] == determine_power_needed
+    return if @state_history.last[1] == determine_power_needed and @state_history.last[0] == @state.name 
     case determine_power_needed
       when :HW # Only Hot water supplies on
         $app_logger.info("Setting valves and pumps for HW")
