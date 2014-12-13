@@ -266,7 +266,10 @@ class Heating_State_Machine
       exit
     end
 
-    read_sensors
+    # Prefill sensors and thermostats to ensure smooth startup operation
+    for i in 0..15 do
+      read_sensors
+    end
 
     $app_logger.debug("Boiler controller initialized initial state set to: "+@state.description+", Initial mode set to: "+@mode.description)
 
