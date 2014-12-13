@@ -248,6 +248,7 @@ module BusDevice
     ONE_BIT_TEMP_VALUE = 0.0625
     TEMP_BUS_READ_TIMEOUT = 2
     ONEWIRE_TEMP_FAIL = "" << 0x0f.chr << 0xaf.chr
+    DEFAULT_TEMP = 85.0
      
     def initialize(name, location, slave_address, register_address, dry_run, mock_temp, debug=false)
       @name = name
@@ -264,13 +265,18 @@ module BusDevice
       
       # Perform initial temperature read
       @delay_timer.reset
-      @lasttemp = read_temp
+      initial_temp = read_temp
+      if initial_temp != nil 
+        @lasttemp = initial_temp
+      else
+        @lasttemp = DEFAULT_TEMP
+      end
     end
          
     def temp
       if @delay_timer.expired?
         temp_tmp = read_temp
-        @lasttemp = temp_tmp unless temp_tmp == ONEWIRE_TEMP_FAIL or temp_tmp < -5 or temp_tmp > 85   
+        @lasttemp = temp_tmp unless temp_tmp == ONEWIRE_TEMP_FAIL or temp_tmp < -5 or temp_tmp > 85
         @delay_timer.reset
       end
       return @lasttemp
