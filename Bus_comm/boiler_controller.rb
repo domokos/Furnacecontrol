@@ -14,7 +14,7 @@ $stdout.sync = true
 $app_logger.level = Logger::INFO
 $heating_logger.level = Logger::INFO
 
-DRY_RUN = true
+DRY_RUN = false
 $shutdown_reason = Globals::NO_SHUTDOWN
 $low_floor_temp_mode = false
 

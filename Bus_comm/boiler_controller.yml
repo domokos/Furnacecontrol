@@ -13,13 +13,13 @@
 # Operation delays
 :logger_delay_whole_sec: 1
 :main_loop_delay: 1
-:circulation_maintenance_delay: 1
+:circulation_maintenance_delay: 2
 #
 # Mock values for non-existent/dry run sensors
 :forward_mock_temp: 37.0
 :return_mock_temp: 31.0
 :HW_mock_temp: 55.0
-:living_mock_temp: 23.0
+:living_mock_temp: 19.0
 :upstairs_mock_temp: 23.0
 :basement_mock_temp: 26.0
-:external_mock_temp: 4.0
+:external_mock_temp: 5.0
