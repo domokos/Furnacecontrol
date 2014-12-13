@@ -42,8 +42,9 @@ class Buscomm
   MESSAGE_TOO_LONG = 2 # Receive buffer length exceeded
   MESSAGING_TIMEOUT = 3 # Timeout occured - expected but no communication is seen on the bus
   COMM_CRC_ERROR = 4 # Frame with CRC error received
+  DEVICE_ERROR = 5 # Device responded with error
 
-  RESPONSE_TEXT = ["No error","No train received", "Message too long", "Messaging timeout", "CRC error"]
+  RESPONSE_TEXT = ["No error","No train received", "Message too long", "Messaging timeout", "CRC error", "Device returned error"]
     
   #
   # Command opcodes
@@ -352,7 +353,7 @@ private
            if response[OPCODE] == COMMAND_SUCCESS
              return_value = {:Return_code => NO_ERROR, :Content => response}
            else
-             return_value = {:Return_code => NO_ERROR, :Content => response, :DeviceResponseCode => response[OPCODE]}
+             return_value = {:Return_code => DEVICE_ERROR, :Content => response, :DeviceResponseCode => response[OPCODE]}
            end
          end
        end
