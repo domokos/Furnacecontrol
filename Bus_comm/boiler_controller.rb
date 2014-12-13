@@ -422,12 +422,12 @@ class Heating_State_Machine
 # The main loop of the controller
   def operate
     @cycle = 0
-    @state_history = Array.new(4,[@state.name, determine_power_needed])
+    @state_history = Array.new(4,{:state=>@state.name, :power=>determine_power_needed})
       
-    prev_power_needed = power_needed = {:state=>@state.name(),:power=>determine_power_needed}
-    
     # Do the main loop until shutdown is requested
     while($shutdown_reason == Globals::NO_SHUTDOWN) do
+
+      prev_power_needed = power_needed = {:state=>@state.name(), :power=>determine_power_needed}
 
       $app_logger.debug("Main boiler loop cycle: "+@cycle.to_s)
 
@@ -574,7 +574,7 @@ class Heating_State_Machine
     $heating_logger.debug("LOGITEM BEGIN @"+Time.now.asctime)
     $heating_logger.debug("Active state: "+@state.name.to_s)
     sth=""
-    @state_history.each {|e| sth+= ") => ("+e.to_s+","}
+    @state_history.each {|e| sth+= ") => ("+e[:state].to_s+","+e[:power].to_s}
     $heating_logger.debug("State and power_needed history : "+sth[5,1000]+")")
     $heating_logger.debug("Forward temperature: "+@forward_temp.round(2).to_s)
     $heating_logger.debug("Return water temperature: "+@return_temp.round(2).to_s)
