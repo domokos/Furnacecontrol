@@ -725,6 +725,7 @@ class Heating_State_Machine
         @hot_water_pump.off
         @radiator_pump.off
       end
+
       if power_needed != :NONE
         # Set required water temperature of the boiler
         @watertemp.set_water_temp(@target_boiler_temp)
@@ -851,6 +852,8 @@ Signal.trap("TERM") do
   $shutdown_reason = Globals::NORMAL_SHUTDOWN
 end
 
+daemonize = ARGF.argv.find_index["--daemon"] != nil
+
 pid = fork do
   main_rt = RobustThread.new(:label => "Main daemon thread") do
 
@@ -872,4 +875,8 @@ pid = fork do
     boiler_control.operate
   end
 end
-Process.detach pid
+if daemonize 
+  Process.detach pid
+else
+  Process.wait
+end 
