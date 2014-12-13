@@ -483,141 +483,6 @@ class Heating_State_Machine
     shutdown
   end
 
-
-  def magnetic_valve_move_evaluation
-    # If moving already required then return
-    return if @moving_valves_required
-    
-    # If there is no logfile we need to move
-    if !File.exists?(@config[:magnetic_valve_movement_logfile])
-      @moving_valves_required = true
-      $app_logger.info("No movement log file found - Setting moving_valves_required to true for the first time")
-      return
-    end
-    
-    # If there is a logfile we need to read it and evaluate movement need based on last log entry
-    @move_logfile = File.new(@config[:magnetic_valve_movement_logfile],"a+")
-    @move_logfile.seek(0,IO::SEEK_SET)
-    while (!@move_logfile.eof)
-      lastline = @move_logfile.readline
-    end
-
-    seconds_between_move = @config[:magnetic_valve_movement_days] * 24*60*60
-
-    # Move if moved later than the parameter read
-    if lastline.to_i+seconds_between_move < Time.now.to_i and 
-    # And we are just after 10 o'clock
-      ((Time.now.to_i % (24*60*60))+ 60*60) > (10*60*60)
-        @moving_valves_required = true
-        $app_logger.info("Setting moving_valves_required to true")
-    end
-    @move_logfile.close
-  end
-
-  def do_magnetic_valve_movement
-    $app_logger.info("Start moving valves")
-
-    @radiator_pump.off
-    @floor_pump.off
-    @hidr_shift_pump.off
-    @hot_water_pump.off
-
-    repeat = 5
-    while (repeat>0)
-        @basement_floor_valve.open
-        @basement_radiator_valve.open
-        @living_floor_valve.open
-        @upstairs_floor_valve.open
-        sleep 1
-        @basement_floor_valve.close
-        @basement_radiator_valve.close
-        @living_floor_valve.close
-        @upstairs_floor_valve.close
-        sleep 1
-        repeat = repeat-1
-    end 
-
-    repeat = 5
-    while (repeat>0)
-        @basement_floor_valve.open
-        @basement_radiator_valve.open
-        @living_floor_valve.open
-        @upstairs_floor_valve.open
-        @radiator_pump.on
-        @floor_pump.on
-        @hidr_shift_pump.on
-      
-        sleep 20
-        @radiator_pump.off
-        @floor_pump.off
-        @hidr_shift_pump.off
-        sleep 2
-        @basement_floor_valve.close
-        @basement_radiator_valve.close
-        @living_floor_valve.close
-        @upstairs_floor_valve.close
-        sleep 2
-        repeat = repeat-1
-    end
-    @move_logfile = File.new(@config[:magnetic_valve_movement_logfile],"a+")
-    @move_logfile.write(Time.now.to_s)
-    @move_logfile.write("\n")
-    @move_logfile.write(Time.now.to_i.to_s)
-    @move_logfile.write("\n")
-    @move_logfile.close
-    $app_logger.info("Moving valves finished")
-  end
-  
-  def heating_logging(power_needed)
-    return unless @logger_timer.expired?
-    @logger_timer.reset
-    
-    $heating_logger.debug("LOGITEM BEGIN @"+Time.now.asctime)
-    $heating_logger.debug("Active state: "+@state.name.to_s)
-    sth=""
-    @state_history.each {|e| sth+= ") => ("+e[:state].to_s+","+e[:power].to_s}
-    $heating_logger.debug("State and power_needed history : "+sth[5,1000]+")")
-    $heating_logger.debug("Forward temperature: "+@forward_temp.round(2).to_s)
-    $heating_logger.debug("Return water temperature: "+@return_temp.round(2).to_s)
-    $heating_logger.debug("Delta T on the Boiler: "+(@forward_temp-@return_temp).round(2).to_s)
-    $heating_logger.debug("Target boiler temp: "+@target_boiler_temp.round(2).to_s)
-
-    $heating_logger.debug("\nHW temperature: "+@HW_thermostat.temp.round(2).to_s)
-    
-    $heating_logger.debug("\nExternal temperature: "+@living_floor_thermostat.temp.round(2).to_s)
-    $heating_logger.debug("Mode thermostat status: "+@mode_thermostat.state.to_s)
-    $heating_logger.debug("Operating mode: "+@mode.description)
-    $heating_logger.debug("Need power: "+power_needed[:power].to_s)
-
-    $heating_logger.debug("\nHW pump: "+@hot_water_pump.state.to_s)
-    $heating_logger.debug("Radiator pump: "+@radiator_pump.state.to_s)
-    $heating_logger.debug("Floor pump: "+@floor_pump.state.to_s)
-    $heating_logger.debug("Hidr shift pump: "+@hidr_shift_pump.state.to_s)
-
-    $heating_logger.debug("\nLiving temperature: "+@living_thermostat.temp.round(2).to_s)
-    $heating_logger.debug("Living thermostat status: "+@living_thermostat.state.to_s)
-        
-    $heating_logger.debug("\nUpstairs temperature: "+@upstairs_thermostat.temp.round(2).to_s)
-    $heating_logger.debug("Upstairs thermostat status: "+@upstairs_thermostat.state.to_s)
-    
-    $heating_logger.debug("\nLiving floor PWM value: "+@living_floor_thermostat.value.round(2).to_s)
-    $heating_logger.debug("Living floor valve: "+@living_floor_valve.state.to_s)
-    $heating_logger.debug("Living floor thermostat status: "+@living_floor_thermostat.state.to_s)
-
-    $heating_logger.debug("\nUpstairs floor PWM value: "+@upstairs_floor_thermostat.value.round(2).to_s)
-    $heating_logger.debug("Upstairs floor valve: "+@upstairs_floor_valve.state.to_s)
-    $heating_logger.debug("Upstairs floor thermostat status: "+@upstairs_floor_thermostat.state.to_s)
-    
-    $heating_logger.debug("\nBasement temperature: "+@basement_thermostat.temp.round(2).to_s)
-    $heating_logger.debug("Basement PWM value: "+@basement_thermostat.value.round(2).to_s)
-    $heating_logger.debug("Basement floor valve: "+@basement_floor_valve.state.to_s)
-    $heating_logger.debug("Basement thermostat status: "+@basement_thermostat.state.to_s)
-         
-    $heating_logger.debug("\nBoiler relay: "+@heater_relay.state.to_s)
-    $heating_logger.debug("Boiler required temperature: "+@watertemp.temp_required.round(2).to_s)
-    $heating_logger.debug("LOGITEM END\n")
-  end
-
   # This function controls valves, pumps and heat during heating by evaluating the required power
   def control_pumps_valves_and_heat(prev_power_needed,power_needed)
     $app_logger.debug("Controlling valves and pumps")
@@ -806,6 +671,140 @@ class Heating_State_Machine
     @upstairs_sensor.mock_temp = @config[:upstairs_mock_temp] if (defined? @upstairs_sensor != nil)
     @basement_sensor.mock_temp = @config[:basement_mock_temp] if (defined? @basement_sensor != nil)
     @external_sensor.mock_temp = @config[:external_mock_temp] if (defined? @external_sensor != nil)
+  end
+    
+  def magnetic_valve_move_evaluation
+    # If moving already required then return
+    return if @moving_valves_required
+    
+    # If there is no logfile we need to move
+    if !File.exists?(@config[:magnetic_valve_movement_logfile])
+      @moving_valves_required = true
+      $app_logger.info("No movement log file found - Setting moving_valves_required to true for the first time")
+      return
+    end
+    
+    # If there is a logfile we need to read it and evaluate movement need based on last log entry
+    @move_logfile = File.new(@config[:magnetic_valve_movement_logfile],"a+")
+    @move_logfile.seek(0,IO::SEEK_SET)
+    while (!@move_logfile.eof)
+      lastline = @move_logfile.readline
+    end
+
+    seconds_between_move = @config[:magnetic_valve_movement_days] * 24*60*60
+
+    # Move if moved later than the parameter read
+    if lastline.to_i+seconds_between_move < Time.now.to_i and 
+    # And we are just after 10 o'clock
+      ((Time.now.to_i % (24*60*60))+ 60*60) > (10*60*60)
+        @moving_valves_required = true
+        $app_logger.info("Setting moving_valves_required to true")
+    end
+    @move_logfile.close
+  end
+
+  def do_magnetic_valve_movement
+    $app_logger.info("Start moving valves")
+
+    @radiator_pump.off
+    @floor_pump.off
+    @hidr_shift_pump.off
+    @hot_water_pump.off
+
+    repeat = 5
+    while (repeat>0)
+        @basement_floor_valve.open
+        @basement_radiator_valve.open
+        @living_floor_valve.open
+        @upstairs_floor_valve.open
+        sleep 1
+        @basement_floor_valve.close
+        @basement_radiator_valve.close
+        @living_floor_valve.close
+        @upstairs_floor_valve.close
+        sleep 1
+        repeat = repeat-1
+    end 
+
+    repeat = 5
+    while (repeat>0)
+        @basement_floor_valve.open
+        @basement_radiator_valve.open
+        @living_floor_valve.open
+        @upstairs_floor_valve.open
+        @radiator_pump.on
+        @floor_pump.on
+        @hidr_shift_pump.on
+      
+        sleep 20
+        @radiator_pump.off
+        @floor_pump.off
+        @hidr_shift_pump.off
+        sleep 2
+        @basement_floor_valve.close
+        @basement_radiator_valve.close
+        @living_floor_valve.close
+        @upstairs_floor_valve.close
+        sleep 2
+        repeat = repeat-1
+    end
+    @move_logfile = File.new(@config[:magnetic_valve_movement_logfile],"a+")
+    @move_logfile.write(Time.now.to_s)
+    @move_logfile.write("\n")
+    @move_logfile.write(Time.now.to_i.to_s)
+    @move_logfile.write("\n")
+    @move_logfile.close
+    $app_logger.info("Moving valves finished")
+  end
+    
+  def heating_logging(power_needed)
+    return unless @logger_timer.expired?
+    @logger_timer.reset
+    
+    $heating_logger.debug("LOGITEM BEGIN @"+Time.now.asctime)
+    $heating_logger.debug("Active state: "+@state.name.to_s)
+    sth=""
+    @state_history.each {|e| sth+= ") => ("+e[:state].to_s+","+e[:power].to_s}
+    $heating_logger.debug("State and power_needed history : "+sth[5,1000]+")")
+    $heating_logger.debug("Forward temperature: "+@forward_temp.round(2).to_s)
+    $heating_logger.debug("Return water temperature: "+@return_temp.round(2).to_s)
+    $heating_logger.debug("Delta T on the Boiler: "+(@forward_temp-@return_temp).round(2).to_s)
+    $heating_logger.debug("Target boiler temp: "+@target_boiler_temp.round(2).to_s)
+
+    $heating_logger.debug("\nHW temperature: "+@HW_thermostat.temp.round(2).to_s)
+    
+    $heating_logger.debug("\nExternal temperature: "+@living_floor_thermostat.temp.round(2).to_s)
+    $heating_logger.debug("Mode thermostat status: "+@mode_thermostat.state.to_s)
+    $heating_logger.debug("Operating mode: "+@mode.description)
+    $heating_logger.debug("Need power: "+power_needed[:power].to_s)
+
+    $heating_logger.debug("\nHW pump: "+@hot_water_pump.state.to_s)
+    $heating_logger.debug("Radiator pump: "+@radiator_pump.state.to_s)
+    $heating_logger.debug("Floor pump: "+@floor_pump.state.to_s)
+    $heating_logger.debug("Hidr shift pump: "+@hidr_shift_pump.state.to_s)
+
+    $heating_logger.debug("\nLiving temperature: "+@living_thermostat.temp.round(2).to_s)
+    $heating_logger.debug("Living thermostat status: "+@living_thermostat.state.to_s)
+        
+    $heating_logger.debug("\nUpstairs temperature: "+@upstairs_thermostat.temp.round(2).to_s)
+    $heating_logger.debug("Upstairs thermostat status: "+@upstairs_thermostat.state.to_s)
+    
+    $heating_logger.debug("\nLiving floor PWM value: "+@living_floor_thermostat.value.round(2).to_s)
+    $heating_logger.debug("Living floor valve: "+@living_floor_valve.state.to_s)
+    $heating_logger.debug("Living floor thermostat status: "+@living_floor_thermostat.state.to_s)
+
+    $heating_logger.debug("\nUpstairs floor PWM value: "+@upstairs_floor_thermostat.value.round(2).to_s)
+    $heating_logger.debug("Upstairs floor valve: "+@upstairs_floor_valve.state.to_s)
+    $heating_logger.debug("Upstairs floor thermostat status: "+@upstairs_floor_thermostat.state.to_s)
+    
+    $heating_logger.debug("\nBasement temperature: "+@basement_thermostat.temp.round(2).to_s)
+    $heating_logger.debug("Basement PWM value: "+@basement_thermostat.value.round(2).to_s)
+    $heating_logger.debug("Basement floor valve: "+@basement_floor_valve.state.to_s)
+    $heating_logger.debug("Basement thermostat status: "+@basement_thermostat.state.to_s)
+         
+    $heating_logger.debug("\nBoiler relay: "+@heater_relay.state.to_s)
+    $heating_logger.debug("Boiler required temperature: "+@watertemp.temp_required.round(2).to_s)
+    $heating_logger.debug("LOGITEM END\n")
   end
   
 # Walk through states to test the state machine
