@@ -288,7 +288,7 @@ module BusDevice
 
         # Calculate temperature value from the data returned
         temp = "" << retval[:Content][Buscomm::PARAMETER_START] << retval[:Content][Buscomm::PARAMETER_START+1]
-        $heating_logger.info("Low level HW "+@name+" value: "+temp.unpack("h*")[0]) if @debug
+        $heating_logger.info("Low level HW "+@name+" value: "+temp.unpack("H*")[0]) if @debug
         return temp.unpack("s")[0]*ONE_BIT_TEMP_VALUE
 
       rescue MessagingError => e
