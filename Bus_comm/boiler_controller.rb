@@ -167,7 +167,7 @@ class Heating_State_Machine
       @heater_relay.off
 
       # Wait before turning pumps off to make sure we do not lose circulation
-      sleep @config[:circulation_maintenance_delay]
+      sleep @config[:shutdown_delay]
             
       # Turn off all pumps
       @radiator_pump.off

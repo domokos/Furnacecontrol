@@ -14,6 +14,7 @@
 :logger_delay_whole_sec: 1
 :main_loop_delay: 1
 :circulation_maintenance_delay: 4
+:shutdown_delay: 10
 #
 # Mock values for non-existent/dry run sensors
 :forward_mock_temp: 37.0
