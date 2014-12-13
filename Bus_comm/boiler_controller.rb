@@ -51,7 +51,7 @@ class Heating_State_Machine
     
     @logger_timer = Globals::TimerSec.new(@config[:logger_delay_whole_sec],"Logging Delay Timer")
       
-    # Define the operation modes of the furnace
+    # Define the operation modes of the boiler
     @mode_Off = BoilerBase::Mode.new("Switched off","Switched off state, frost and anti-legionella protection")
     @mode_HW = BoilerBase::Mode.new("HW","Hot water only")
     @mode_Heat_HW = BoilerBase::Mode.new("Heat","Heating and hot water")
@@ -151,7 +151,7 @@ class Heating_State_Machine
     @heater_relay = BusDevice::Switch.new("Heater relay","Heater contact on main panel", 11, 11, DRY_RUN)
     @watertemp = BusDevice::WaterTemp.new("Boiler water temp regulator", "Wiper contact on main panel", 11, 12, DRY_RUN)
 
-    # Define the states of the furnace
+    # Define the states of the heating
     @state_Off = BoilerBase::State.new(:Off,"Boiler switched off")
     @state_Heat = BoilerBase::State.new(:Heat,"Heating to the target temperature with PD controll")
     @state_Postheat = BoilerBase::State.new(:Postheat,"Post ciculation with heating")
@@ -285,8 +285,8 @@ class Heating_State_Machine
     when :Off
       $app_logger.debug("Evaluating Off state:")
       $app_logger.debug("\tIf need power then -> Heat")
-      $app_logger.debug("\tIf furnace temp increases and furnace above HW temp + 7 C in HW mode then -> PostHW")
-      $app_logger.debug("\tIf furnace temp increases and furnace above HW temp + 7 C not in HW mode then -> PostHeat")        
+      $app_logger.debug("\tIf forward temp increases and forward temp above HW temp + 7 C in HW mode then -> PostHW")
+      $app_logger.debug("\tIf forward temp increases and forward temp above HW temp + 7 C not in HW mode then -> PostHeat")        
       $app_logger.debug("\tElse: Stay in Off state")
       if power_needed != :NONE
         $app_logger.debug("Decision: Need power changing state to Heat")
@@ -300,7 +300,7 @@ class Heating_State_Machine
     when :Heat
       $app_logger.debug("Evaluating Heat state:")
       $app_logger.debug("\tControl valves and pumps based on measured temperatures")
-      $app_logger.debug("\tControl burners to maintain target furnace temperature")
+      $app_logger.debug("\tControl burners to maintain target boiler temperature")
       $app_logger.debug("\tIf not need power anymore then -> Postheat or PostHW based on operating mode")
    
       # If not need power anymore then -> Postheat or PostHW
@@ -548,7 +548,7 @@ class Heating_State_Machine
         sleep 2
         repeat = repeat-1
     end
-    @move_logfile = File.new("/var/log/furnace_valve_log","a+")
+    @move_logfile = File.new(@config[:magnetic_valve_movement_logfile],"a+")
     @move_logfile.write(Time.now.to_s)
     @move_logfile.write("\n")
     @move_logfile.write(Time.now.to_i.to_s)
