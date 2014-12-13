@@ -269,7 +269,8 @@ class Heating_State_Machine
     # Prefill sensors and thermostats to ensure smooth startup operation
     for i in 0..15 do
       read_sensors
-      determine_targets(determine_power_needed)
+      temp_power_needed = determine_power_needed
+      determine_targets(temp_power_needed, temp_power_needed)
       sleep 1.5
       break if $shutdown_reason != Globals::NO_SHUTDOWN
     end
@@ -280,7 +281,7 @@ class Heating_State_Machine
 
 # The function evaluating states and performing necessary
 # transitions basd on the current value of sensors
-  def evaluate_state_change(power_needed)
+  def evaluate_state_change(prev_power_needed,power_needed)
     case @state.name
     # The evaluation of the Off state
     when :Off
@@ -317,7 +318,7 @@ class Heating_State_Machine
         @state.activate()
       else
         # Control valves, pumps and boiler based on measured temperatures
-        control_pumps_valves_and_heat(power_needed)
+        control_pumps_valves_and_heat(prev_power_needed,power_needed)
       end
 
     when :Postheat
@@ -376,7 +377,7 @@ class Heating_State_Machine
   end
   
 # Read the target temperatures, determine targets and operating mode
-  def determine_targets(power_needed)
+  def determine_targets(prev_power_needed,power_needed)
     # Read the config file
     read_config
     
@@ -423,6 +424,8 @@ class Heating_State_Machine
     @cycle = 0
     @state_history = Array.new(4,[@state.name, determine_power_needed])
       
+    prev_power_needed = power_needed = determine_power_needed
+    
     # Do the main loop until shutdown is requested
     while($shutdown_reason == Globals::NO_SHUTDOWN) do
 
@@ -432,14 +435,20 @@ class Heating_State_Machine
       
       if !DRY_RUN
         read_sensors
-        power_needed = determine_power_needed
-        determine_targets(power_needed)
+        temp_power_needed = determine_power_needed
+        if temp_power_needed != power_needed
+          prev_power_needed = power_needed
+          power_needed = temp_power_needed
+        else
+          prev_power_needed = power_needed
+        end
+        determine_targets(prev_power_needed,power_needed)
       else
         apply_test_control
       end
 
       # Call the state machine state transition decision method
-      evaluate_state_change(power_needed)
+      evaluate_state_change(prev_power_needed,power_needed)
 
       # If magnetic valve movement is required then carry out moving process
       if @moving_valves_required and @state.name == :Off
@@ -448,7 +457,7 @@ class Heating_State_Machine
       end
 
       # Record state history for 4 states
-      if @state_history.last[0] != @state.name or @state_history.last[1] != power_needed  
+      if @state_history.last[0] != @state.name or @state_history.last[1] != power_needed
         @state_history.shift
         @state_history.push([@state.name,power_needed])
       end
@@ -609,9 +618,9 @@ class Heating_State_Machine
   end
 
   # This function controls valves, pumps and heat during heating by evaluating the required power
-  def control_pumps_valves_and_heat(power_needed)
+  def control_pumps_valves_and_heat(prev_power_needed,power_needed)
     $app_logger.debug("Controlling valves and pumps")
-    
+    return if prev_power_needed == power_needed
     case power_needed
       when :HW # Only Hot water supplies on
         $app_logger.info("Setting valves and pumps for HW")
@@ -631,6 +640,9 @@ class Heating_State_Machine
         @upstairs_floor_valve.delayed_close
   
       when :RAD # Only Radiator pumps on
+        # Turn off boiler if coming from HW to avoid risk of overheating the boiler
+        @heater_relay.off if prev_power_needed == :HW
+        
         $app_logger.debug("Setting valves and pumps for RAD")
         @basement_floor_valve.delayed_close
         @living_floor_valve.delayed_close
@@ -647,7 +659,7 @@ class Heating_State_Machine
         @hidr_shift_pump.on
         # Radiator pump on
         @radiator_pump.on
-
+        
         # Wait before turning pumps off to make sure we do not lose circulation
         sleep @config[:circulation_maintenance_delay]
         @hot_water_pump.off
@@ -656,6 +668,9 @@ class Heating_State_Machine
         @floor_pump.off
   
       when :RADFLOOR
+        # Turn off boiler if coming from HW to avoid risk of overheating the boiler
+        @heater_relay.off if prev_power_needed == :HW
+        
         $app_logger.debug("Setting valves and pumps for RADFLOOR")
         # decide on living floor valve based on external temperature
         if @living_floor_thermostat.is_on?
@@ -693,6 +708,9 @@ class Heating_State_Machine
         @hot_water_pump.off
       
       when :FLOOR
+        # Turn off boiler if coming from HW to avoid risk of overheating the boiler
+        @heater_relay.off if prev_power_needed == :HW
+
         $app_logger.debug("Setting valves and pumps for FLOOR")
         # decide on living floor valve based on external temperature
         if @living_floor_thermostat.is_on?
