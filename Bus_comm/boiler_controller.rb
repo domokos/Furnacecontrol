@@ -269,8 +269,8 @@ class Heating_State_Machine
     # Prefill sensors and thermostats to ensure smooth startup operation
     for i in 0..15 do
       read_sensors
-      temp_power_needed = determine_power_needed
-      determine_targets(temp_power_needed, temp_power_needed)
+      temp_power_needed = {:state=>@state.name(),:power=>determine_power_needed}
+      determine_targets(temp_power_needed)
       sleep 1.5
       break if $shutdown_reason != Globals::NO_SHUTDOWN
     end
@@ -290,9 +290,9 @@ class Heating_State_Machine
       $app_logger.debug("\tIf forward temp increases and forward temp above HW temp + 7 C in HW mode then -> PostHW")
       $app_logger.debug("\tIf forward temp increases and forward temp above HW temp + 7 C not in HW mode then -> PostHeat")        
       $app_logger.debug("\tElse: Stay in Off state")
-      if power_needed != :NONE
+      if power_needed[:power] != :NONE
         $app_logger.debug("Decision: Need power changing state to Heat")
-        $app_logger.debug("power_needed: "+power_needed.to_s)
+        $app_logger.debug("power_needed: "+power_needed[:power].to_s)
         @state = @state_Heat
         @state.activate()
       else
@@ -306,12 +306,12 @@ class Heating_State_Machine
       $app_logger.debug("\tIf not need power anymore then -> Postheat or PostHW based on operating mode")
    
       # If not need power anymore then -> Postheat or PostHW
-      if power_needed == :NONE and @mode == @mode_HW
+      if power_needed[:power] == :NONE and @mode == @mode_HW
         $app_logger.debug("Decision: No more power needed in HW mode - changing state to PostHW")
         $app_logger.debug("power_needed: NONE")
         @state = @state_PostHW
         @state.activate()
-      elsif power_needed == :NONE
+      elsif power_needed[:power] == :NONE
         $app_logger.debug("Decision: No more power needed not in HW mode - changing state to Postheat")
         $app_logger.debug("power_needed: NONE")
         @state = @state_Postheat
@@ -332,8 +332,8 @@ class Heating_State_Machine
         @state = @state_Off
         @state.activate()
       # If need power then -> Heat
-      elsif power_needed != :NONE
-        $app_logger.debug("Decision: Need power is "+power_needed.to_s+" - changing state to Heat")
+      elsif power_needed[:power] != :NONE
+        $app_logger.debug("Decision: Need power is "+power_needed[:power].to_s+" - changing state to Heat")
         @state = @state_Heat
         @state.activate()
       end
@@ -355,8 +355,8 @@ class Heating_State_Machine
           @state = @state_Off
           @state.activate()        
       # If need power then -> Heat
-      elsif power_needed != :NONE
-        $app_logger.debug("Decision: Need power is "+power_needed.to_s+" - changing state to Heat")
+      elsif power_needed[:power] != :NONE
+        $app_logger.debug("Decision: Need power is "+power_needed[:power].to_s+" - changing state to Heat")
         @state = @state_Heat
         @state.activate()
       end   
@@ -394,7 +394,7 @@ class Heating_State_Machine
     end
     @HW_thermostat.set_histeresis(2,2)
 
-    case power_needed
+    case power_needed[:power]
     when :HW
       @target_boiler_temp = 85.0
 
@@ -424,7 +424,7 @@ class Heating_State_Machine
     @cycle = 0
     @state_history = Array.new(4,[@state.name, determine_power_needed])
       
-    prev_power_needed = power_needed = determine_power_needed
+    prev_power_needed = power_needed = {:state=>@state.name(),:power=>determine_power_needed}
     
     # Do the main loop until shutdown is requested
     while($shutdown_reason == Globals::NO_SHUTDOWN) do
@@ -435,7 +435,7 @@ class Heating_State_Machine
       
       if !DRY_RUN
         read_sensors
-        temp_power_needed = determine_power_needed
+        temp_power_needed = {:state=>@state.name(),:power=>determine_power_needed}
         if temp_power_needed != power_needed
           prev_power_needed = power_needed
           power_needed = temp_power_needed
@@ -457,9 +457,9 @@ class Heating_State_Machine
       end
 
       # Record state history for 4 states
-      if @state_history.last[0] != @state.name or @state_history.last[1] != power_needed
+      if @state_history.last != power_needed
         @state_history.shift
-        @state_history.push([@state.name,power_needed])
+        @state_history.push(power_needed)
       end
 
       # Increment the cycle and reset it if 40 cycles is reached
@@ -574,7 +574,7 @@ class Heating_State_Machine
     $heating_logger.debug("LOGITEM BEGIN @"+Time.now.asctime)
     $heating_logger.debug("Active state: "+@state.name.to_s)
     sth=""
-    @state_history.each {|e| sth+= ") => ("+e*","}
+    @state_history.each {|e| sth+= ") => ("+e.to_s+","}
     $heating_logger.debug("State and power_needed history : "+sth[5,1000]+")")
     $heating_logger.debug("Forward temperature: "+@forward_temp.round(2).to_s)
     $heating_logger.debug("Return water temperature: "+@return_temp.round(2).to_s)
@@ -586,7 +586,7 @@ class Heating_State_Machine
     $heating_logger.debug("\nExternal temperature: "+@living_floor_thermostat.temp.round(2).to_s)
     $heating_logger.debug("Mode thermostat status: "+@mode_thermostat.state.to_s)
     $heating_logger.debug("Operating mode: "+@mode.description)
-    $heating_logger.debug("Need power: "+power_needed.to_s)
+    $heating_logger.debug("Need power: "+power_needed[:power].to_s)
 
     $heating_logger.debug("\nHW pump: "+@hot_water_pump.state.to_s)
     $heating_logger.debug("Radiator pump: "+@radiator_pump.state.to_s)
@@ -621,7 +621,13 @@ class Heating_State_Machine
   def control_pumps_valves_and_heat(prev_power_needed,power_needed)
     $app_logger.debug("Controlling valves and pumps")
     return if prev_power_needed == power_needed
-    case power_needed
+    
+    if power_needed[:power] != :HW
+      # Turn off boiler if coming from HW to avoid risk of overheating the boiler
+      @heater_relay.off if prev_power_needed[:power] == :HW    
+    end
+
+    case power_needed[:power]
       when :HW # Only Hot water supplies on
         $app_logger.info("Setting valves and pumps for HW")
         # Only HW pump on
@@ -640,9 +646,6 @@ class Heating_State_Machine
         @upstairs_floor_valve.delayed_close
   
       when :RAD # Only Radiator pumps on
-        # Turn off boiler if coming from HW to avoid risk of overheating the boiler
-        @heater_relay.off if prev_power_needed == :HW
-        
         $app_logger.debug("Setting valves and pumps for RAD")
         @basement_floor_valve.delayed_close
         @living_floor_valve.delayed_close
@@ -668,9 +671,6 @@ class Heating_State_Machine
         @floor_pump.off
   
       when :RADFLOOR
-        # Turn off boiler if coming from HW to avoid risk of overheating the boiler
-        @heater_relay.off if prev_power_needed == :HW
-        
         $app_logger.debug("Setting valves and pumps for RADFLOOR")
         # decide on living floor valve based on external temperature
         if @living_floor_thermostat.is_on?
@@ -708,9 +708,6 @@ class Heating_State_Machine
         @hot_water_pump.off
       
       when :FLOOR
-        # Turn off boiler if coming from HW to avoid risk of overheating the boiler
-        @heater_relay.off if prev_power_needed == :HW
-
         $app_logger.debug("Setting valves and pumps for FLOOR")
         # decide on living floor valve based on external temperature
         if @living_floor_thermostat.is_on?
@@ -745,7 +742,7 @@ class Heating_State_Machine
         @radiator_pump.off
       end
 
-      if power_needed != :NONE
+      if power_needed[:power] != :NONE
         # Set required water temperature of the boiler
         @watertemp.set_water_temp(@target_boiler_temp)
     
