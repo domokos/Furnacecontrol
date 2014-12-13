@@ -852,7 +852,7 @@ Signal.trap("TERM") do
   $shutdown_reason = Globals::NORMAL_SHUTDOWN
 end
 
-daemonize = ARGF.argv.find_index["--daemon"] != nil
+daemonize = ARGV.find_index["--daemon"] != nil
 
 pid = fork do
   main_rt = RobustThread.new(:label => "Main daemon thread") do
