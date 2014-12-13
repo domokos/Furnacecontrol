@@ -424,7 +424,8 @@ class Heating_State_Machine
     @cycle = 0
     @state_history = Array.new(4,{:state=>@state.name, :power=>determine_power_needed})
 
-    prev_power_needed = nil
+    prev_power_needed = {:state=>:Off,:power=>:NONE}
+    power_needed = {:state=>@state.name(),:power=>determine_power_needed}
 
     # Do the main loop until shutdown is requested
     while($shutdown_reason == Globals::NO_SHUTDOWN) do
