@@ -405,8 +405,23 @@ class Heating_State_Machine
 
     case power_needed[:power]
     when :HW
-      @target_boiler_temp = 85.0
+      # Calculate the error relative to the target
+      error = @HW_thermostat.temp - (@HW_thermostat.threshold + @HW_thermostat.up_histeresis)
+      
+      # calculate linear slope parameters
+      a = ((@HW_thermostat.threshold + @HW_thermostat.up_histeresis) - 75.0) /  @config[:HW_slope_start_before_target].to_f
+      b = (@HW_thermostat.threshold + @HW_thermostat.up_histeresis) + 10.0
 
+      # Calculate target water temperature
+      target = -a*error + b
+      
+      # Limit target temperature boundaries
+      target = 85 if target > 85
+      target = @HW_thermostat.threshold + @HW_thermostat.up_histeresis if target < @HW_thermostat.threshold + @HW_thermostat.up_histeresis
+      
+      # Set target for boiler temperature
+      @target_boiler_temp = target
+      
     when :RAD, :RADFLOOR
       # Use @living_floor_thermostat.temp to get a filtered external temperature
       @target_boiler_temp = -0.83*@living_floor_thermostat.temp+37.5
@@ -423,8 +438,7 @@ class Heating_State_Machine
       @target_boiler_temp = 7.0
 
     end  
-    
-    
+
   end
 
   
@@ -495,10 +509,11 @@ class Heating_State_Machine
   # This function controls valves, pumps and heat during heating by evaluating the required power
   def control_pumps_valves_and_heat(prev_power_needed,power_needed)
     $app_logger.debug("Controlling valves and pumps")
-    return if prev_power_needed == power_needed
-    
+
     # Set required water temperature of the boiler
     @watertemp.set_water_temp(@target_boiler_temp)
+
+    return if prev_power_needed == power_needed
     
     if power_needed[:power] == :HW
       if prev_power_needed[:power] == :RAD or prev_power_needed[:power] == :RADFLOOR or prev_power_needed[:power] == :FLOOR 

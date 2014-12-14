@@ -16,6 +16,11 @@
 :circulation_maintenance_delay: 4
 :shutdown_delay: 10
 #
+# HW slope bottom.
+# From target plus this value the boiler starts to decrease its target temperature
+# to reach a minimum of target+10 C at the end
+:HW_slope_start_before_target: -3
+#
 # Mock values for non-existent/dry run sensors
 :forward_mock_temp: 37.0
 :return_mock_temp: 31.0

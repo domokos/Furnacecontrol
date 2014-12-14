@@ -622,6 +622,9 @@ module BoilerBase
   end
   
   class Asymmetric_thermostat < Thermostat_base
+    
+    attr_accessor :up_histeresis, :down_histeresis
+    
     def initialize(sensor,down_histeresis,up_histeresis,threshold,filtersize)
       @sensor = sensor
       @up_histeresis = up_histeresis
