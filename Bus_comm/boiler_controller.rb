@@ -889,8 +889,14 @@ pid = fork do
     # Set the initial state
     boiler_control = Heating_State_Machine.new(:Off,:Heat)
     $app_logger.info("Controller initialized - starting operation")
-    
-    boiler_control.operate
+
+    begin    
+      boiler_control.operate
+    rescue Exception => e
+      $app_logger.fatal("Exception caught in main block: "+e.inspect)
+      boiler_control.shutdown
+      exit
+    end
   end
 end
 if daemonize 
