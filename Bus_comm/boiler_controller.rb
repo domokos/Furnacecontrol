@@ -501,7 +501,7 @@ class Heating_State_Machine
     @watertemp.set_water_temp(@target_boiler_temp)
     
     if power_needed[:power] == :HW
-      if prev_power_needed[:power] == :RAD or prev_power_needed[:power] == :RADFLOOR 
+      if prev_power_needed[:power] == :RAD or prev_power_needed[:power] == :RADFLOOR or prev_power_needed[:power] == :FLOOR 
         @heater_relay.off 
         # Wait before turning pumps off to make sure we do not lose circulation
         sleep @config[:circulation_maintenance_delay]
