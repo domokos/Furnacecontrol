@@ -163,6 +163,9 @@ class Heating_State_Machine
     proc {
       $app_logger.debug("Activating \"Off\" state")
 
+      # Set water temperature of the boiler low
+      @watertemp.set_water_temp(5.0)
+
       # Turn off heater relay
       @heater_relay.off
 
@@ -195,6 +198,9 @@ class Heating_State_Machine
     proc {
       $app_logger.debug("Activating \"Postheat\" state")
 
+      # Set water temperature of the boiler low
+      @watertemp.set_water_temp(5.0)
+
       # Turn off heater relay
       @heater_relay.off
 
@@ -221,6 +227,9 @@ class Heating_State_Machine
     @state_PostHW.set_activate(
     proc {
       $app_logger.debug("Activating \"PostHW\" state")
+
+      # Set water temperature of the boiler low
+      @watertemp.set_water_temp(5.0)
 
       # Turn off heater relay
       @heater_relay.off
@@ -488,6 +497,9 @@ class Heating_State_Machine
     $app_logger.debug("Controlling valves and pumps")
     return if prev_power_needed == power_needed
     
+    # Set required water temperature of the boiler
+    @watertemp.set_water_temp(@target_boiler_temp)
+    
     if power_needed[:power] != :HW
       # Turn off boiler if coming from HW to avoid risk of overheating the boiler
       @heater_relay.off if prev_power_needed[:power] == :HW    
@@ -609,15 +621,9 @@ class Heating_State_Machine
       end
 
       if power_needed[:power] != :NONE
-        # Set required water temperature of the boiler
-        @watertemp.set_water_temp(@target_boiler_temp)
-    
         # Turn on heater relay of the boiler to activate heating
         @heater_relay.on
-      else
-        # Set required water temperature of the boiler
-        @watertemp.set_water_temp(@target_boiler_temp)
-    
+      else    
         # Turn on heater relay of the boiler to activate heating
         @heater_relay.off
       end
