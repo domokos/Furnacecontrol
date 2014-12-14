@@ -900,6 +900,7 @@ pid = fork do
       boiler_control.operate
     rescue Exception => e
       $app_logger.fatal("Exception caught in main block: "+e.inspect)
+      $shutdown_reason = Globals::FATAL_SHUTDOWN
       boiler_control.shutdown
       exit
     end
