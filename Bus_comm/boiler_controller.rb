@@ -500,9 +500,20 @@ class Heating_State_Machine
     # Set required water temperature of the boiler
     @watertemp.set_water_temp(@target_boiler_temp)
     
-    if power_needed[:power] != :HW
+    if power_needed[:power] == :HW
+      if prev_power_needed[:power] == :RAD or prev_power_needed[:power] == :RADFLOOR 
+        @heater_relay.off 
+        # Wait before turning pumps off to make sure we do not lose circulation
+        sleep @config[:circulation_maintenance_delay]
+      end
+    else
       # Turn off boiler if coming from HW to avoid risk of overheating the boiler
-      @heater_relay.off if prev_power_needed[:power] == :HW    
+      # And also turn off to avoid water circulation 
+      if prev_power_needed[:power] == :HW
+        @heater_relay.off 
+        # Wait before turning pumps off to make sure we do not lose circulation
+        sleep @config[:circulation_maintenance_delay]
+      end
     end
 
     case power_needed[:power]
@@ -511,8 +522,6 @@ class Heating_State_Machine
         # Only HW pump on
         @hot_water_pump.on
 
-        # Wait before turning pumps off to make sure we do not lose circulation
-        sleep @config[:circulation_maintenance_delay]
         @radiator_pump.off
         @floor_pump.off
         @hidr_shift_pump.off
@@ -541,8 +550,6 @@ class Heating_State_Machine
         # Radiator pump on
         @radiator_pump.on
         
-        # Wait before turning pumps off to make sure we do not lose circulation
-        sleep @config[:circulation_maintenance_delay]
         @hot_water_pump.off
  
         # Floor heating off
@@ -581,8 +588,6 @@ class Heating_State_Machine
         # Radiator pump on
         @radiator_pump.on
         
-        # Wait before turning pumps off to make sure we do not lose circulation
-        sleep @config[:circulation_maintenance_delay]
         @hot_water_pump.off
       
       when :FLOOR
@@ -614,13 +619,14 @@ class Heating_State_Machine
         # Floor heating on
         @floor_pump.on
         
-        # Wait before turning pumps off to make sure we do not lose circulation
-        sleep @config[:circulation_maintenance_delay]
         @hot_water_pump.off
         @radiator_pump.off
       end
 
       if power_needed[:power] != :NONE
+        # Wait before turning pumps off to make sure we do not lose circulation
+        sleep @config[:circulation_maintenance_delay]
+
         # Turn on heater relay of the boiler to activate heating
         @heater_relay.on
       else    
