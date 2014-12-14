@@ -209,6 +209,7 @@ COMM_DATA = [
   @busmutex.synchronize do
     retry_count = 0
     success = false
+    response_history = []
     
     while true
       @message_send_buffer.clear
@@ -232,10 +233,18 @@ COMM_DATA = [
       
       @response[:Return_code] == Buscomm::NO_ERROR and return @response
 
+      response_history.push(@response)
+        
       # Increase retry count and raise exception 
       retry_count += 1
-      $app_logger.warn("Messaging retry #"+retry_count.to_s+" Error code: "+@response[:Return_code].to_s+" - "+RESPONSE_TEXT[@response[:Return_code]]+" Device return code: "+@response[:DeviceResponseCode].to_s) if retry_count > 1
-
+      
+      # Print response history if already retried once
+      if retry_count > 1
+        ret_c = 1
+        response_history.each { |resp|
+          $app_logger.warn("Messaging retry #"+ret_c.to_s+" Error code: "+resp[:Return_code].to_s+" - "+RESPONSE_TEXT[resp[:Return_code]]+" Device return code: "+resp[:DeviceResponseCode].to_s)
+          ret_c += 1 }
+      end
       raise MessagingError.new(@response), "Messaging retry failed at retry # "+retry_count.to_s+" giving up." if retry_count > MESSAGING_RETRY_COUNT
       
       # Sleep more and more - maybe the communication error resolves itself
