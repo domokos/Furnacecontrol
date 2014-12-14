@@ -248,7 +248,7 @@ COMM_DATA = [
       raise MessagingError.new(@response), "Messaging retry failed at retry # "+retry_count.to_s+" giving up." if retry_count > MESSAGING_RETRY_COUNT
       
       # Sleep more and more - maybe the communication error resolves itself
-      sleep retry_count * 0.23
+      sleep retry_count * 0.3
     end
   end
  end
