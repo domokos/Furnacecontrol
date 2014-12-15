@@ -385,63 +385,6 @@ class Heating_State_Machine
     @mode_thermostat.update
   end
   
-# Read the target temperatures, determine targets and operating mode
-  def determine_targets(prev_power_needed,power_needed)
-    # Read the config file
-    read_config
-    
-    @living_thermostat.set_threshold(@config[:target_living_temp])
-    @upstairs_thermostat.set_threshold(@config[:target_upstairs_temp])
-    @basement_thermostat.set_target(@config[:target_basement_temp])
-    @mode_thermostat.set_threshold(@config[:mode_threshold])
-    @HW_thermostat.set_threshold(@config[:target_HW_temp])
-
-    if @mode_thermostat.is_on?
-       @state.name != :Heat and @mode = @mode_Heat_HW
-    else
-       @state.name != :Heat and @mode = @mode_HW
-    end
-    @HW_thermostat.set_histeresis(2,2)
-
-    case power_needed[:power]
-    when :HW
-      # Calculate the error relative to the target
-      error = @HW_thermostat.temp - (@HW_thermostat.threshold + @HW_thermostat.up_histeresis)
-      
-      # calculate linear slope parameters
-      a = ((@HW_thermostat.threshold + @HW_thermostat.up_histeresis) - 75.0) /  @config[:HW_slope_start_before_target].to_f
-      b = (@HW_thermostat.threshold + @HW_thermostat.up_histeresis) + 10.0
-
-      # Calculate target water temperature
-      target = -a*error + b
-      
-      # Limit target temperature boundaries
-      target = 85 if target > 85
-      target = @HW_thermostat.threshold + @HW_thermostat.up_histeresis if target < @HW_thermostat.threshold + @HW_thermostat.up_histeresis
-      
-      # Set target for boiler temperature
-      @target_boiler_temp = target
-      
-    when :RAD, :RADFLOOR
-      # Use @living_floor_thermostat.temp to get a filtered external temperature
-      @target_boiler_temp = -0.83*@living_floor_thermostat.temp+37.5
-      if @target_boiler_temp > 70.0
-        @target_boiler_temp = 70.0
-      elsif @target_boiler_temp < 34.0
-        @target_boiler_temp = 34.0
-      end
-    
-    when :FLOOR
-      @target_boiler_temp = 34.0
-
-    when :NONE
-      @target_boiler_temp = 7.0
-
-    end  
-
-  end
-
-  
 # The main loop of the controller
   def operate
     @cycle = 0
@@ -506,6 +449,62 @@ class Heating_State_Machine
     shutdown
   end
 
+# Read the target temperatures, determine targets and operating mode
+  def determine_targets(prev_power_needed,power_needed)
+    # Read the config file
+    read_config
+    
+    @living_thermostat.set_threshold(@config[:target_living_temp])
+    @upstairs_thermostat.set_threshold(@config[:target_upstairs_temp])
+    @basement_thermostat.set_target(@config[:target_basement_temp])
+    @mode_thermostat.set_threshold(@config[:mode_threshold])
+    @HW_thermostat.set_threshold(@config[:target_HW_temp])
+
+    if @mode_thermostat.is_on?
+       @state.name != :Heat and @mode = @mode_Heat_HW
+    else
+       @state.name != :Heat and @mode = @mode_HW
+    end
+    @HW_thermostat.set_histeresis(2,2)
+
+    case power_needed[:power]
+    when :HW
+      # Calculate the error relative to the target
+      error = @HW_thermostat.temp - (@HW_thermostat.threshold + @HW_thermostat.up_histeresis)
+      
+      # calculate linear slope parameters
+      a = ((@HW_thermostat.threshold + @HW_thermostat.up_histeresis) - 75.0) /  @config[:HW_slope_start_before_target].to_f
+      b = (@HW_thermostat.threshold + @HW_thermostat.up_histeresis) + 10.0
+
+      # Calculate target water temperature
+      target = -a*error + b
+      
+      # Limit target temperature boundaries
+      target = 85 if target > 85
+      target = @HW_thermostat.threshold + @HW_thermostat.up_histeresis if target < @HW_thermostat.threshold + @HW_thermostat.up_histeresis
+      
+      # Set target for boiler temperature
+      @target_boiler_temp = target
+      
+    when :RAD, :RADFLOOR
+      # Use @living_floor_thermostat.temp to get a filtered external temperature
+      @target_boiler_temp = -0.83*@living_floor_thermostat.temp+37.5
+      if @target_boiler_temp > 70.0
+        @target_boiler_temp = 70.0
+      elsif @target_boiler_temp < 34.0
+        @target_boiler_temp = 34.0
+      end
+    
+    when :FLOOR
+      @target_boiler_temp = 34.0
+
+    when :NONE
+      @target_boiler_temp = 7.0
+
+    end  
+  # End of determine_targets
+  end  
+  
   # This function controls valves, pumps and heat during heating by evaluating the required power
   def control_pumps_valves_and_heat(prev_power_needed,power_needed)
     $app_logger.debug("Controlling valves and pumps")
@@ -921,6 +920,7 @@ pid = fork do
       boiler_control.operate
     rescue Exception => e
       $app_logger.fatal("Exception caught in main block: "+e.inspect)
+      $app_logger.fatal("Exception backtrace: "+e.backtrace.join("\n"))     
       $shutdown_reason = Globals::FATAL_SHUTDOWN
       boiler_control.shutdown
       exit

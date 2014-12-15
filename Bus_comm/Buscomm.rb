@@ -20,11 +20,12 @@ end
 
 class Buscomm
   MAX_MESSAGE_LENGTH = 15
+  MIN_MESSAGE_LENGTH = 7
   SERIAL_RECIEVE_BUFFER_LIMIT = 100
 
   # Messaging parameters
-  TRAIN_LENGTH_RCV  = 2
-  TRAIN_LENGTH_SND = 8
+  TRAIN_LENGTH_RCV  = 3
+  TRAIN_LENGTH_SND = 4
   MESSAGING_RETRY_COUNT = 4
   
   # Messaging states
@@ -39,12 +40,19 @@ class Buscomm
   # Message receiving error conditions
   NO_ERROR = 0 # No error
   NO_TRAIN_RECEIVED = 1 # Expected train sequence, got something else => Ignoring communication
-  MESSAGE_TOO_LONG = 2 # Receive buffer length exceeded
+  ILL_FORMED_MESSAGE = 2 # Receive buffer length exceeded
   MESSAGING_TIMEOUT = 3 # Timeout occured - expected but no communication is seen on the bus
   COMM_CRC_ERROR = 4 # Frame with CRC error received
   DEVICE_ERROR = 5 # Device responded with error
+ 
 
-  RESPONSE_TEXT = ["No error","No train received", "Message too long", "Messaging timeout", "CRC error", "Device returned error"]
+  RESPONSE_TEXT = [
+    "No error",
+    "No train received",
+    "Ill formed message - received length too short or too long",
+    "Messaging timeout",
+    "CRC error - recieved message fails checksum check",
+    "Device returned error"]
     
   #
   # Command opcodes
@@ -347,13 +355,12 @@ private
              response_state = RECEIVING_MESSAGE;
              response << byte_recieved
              msg_size = byte_recieved
+             return_value = {:Return_code => ILL_FORMED_MESSAGE, :Content => response} if msg_size.ord < MIN_MESSAGE_LENGTH or msg_size.ord > MAX_MESSAGE_LENGTH
            end
          end
          
        when RECEIVING_MESSAGE
-         if response.size > MAX_MESSAGE_LENGTH
-           return_value = {:Return_code => MESSAGE_TOO_LONG, :Content => nil}
-         elsif response.size < msg_size.ord
+         if response.size < msg_size.ord
            # Receive the next message character
            response << byte_recieved
          elsif crc16(response[0,msg_size.ord-2]) != ((response[msg_size.ord-2].ord << 8 ) | response[msg_size.ord-1].ord) or response[OPCODE] == CRC_ERROR
@@ -439,13 +446,4 @@ private
     0x6e17, 0x7e36, 0x4e55, 0x5e74, 0x2e93, 0x3eb2, 0x0ed1, 0x1ef0
     ]
 end
-
-#    case 5: // Radiator pump P1_4
-#    case 6: // Floor pump P1_5
-#    case 7: // Hidraulic Shifter pump P1_3
-#    case 8: // HW pump P1_6
-#    case 9: // Basement floor valve P1_2
-#    case 10: // Basement radiator valve P1_1
-#    case 11: // Heater relay P3_5
-#    case 12: // Wiper value
 
