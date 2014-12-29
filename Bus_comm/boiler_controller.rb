@@ -57,10 +57,10 @@ class Heating_State_Machine
     @mode_Heat_HW = BoilerBase::Mode.new("Heat","Heating and hot water")
     
     # Create pumps
-    @radiator_pump = BusDevice::Switch.new("Radiator pump", "In the basement boiler room - Contact 1 on Main Panel", 11, 5, DRY_RUN)
-    @floor_pump = BusDevice::Switch.new("Floor pump", "In the basement boiler room - Contact 2 on Main Panel", 11, 6, DRY_RUN)
-    @hidr_shift_pump = BusDevice::Switch.new("Hidraulic shift pump", "In the basement boiler room - Contact 3 on Main Panel", 11, 7, DRY_RUN)
-    @hot_water_pump = BusDevice::Switch.new("Hot water pump", "In the basement boiler room - Contact 4 on Main Panel", 11, 8, DRY_RUN)
+    @radiator_pump = BusDevice::Switch.new("Radiator pump", "In the basement boiler room - Contact 4 on Main Panel", 11, 7, DRY_RUN)
+    @floor_pump = BusDevice::Switch.new("Floor pump", "In the basement boiler room - Contact 5 on Main Panel", 11, 8, DRY_RUN)
+    @hidr_shift_pump = BusDevice::Switch.new("Hidraulic shift pump", "In the basement boiler room - Contact 6 on Main Panel", 11, 9, DRY_RUN)
+    @hot_water_pump = BusDevice::Switch.new("Hot water pump", "In the basement boiler room - Contact 7 on Main Panel", 11, 10, DRY_RUN)
 
     # Create temp sensors
     @forward_sensor = BusDevice::TempSensor.new("Forward boiler temperature", "On the forward piping of the boiler", 11, 4, DRY_RUN, @config[:forward_mock_temp])
@@ -140,16 +140,16 @@ class Heating_State_Machine
     #Technical targets must be set to allow PWM proc to detect changes
     @upstairs_floor_thermostat.set_target(0)
     @living_floor_thermostat.set_target(0)
-    
+
     # Create magnetic valves
-    @basement_floor_valve = BusDevice::DelayedCloseMagneticValve.new("Basement floor valve","Contact 5 on main board" ,11 , 9, DRY_RUN)
-    @basement_radiator_valve = BusDevice::DelayedCloseMagneticValve.new("Basement radiator valve","Contact 8 on main board", 11, 10, DRY_RUN)
+    @basement_radiator_valve = BusDevice::DelayedCloseMagneticValve.new("Basement radiator valve","Contact 8 on main board", 11, 11, DRY_RUN)
+    @basement_floor_valve = BusDevice::DelayedCloseMagneticValve.new("Basement floor valve","Contact 9 on main board" ,11 , 12, DRY_RUN)
     @living_floor_valve = BusDevice::DelayedCloseMagneticValve.new("Living level floor valve","In the living floor water distributor", 12 , 1, true)
     @upstairs_floor_valve = BusDevice::DelayedCloseMagneticValve.new("Upstairs floor valve","In the upstairs water distributor",12, 3, true)
 
     # Create heater relay valves
-    @heater_relay = BusDevice::Switch.new("Heater relay","Heater contact on main panel", 11, 11, DRY_RUN)
-    @watertemp = BusDevice::WaterTemp.new("Boiler water temp regulator", "Wiper contact on main panel", 11, 12, DRY_RUN)
+    @heater_relay = BusDevice::Switch.new("Heater relay","Heater contact on main panel", 11, 13, DRY_RUN)
+    @watertemp = BusDevice::WaterTemp.new("Boiler water temp regulator", "Wiper contact on main panel", 11, 15, DRY_RUN)
 
     # Define the states of the heating
     @state_Off = BoilerBase::State.new(:Off,"Boiler switched off")
