@@ -180,6 +180,8 @@ COMM_DATA = [
   STOPBITS=1
   DATABITS=8
   
+  SLAVES_KEEPALIVE_INTERVAL_SEC = 15
+  SLAVES_KEEPALIVE_CHECK_INTERVAL = 2 
 
   def initialize(master_address, portnum, comm_speed)
 
@@ -191,7 +193,10 @@ COMM_DATA = [
     @sp.binmode
     
     @master_address = master_address
-    
+
+    @slaves = {}
+    @keepalive_process = nil
+
     @message_seq = 0
 
     @busmutex = Mutex.new
@@ -209,6 +214,28 @@ COMM_DATA = [
     end
    end
 
+   def start_keepalive_process
+     return unless @keepalive_process == nil
+     @keepalive_process = Thread.new do
+       while true
+         sleep SLAVES_KEEPALIVE_CHECK_INTERVAL
+         @busmutex.synchronize do
+           @slaves.each { |slave_address, last_addressed|
+             if last_addressed < Time.now.to_i - SLAVES_KEEPALIVE_INTERVAL_SEC
+               begin
+                send_message(slave_address,PING,"")
+               rescue MessagingError => e
+                 retval = e.return_message
+                 $app_logger.fatal("Unrecoverable communication error on bus, pinging slave '"+slave_address.to_s+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
+                 $shutdown_reason = Globals::FATAL_SHUTDOWN
+               end
+             end
+           }
+         end
+       end
+     end
+   end
+   
   def send_message(slave_address,opcode,parameter)
 # Communicate in a synchronized manner 
 # only one communication session is allowed on a single the bus so 
@@ -218,7 +245,7 @@ COMM_DATA = [
     retry_count = 0
     success = false
     response_history = []
-    
+
     while true
       @message_send_buffer.clear
     
@@ -239,7 +266,14 @@ COMM_DATA = [
       
       @response = wait_for_response
       
-      @response[:Return_code] == Buscomm::NO_ERROR and return @response
+      if @response[:Return_code] == Buscomm::NO_ERROR 
+        if @slaves[slave_address] == nil
+          $app_logger.debug("New slave device '"+slave_address.to_s+"' identified - registering for keepalive")
+          start_keepalive_process
+        end
+        @slaves[slave_address] = Time.now.to_i
+        return @response
+      end
 
       response_history.push(@response)
         
