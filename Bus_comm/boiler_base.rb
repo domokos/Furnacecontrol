@@ -311,7 +311,7 @@ module BusDevice
   # End of Class definition TempSensor  
   end
     
-  class WaterTemp < DeviceBase
+  class WaterTempBase < DeviceBase
    attr_accessor :dry_run
    attr_reader :value, :name, :slave_address, :location, :temp_required
  
@@ -352,71 +352,17 @@ module BusDevice
    end
    
    private
-
-   def wiper_lookup(temp_value)
-     if temp_value>84
-       return 0xff
-     elsif temp_value == 84
-       return 0xf8
-     elsif temp_value > 80
-       return ((0xf8-0xf4) / (84.0-80.0) * (temp_value-80.0) + 0xf4).round
-     elsif temp_value == 80
-       return 0xf4
-     elsif temp_value > 74
-       return ((0xf4-0xf0) / (80.0-74.0) * (temp_value-74.0) + 0xf0).round
-     elsif temp_value == 74
-       return 0xf0
-     elsif temp_value > 69
-       return ((0xf0-0xeb) / (74.0-69.0) * (temp_value-69.0) + 0xeb).round
-     elsif temp_value == 69
-       return 0xeb
-     elsif temp_value > 65
-       return ((0xeb-0xe8) / (69.0-65.0) * (temp_value-65.0) + 0xe8).round
-     elsif temp_value == 65
-       return 0xe8
-     elsif temp_value > 58
-       return ((0xe8-0xe0) / (65.0-58.0) * (temp_value-58.0) + 0xe0).round
-     elsif temp_value == 58
-       return 0xe0
-     elsif temp_value > 54
-       return ((0xe0-0xd8) / (58.0-54.0) * (temp_value-54.0) + 0xd8).round
-     elsif temp_value == 54
-       return 0xd8
-     elsif temp_value > 49
-       return ((0xd8-0xd0) / (54.0-49.0) * (temp_value-49.0) + 0xd0).round
-     elsif temp_value == 49
-       return 0xd0
-     elsif temp_value > 44
-       return ((0xd0-0xc0) / (49.0-44.0) * (temp_value-44.0) + 0xc0).round
-     elsif temp_value == 44
-       return 0xc0
-     elsif temp_value > 40
-       return ((0xc0-0xb0) / (44.0-40.0) * (temp_value-40.0) + 0xb0).round
-     elsif temp_value == 40
-       return 0xb0
-     elsif temp_value > 37
-       return ((0xb0-0xa4) / (40.0-37.0) * (temp_value-37.0) + 0xa4).round
-     elsif temp_value == 37
-       return 0xa4
-     elsif temp_value > 34
-       return ((0xa4-0x96) / (37.0-34.0) * (temp_value-34.0) + 0x96).round
-     elsif temp_value == 34
-       return 0x96
-     else
-       return 0x00
-     end
-   end
-   
-  # 0x10 - <27 C
-  # 0x60 - >26 C - turns on from 26 30?
-
    
    # Write the value of the parameter to the device on the bus
    # Bail out on unrecoverable communication error
    def write_device(value, is_volatile)
      if !@dry_run
        begin
-         @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+0x00.chr+value.chr+is_volatile.chr)
+         if value != 0xff
+            @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+0x00.chr+value.chr+is_volatile.chr)
+         else
+           @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+0x01.chr+0xff.chr+is_volatile.chr)
+         end
          $app_logger.debug("Dry run - writing "+value.to_s(16)+" to wiper register with is_volatile flag set to "+is_volatile.to_s+" in '"+@name+"'")
        rescue MessagingError => e
          # Get the returned message
@@ -488,8 +434,72 @@ module BusDevice
      return check_result
     end
 
- #End of class WaterTemp    
+ #End of class WaterTempBase
  end
+ 
+ 
+ class HeatingWaterTemp < WaterTempBase
+  def initialize(name, location, slave_address, register_address, dry_run)
+    @lookup_curve = 
+       Globals::Polycurve.new([
+       [33,0x00],
+       [34,0x96],
+       [37,0xa4],
+       [40,0xb0],
+       [44,0xc0],
+       [49,0xd0],
+       [54,0xd8],
+       [58,0xe0],
+       [65,0xe8],
+       [69,0xeb],
+       [74,0xf0],
+       [80,0xf4],
+       [84,0xf8],
+       [85,0xff]])
+    super(name, location, slave_address, register_address, dry_run)
+  end
+
+  protected
+  def wiper_lookup(temp_value)
+    return @lookup_curve.value(temp_value)
+  end
+   # End of class HeatingWaterTemp
+ end
+ 
+ 
+class HWWaterTemp < WaterTempBase
+  def initialize(name, location, slave_address, register_address, dry_run)
+    @lookup_curve = 
+       Globals::Polycurve.new([
+       [21.5,0x00], # 11.3k
+       [23.7,0x10], # 10.75k
+       [24.7,0x20], # 10.21k
+       [26.0,0x30], # 9.65k
+       [27.1,0x40], # 9.13k
+       [28.5,0x50], # 8.58k
+       [29.5,0x60], # 8.2k
+       [31.8,0x70], # 7.47k
+       [33.8,0x80], # 6.89k
+       [36.0,0x90], # 6.33k
+       [38.25,0xa0], # 5.77k
+       [40.5,0xb0], # 5.19k
+       [43.7,0xc0], # 4.61k
+       [45.1,0xd0], # 4.3k
+       [51.4,0xe0], # 3.45k
+       [56.1,0xf0], # 2.86k
+       [61.5,0xfe], # 2.32k
+       [62.6,0xff] # 2.28k
+       ])
+    super(name, location, slave_address, register_address, dry_run)
+  end
+  
+  protected
+  def wiper_lookup(temp_value)
+    return @lookup_curve.value(temp_value)
+  end
+  # End of class HWWaterTemp
+end
+
  
 #End of module BusDevice
 end

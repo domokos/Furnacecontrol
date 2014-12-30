@@ -113,4 +113,28 @@ class TimerGeneral
   end
 end
 
+class Polycurve
+  def initialize(pointlist)
+    @pointlist = Array.new(pointlist)
+  end
+
+  def value (x_in)
+    index = 0
+    @pointlist.each_index{ |n|
+      index = n
+      break if @pointlist[n][0] >= x_in
+    }
+
+    # Check boundaries
+    return @pointlist.first[1] if index == 0 
+    return @pointlist.last[1] if index == @pointlist.size-1
+    
+    # Linear curve between points 
+    return ((@pointlist[index-1][1]-@pointlist[index][1]) / (@pointlist[index-1][0]-@pointlist[index][0]).to_f * (x_in-@pointlist[index-1][0].to_f) + @pointlist[index-1][1]).round
+  end
+
+# End of class Polycurve
+end
+
+#End of module Globals
 end

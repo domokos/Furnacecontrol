@@ -149,7 +149,8 @@ class Heating_State_Machine
 
     # Create heater relay valves
     @heater_relay = BusDevice::Switch.new("Heater relay","Heater contact on main panel", 11, 13, DRY_RUN)
-    @watertemp = BusDevice::WaterTemp.new("Boiler water temp regulator", "Wiper contact on main panel", 11, 15, DRY_RUN)
+    @heating_watertemp = BusDevice::HeatingWaterTemp.new("Boiler heating water temp regulator", "Heating wiper contact on main panel", 11, 15, DRY_RUN)
+    @HW_watertemp = BusDevice::HWWaterTemp.new("Boiler HW water temp sensor regulator", "HW wiper contact on main panel", 11, 14, DRY_RUN)
 
     # Define the states of the heating
     @state_Off = BoilerBase::State.new(:Off,"Boiler switched off")
@@ -164,7 +165,10 @@ class Heating_State_Machine
       $app_logger.debug("Activating \"Off\" state")
 
       # Set water temperature of the boiler low
-      @watertemp.set_water_temp(5.0)
+      @heating_watertemp.set_water_temp(5.0)
+      
+      # Set the water temp in the HW tank high
+      @HW_watertemp.set_water_temp(65.0)
 
       # Turn off heater relay
       @heater_relay.off
@@ -199,7 +203,7 @@ class Heating_State_Machine
       $app_logger.debug("Activating \"Postheat\" state")
 
       # Set water temperature of the boiler low
-      @watertemp.set_water_temp(5.0)
+      @heating_watertemp.set_water_temp(5.0)
 
       # Turn off heater relay
       @heater_relay.off
@@ -229,7 +233,7 @@ class Heating_State_Machine
       $app_logger.debug("Activating \"PostHW\" state")
 
       # Set water temperature of the boiler low
-      @watertemp.set_water_temp(5.0)
+      @heating_watertemp.set_water_temp(5.0)
 
       # Turn off heater relay
       @heater_relay.off
@@ -510,7 +514,7 @@ class Heating_State_Machine
     $app_logger.debug("Controlling valves and pumps")
 
     # Set required water temperature of the boiler
-    @watertemp.set_water_temp(@target_boiler_temp)
+    @heating_watertemp.set_water_temp(@target_boiler_temp)
 
     return if prev_power_needed == power_needed
     
@@ -829,7 +833,7 @@ class Heating_State_Machine
     $heating_logger.debug("Basement thermostat status: "+@basement_thermostat.state.to_s)
          
     $heating_logger.debug("\nBoiler relay: "+@heater_relay.state.to_s)
-    $heating_logger.debug("Boiler required temperature: "+@watertemp.temp_required.round(2).to_s)
+    $heating_logger.debug("Boiler required temperature: "+@heating_watertemp.temp_required.round(2).to_s)
     $heating_logger.debug("LOGITEM END\n")
   end
   
