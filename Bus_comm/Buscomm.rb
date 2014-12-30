@@ -223,12 +223,15 @@ COMM_DATA = [
            @slaves.each { |slave_address, last_addressed|
              if last_addressed < Time.now.to_i - SLAVES_KEEPALIVE_INTERVAL_SEC
                begin
+                $app_logger.debug("Slave '"+slave_address.to_s+"' has seen no communication since '"+SLAVES_KEEPALIVE_INTERVAL_SEC.to_s+"' sec. Pinging to make sure it stays alive.")
                 send_message(slave_address,PING,"")
                rescue MessagingError => e
                  retval = e.return_message
                  $app_logger.fatal("Unrecoverable communication error on bus, pinging slave '"+slave_address.to_s+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
                  $shutdown_reason = Globals::FATAL_SHUTDOWN
                end
+             else
+               $app_logger.debug("Slave '"+slave_address.to_s+"' has last seen communication at '"+Time.at(last_addressed).strftime("%Y-%m-%d %H:%M:%S")+"', "+(Time.now.to_i-last_addressed).to_s+" sec ago. Skip pinging it.")
              end
            }
          end
