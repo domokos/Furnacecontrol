@@ -231,7 +231,7 @@ COMM_DATA = [
                  $shutdown_reason = Globals::FATAL_SHUTDOWN
                end
              else
-               $app_logger.debug("Slave '"+slave_address.to_s+"' has last seen communication at '"+Time.at(last_addressed).strftime("%Y-%m-%d %H:%M:%S")+"', "+(Time.now.to_i-last_addressed).to_s+" sec ago. Skip pinging it.")
+               $app_logger.debug("Slave '"+slave_address.to_s+"' has last seen communication at '"+Time.at(last_addressed).strftime("%Y-%m-%d %H:%M:%S")+"', "+(Time.now.to_i-last_addressed).to_s+" secs ago. Skip pinging it.")
              end
            }
          end
