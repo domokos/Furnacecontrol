@@ -347,7 +347,7 @@ module BusDevice
      if value_requested != @value
        @value = value_requested
        write_device(@value, VOLATILE)
-       $app_logger.info("Water temperature wiper rheostat set to value "+@value.to_s+" requiring water temperature "+@temp_required.to_s+" C on '"+@name+"'")
+       $app_logger.info(@name+" set to value "+@value.to_s+" meaning water temperature "+@temp_required.to_s+" C")
      end
    end
    
