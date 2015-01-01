@@ -476,7 +476,6 @@ class Heating_State_Machine
     else
        @state.name != :Heat and @mode = @mode_HW
     end
-    @HW_thermostat.set_histeresis(2,2)
 
     case power_needed[:power]
     when :HW
