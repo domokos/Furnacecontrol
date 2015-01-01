@@ -130,7 +130,7 @@ class Heating_State_Machine
             
     # Create thermostats, with default threshold values and hysteresis values
     @living_thermostat = BoilerBase::Symmetric_thermostat.new(@living_sensor,0.3,0.0,8)
-    @HW_thermostat = BoilerBase::Asymmetric_thermostat.new(@HW_sensor,2,2,0.0,8)
+    @HW_thermostat = BoilerBase::Asymmetric_thermostat.new(@HW_sensor,2,0,0.0,8)
     @living_floor_thermostat = BoilerBase::PwmThermostat.new(@external_sensor,10,@living_floor_thermostat_valueproc,@is_HW_or_valve_proc)
     @mode_thermostat = BoilerBase::Symmetric_thermostat.new(@external_sensor,0.8,5.0,8)
     @upstairs_floor_thermostat = BoilerBase::PwmThermostat.new(@external_sensor,10,@upstairs_floor_thermostat_valueproc,@is_HW_or_valve_proc)
