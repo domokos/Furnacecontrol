@@ -501,11 +501,31 @@ class Heating_State_Machine
   # End of determine_targets
   end  
   
+  # Control heating
+  def  control_heat(power_needed)
+    
+    case power_needed[:power]
+      when :HW
+        # Set the water temp so that the boiler changes to HW mode and it knows how far we are from the required HW temperature
+        @HW_watertemp.set_water_temp(@HW_thermostat.temp)
+      when :RAD, :RADFLOOR, :FLOOR
+        # Set required water temperature of the boiler
+        @heating_watertemp.set_water_temp(@target_boiler_temp)
+    
+        # Make sure HW mode of the boiler is off if heating is active
+        @HW_watertemp.set_water_temp(65.0)
+    end
+  end
+  
   # This function controls valves, pumps and heat during heating by evaluating the required power
   def control_pumps_valves_heat(prev_power_needed,power_needed)
     $app_logger.debug("Controlling valves and pumps")
-
-    return if prev_power_needed == power_needed
+    
+    # Do only heat control if there is no change in power_needed
+    if prev_power_needed == power_needed
+      control_heat(power_needed)
+      return
+    end
  
     case power_needed[:power]
       when :HW # Only Hot water supplies on
@@ -598,7 +618,7 @@ class Heating_State_Machine
         @heating_watertemp.set_water_temp(@target_boiler_temp)
     
         # Make sure HW mode of the boiler is off if heating is active
-        @HW_watertemp.set_water_temp(65.0)    
+        @HW_watertemp.set_water_temp(65.0)
                 
         @hot_water_pump.off
       
