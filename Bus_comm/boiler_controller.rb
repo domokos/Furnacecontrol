@@ -154,7 +154,7 @@ class Heating_State_Machine
 
     # Define the states of the heating
     @state_Off = BoilerBase::State.new(:Off,"Boiler switched off")
-    @state_Heat = BoilerBase::State.new(:Heat,"Heating to the target temperature with PD controll")
+    @state_Heat = BoilerBase::State.new(:Heat,"Heating to the target temperature with external sensor based heating power control")
     @state_Postheat = BoilerBase::State.new(:Postheat,"Post ciculation with heating")
     @state_PostHW = BoilerBase::State.new(:PostHW,"Post circulation w/o heating")
 
@@ -190,13 +190,13 @@ class Heating_State_Machine
       
     })
 
-    # Activation actions for Heating 1st gear
+    # Activation actions for Heating
     @state_Heat.set_activate(
     proc {
       $app_logger.debug("Activating \"Heat\" state")
       # Do not control pumps and valves 
     })
-
+    
     # Activation actions for Post circulation heating
     @state_Postheat.set_activate(
     proc {
@@ -204,6 +204,9 @@ class Heating_State_Machine
 
       # Set water temperature of the boiler low
       @heating_watertemp.set_water_temp(5.0)
+
+      # Set the water temp in the HW tank high
+      @HW_watertemp.set_water_temp(65.0)
 
       # Turn off heater relay
       @heater_relay.off
@@ -217,6 +220,7 @@ class Heating_State_Machine
 
       # Wait before turning pumps off to make sure we do not lose circulation
       sleep @config[:circulation_maintenance_delay]
+
       @floor_pump.off
       @hot_water_pump.off
 
@@ -235,6 +239,9 @@ class Heating_State_Machine
       # Set water temperature of the boiler low
       @heating_watertemp.set_water_temp(5.0)
 
+      # Set the water temp in the HW tank high
+      @HW_watertemp.set_water_temp(65.0)
+      
       # Turn off heater relay
       @heater_relay.off
 
@@ -315,9 +322,9 @@ class Heating_State_Machine
     when :Heat
       $app_logger.debug("Evaluating Heat state:")
       $app_logger.debug("\tControl valves and pumps based on measured temperatures")
-      $app_logger.debug("\tControl burners to maintain target boiler temperature")
+      $app_logger.debug("\tControl boiler wipers to maintain target boiler temperature")
       $app_logger.debug("\tIf not need power anymore then -> Postheat or PostHW based on operating mode")
-   
+
       # If not need power anymore then -> Postheat or PostHW
       if power_needed[:power] == :NONE and @mode == @mode_HW
         $app_logger.debug("Decision: No more power needed in HW mode - changing state to PostHW")
@@ -332,6 +339,7 @@ class Heating_State_Machine
       else
         # Control valves, pumps and boiler based on measured temperatures
         control_pumps_valves_and_heat(prev_power_needed,power_needed)
+        control_heat(prev_power_needed,power_needed)
       end
 
     when :Postheat
@@ -473,22 +481,7 @@ class Heating_State_Machine
 
     case power_needed[:power]
     when :HW
-      # Calculate the error relative to the target
-      error = @HW_thermostat.temp - (@HW_thermostat.threshold + @HW_thermostat.up_histeresis)
-      
-      # calculate linear slope parameters
-      a = ((@HW_thermostat.threshold + @HW_thermostat.up_histeresis) - 75.0) /  @config[:HW_slope_start_before_target].to_f
-      b = (@HW_thermostat.threshold + @HW_thermostat.up_histeresis) + 10.0
-
-      # Calculate target water temperature
-      target = -a*error + b
-      
-      # Limit target temperature boundaries
-      target = 85 if target > 85
-      target = @HW_thermostat.threshold + @HW_thermostat.up_histeresis if target < @HW_thermostat.threshold + @HW_thermostat.up_histeresis
-      
-      # Set target for boiler temperature
-      @target_boiler_temp = target
+      # Do nothing - just leave the heating wiper where it is.
       
     when :RAD, :RADFLOOR
       # Use @living_floor_thermostat.temp to get a filtered external temperature
@@ -509,36 +502,36 @@ class Heating_State_Machine
   # End of determine_targets
   end  
   
+  def control_heat(prev_power_needed,power_needed)
+    
+    case power_needed[:power]
+    when :HW
+      # Set the water temp so that the boiler changes to HW mode and it knows how far we are from the required HW temperature
+      @HW_watertemp.set_water_temp(@HW_thermostat.temp)
+
+    when :RAD, :RADFLOOR, :FLOOR
+      # Set required water temperature of the boiler
+      @heating_watertemp.set_water_temp(@target_boiler_temp)
+      
+      # Make sure HW mode of the boiler is off if heating is active
+      @HW_watertemp.set_water_temp(65.0)      
+    end
+  end
+  
+  
   # This function controls valves, pumps and heat during heating by evaluating the required power
   def control_pumps_valves_and_heat(prev_power_needed,power_needed)
     $app_logger.debug("Controlling valves and pumps")
 
-    # Set required water temperature of the boiler
-    @heating_watertemp.set_water_temp(@target_boiler_temp)
-
     return if prev_power_needed == power_needed
-    
-    if power_needed[:power] == :HW
-      if prev_power_needed[:power] == :RAD or prev_power_needed[:power] == :RADFLOOR or prev_power_needed[:power] == :FLOOR 
-        @heater_relay.off 
-        # Wait before turning pumps off to make sure we do not lose circulation
-        sleep @config[:circulation_maintenance_delay]
-      end
-    else
-      # Turn off boiler if coming from HW to avoid risk of overheating the boiler
-      # And also turn off to avoid water circulation 
-      if prev_power_needed[:power] == :HW
-        @heater_relay.off 
-        # Wait before turning pumps off to make sure we do not lose circulation
-        sleep @config[:circulation_maintenance_delay]
-      end
-    end
-
+ 
     case power_needed[:power]
       when :HW # Only Hot water supplies on
         $app_logger.info("Setting valves and pumps for HW")
         # Only HW pump on
         @hot_water_pump.on
+        
+        sleep @config[:circulation_maintenance_delay]
 
         @radiator_pump.off
         @floor_pump.off
@@ -567,6 +560,8 @@ class Heating_State_Machine
         @hidr_shift_pump.on
         # Radiator pump on
         @radiator_pump.on
+        
+        sleep @config[:circulation_maintenance_delay] unless prev_power_needed[:power] == :RADFLOOR or prev_power_needed[:power] == :FLOOR 
         
         @hot_water_pump.off
  
@@ -606,6 +601,8 @@ class Heating_State_Machine
         # Radiator pump on
         @radiator_pump.on
         
+        sleep @config[:circulation_maintenance_delay] unless prev_power_needed[:power] == :RAD or prev_power_needed[:power] == :FLOOR
+        
         @hot_water_pump.off
       
       when :FLOOR
@@ -637,17 +634,19 @@ class Heating_State_Machine
         # Floor heating on
         @floor_pump.on
         
+        sleep @config[:circulation_maintenance_delay] unless prev_power_needed[:power] == :RADFLOOR or prev_power_needed[:power] == :FLOOR
+        
         @hot_water_pump.off
         @radiator_pump.off
       end
 
-      if power_needed[:power] != :NONE
+      if prev_power_needed[:power] == :NONE and power_needed[:power] != :HW 
         # Wait before turning pumps off to make sure we do not lose circulation
         sleep @config[:circulation_maintenance_delay]
 
         # Turn on heater relay of the boiler to activate heating
         @heater_relay.on
-      else    
+      elsif power_needed[:power] == :NONE
         # Turn on heater relay of the boiler to activate heating
         @heater_relay.off
       end
