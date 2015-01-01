@@ -149,8 +149,8 @@ class Heating_State_Machine
 
     # Create heater relay valves
     @heater_relay = BusDevice::Switch.new("Heater relay","Heater contact on main panel", 11, 13, DRY_RUN)
-    @heating_watertemp = BusDevice::HeatingWaterTemp.new("Boiler heating water temp regulator", "Heating wiper contact on main panel", 11, 15, DRY_RUN)
-    @HW_watertemp = BusDevice::HWWaterTemp.new("Boiler HW water temp sensor regulator", "HW wiper contact on main panel", 11, 14, DRY_RUN)
+    @heating_watertemp = BusDevice::HeatingWaterTemp.new("Heating temp wiper", "Heating wiper contact on main panel", 11, 15, DRY_RUN)
+    @HW_watertemp = BusDevice::HWWaterTemp.new("HW temp wiper", "HW wiper contact on main panel", 11, 14, DRY_RUN, @config[:hw_temp_shift])
 
     # Define the states of the heating
     @state_Off = BoilerBase::State.new(:Off,"Boiler switched off")

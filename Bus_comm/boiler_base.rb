@@ -468,8 +468,8 @@ module BusDevice
  
  
 class HWWaterTemp < WaterTempBase
-  def initialize(name, location, slave_address, register_address, dry_run)
-    @lookup_curve = 
+  def initialize(name, location, slave_address, register_address, dry_run, shift = 0)
+    @lookup_curve =
        Globals::Polycurve.new([
        [21.5,0x00], # 11.3k
        [23.7,0x10], # 10.75k
@@ -489,7 +489,7 @@ class HWWaterTemp < WaterTempBase
        [56.1,0xf0], # 2.86k
        [61.5,0xfe], # 2.32k
        [62.6,0xff] # 2.28k
-       ])
+       ], shift)
     super(name, location, slave_address, register_address, dry_run)
   end
   

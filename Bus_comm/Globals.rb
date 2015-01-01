@@ -114,8 +114,9 @@ class TimerGeneral
 end
 
 class Polycurve
-  def initialize(pointlist)
+  def initialize(pointlist, shift = 0)
     @pointlist = Array.new(pointlist)
+    @pointlist.each_index {|i| @pointlist[n][0] += shift }
   end
 
   def value (x_in)
