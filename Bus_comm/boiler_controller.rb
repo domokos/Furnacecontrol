@@ -67,10 +67,10 @@ class Heating_State_Machine
     @return_sensor = BusDevice::TempSensor.new("Return water temperature", "On the return piping of the boiler", 11, 3, DRY_RUN, @config[:return_mock_temp])
     @HW_sensor = BusDevice::TempSensor.new("Hot Water temperature","Inside the Hot water container main sensing tube", 11, 1, DRY_RUN, @config[:HW_mock_temp])
 
-    @living_sensor = BusDevice::TempSensor.new("Living room temperature","Temperature in the living room", 12, 1, true, @config[:living_mock_temp])
-    @upstairs_sensor = BusDevice::TempSensor.new("Upstairs temperature","Upstairs forest room", 12, 2, true, @config[:upstairs_mock_temp])
+    @living_sensor = BusDevice::TempSensor.new("Living room temperature","Temperature in the living room", 10, 2, DRY_RUN, @config[:living_mock_temp])
+    @upstairs_sensor = BusDevice::TempSensor.new("Upstairs temperature","Upstairs forest room", 10, 3, DRY_RUN, @config[:upstairs_mock_temp])
     @basement_sensor = BusDevice::TempSensor.new("Basement temperature","In the sauna rest area", 11, 2, DRY_RUN, @config[:basement_mock_temp])
-    @external_sensor = BusDevice::TempSensor.new("External temperature","On the northwestern external wall", 12, 2, true, @config[:external_mock_temp])
+    @external_sensor = BusDevice::TempSensor.new("External temperature","On the northwestern external wall", 10, 1, DRY_RUN, @config[:external_mock_temp])
 
     # Create the is_HW or valve movement proc for the floor PWM thermostats
     @is_HW_or_valve_proc = proc {
@@ -144,8 +144,8 @@ class Heating_State_Machine
     # Create magnetic valves
     @basement_radiator_valve = BusDevice::DelayedCloseMagneticValve.new("Basement radiator valve","Contact 8 on main board", 11, 11, DRY_RUN)
     @basement_floor_valve = BusDevice::DelayedCloseMagneticValve.new("Basement floor valve","Contact 9 on main board" ,11 , 12, DRY_RUN)
-    @living_floor_valve = BusDevice::DelayedCloseMagneticValve.new("Living level floor valve","In the living floor water distributor", 12 , 1, true)
-    @upstairs_floor_valve = BusDevice::DelayedCloseMagneticValve.new("Upstairs floor valve","In the upstairs water distributor",12, 3, true)
+    @living_floor_valve = BusDevice::DelayedCloseMagneticValve.new("Living level floor valve","In the living floor water distributor", 10 , 4, DRY_RUN)
+    @upstairs_floor_valve = BusDevice::DelayedCloseMagneticValve.new("Upstairs floor valve","In the upstairs water distributor",10, 5, DRY_RUN)
 
     # Create heater relay valves
     @heater_relay = BusDevice::Switch.new("Heater relay","Heater contact on main panel", 11, 13, DRY_RUN)
