@@ -414,9 +414,13 @@ class Heating_State_Machine
       if !DRY_RUN
         read_sensors
         temp_power_needed = {:state=>@state.name(),:power=>determine_power_needed,:timestamp=>Time.now.to_i}
-        if temp_power_needed != power_needed
+        if temp_power_needed[:state] != power_needed[:state] or temp_power_needed[:power] != power_needed[:power] 
           prev_power_needed = power_needed
           power_needed = temp_power_needed
+
+          # Record state history for the last 4 states
+          @state_history.shift
+          @state_history.push(power_needed)
         else
           prev_power_needed = power_needed
         end
@@ -432,12 +436,6 @@ class Heating_State_Machine
       if @moving_valves_required and @state.name == :Off
             do_magnetic_valve_movement
             @moving_valves_required = false
-      end
-
-      # Record state history for 4 states
-      if @state_history.last != power_needed
-        @state_history.shift
-        @state_history.push(power_needed)
       end
 
       # Increment the cycle and reset it if 40 cycles is reached
