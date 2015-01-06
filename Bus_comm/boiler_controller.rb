@@ -59,7 +59,7 @@ class Heating_State_Machine
     # Create pumps
     @radiator_pump = BusDevice::Switch.new("Radiator pump", "In the basement boiler room - Contact 4 on Main Panel", 11, 7, DRY_RUN)
     @floor_pump = BusDevice::Switch.new("Floor pump", "In the basement boiler room - Contact 5 on Main Panel", 11, 8, DRY_RUN)
-    @hidr_shift_pump = BusDevice::Switch.new("Hidraulic shift pump", "In the basement boiler room - Contact 6 on Main Panel", 11, 9, DRY_RUN)
+    @hydr_shift_pump = BusDevice::Switch.new("Hydraulic shift pump", "In the basement boiler room - Contact 6 on Main Panel", 11, 9, DRY_RUN)
     @hot_water_pump = BusDevice::Switch.new("Hot water pump", "In the basement boiler room - Contact 7 on Main Panel", 11, 10, DRY_RUN)
 
     # Create temp sensors
@@ -179,7 +179,7 @@ class Heating_State_Machine
       # Turn off all pumps
       @radiator_pump.off
       @floor_pump.off
-      @hidr_shift_pump.off
+      @hydr_shift_pump.off
       @hot_water_pump.off
       
       # Close all valves
@@ -215,7 +215,7 @@ class Heating_State_Machine
       @basement_radiator_valve.open
 
       # Radiator pumps on
-      @hidr_shift_pump.on
+      @hydr_shift_pump.on
       @radiator_pump.on
 
       # Wait before turning pumps off to make sure we do not lose circulation
@@ -252,7 +252,7 @@ class Heating_State_Machine
       # Only HW pump on
       @radiator_pump.off
       @floor_pump.off
-      @hidr_shift_pump.off
+      @hydr_shift_pump.off
 
       # All valves are closed
       @basement_floor_valve.delayed_close
@@ -539,7 +539,7 @@ class Heating_State_Machine
           
         @radiator_pump.off
         @floor_pump.off
-        @hidr_shift_pump.off
+        @hydr_shift_pump.off
   
         # All valves are closed
         @basement_floor_valve.delayed_close
@@ -561,7 +561,7 @@ class Heating_State_Machine
         end
   
         # Control basic pumps
-        @hidr_shift_pump.on
+        @hydr_shift_pump.on
         # Radiator pump on
         @radiator_pump.on
 
@@ -603,7 +603,7 @@ class Heating_State_Machine
           @basement_floor_valve.delayed_close
         end
   
-        @hidr_shift_pump.on
+        @hydr_shift_pump.on
 
         # Floor heating on
         @floor_pump.on
@@ -646,7 +646,7 @@ class Heating_State_Machine
   
         @basement_radiator_valve.delayed_close
   
-        @hidr_shift_pump.on
+        @hydr_shift_pump.on
         # Floor heating on
         @floor_pump.on
  
@@ -759,7 +759,7 @@ class Heating_State_Machine
 
     @radiator_pump.off
     @floor_pump.off
-    @hidr_shift_pump.off
+    @hydr_shift_pump.off
     @hot_water_pump.off
 
     repeat = 5
@@ -785,12 +785,12 @@ class Heating_State_Machine
         @upstairs_floor_valve.open
         @radiator_pump.on
         @floor_pump.on
-        @hidr_shift_pump.on
+        @hydr_shift_pump.on
       
         sleep 20
         @radiator_pump.off
         @floor_pump.off
-        @hidr_shift_pump.off
+        @hydr_shift_pump.off
         sleep 2
         @basement_floor_valve.close
         @basement_radiator_valve.close
@@ -833,7 +833,7 @@ class Heating_State_Machine
     $heating_logger.debug("\nHW pump: "+@hot_water_pump.state.to_s)
     $heating_logger.debug("Radiator pump: "+@radiator_pump.state.to_s)
     $heating_logger.debug("Floor pump: "+@floor_pump.state.to_s)
-    $heating_logger.debug("Hidr shift pump: "+@hidr_shift_pump.state.to_s)
+    $heating_logger.debug("Hydr shift pump: "+@hydr_shift_pump.state.to_s)
 
     $heating_logger.debug("\nLiving temperature: "+@living_thermostat.temp.round(2).to_s)
     $heating_logger.debug("Living thermostat status: "+@living_thermostat.state.to_s)
