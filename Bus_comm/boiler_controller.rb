@@ -399,10 +399,10 @@ class Heating_State_Machine
 # The main loop of the controller
   def operate
     @cycle = 0
-    @state_history = Array.new(4,{:state=>@state.name, :power=>determine_power_needed})
+    @state_history = Array.new(4,{:state=>@state.name,:power=>determine_power_needed,:timestamp=>Time.now.to_i})
 
-    prev_power_needed = {:state=>:Off,:power=>:NONE}
-    power_needed = {:state=>@state.name(),:power=>determine_power_needed}
+    prev_power_needed = {:state=>:Off,:power=>:NONE,:timestamp=>Time.now.to_i}
+    power_needed = {:state=>@state.name(),:power=>determine_power_needed,:timestamp=>Time.now.to_i}
 
     # Do the main loop until shutdown is requested
     while($shutdown_reason == Globals::NO_SHUTDOWN) do
@@ -413,7 +413,7 @@ class Heating_State_Machine
       
       if !DRY_RUN
         read_sensors
-        temp_power_needed = {:state=>@state.name(),:power=>determine_power_needed}
+        temp_power_needed = {:state=>@state.name(),:power=>determine_power_needed,:timestamp=>Time.now.to_i}
         if temp_power_needed != power_needed
           prev_power_needed = power_needed
           power_needed = temp_power_needed
@@ -491,7 +491,7 @@ class Heating_State_Machine
       end
     
     when :FLOOR
-      @target_boiler_temp = 34.0
+      @target_boiler_temp = @config[:FLOOR_watertemp]
 
     when :NONE
       @target_boiler_temp = 7.0
@@ -815,7 +815,7 @@ class Heating_State_Machine
     $heating_logger.debug("LOGITEM BEGIN @"+Time.now.asctime)
     $heating_logger.debug("Active state: "+@state.name.to_s)
     sth=""
-    @state_history.each {|e| sth+= ") => ("+e[:state].to_s+","+e[:power].to_s}
+    @state_history.each {|e| sth+= ") => ("+e[:state].to_s+","+e[:power].to_s+", "+(Time.now.to_i-e[:timestamp]).to_s+" sec ago"}
     $heating_logger.debug("State and power_needed history : "+sth[5,1000]+")")
     $heating_logger.debug("Forward temperature: "+@forward_temp.round(2).to_s)
     $heating_logger.debug("Return water temperature: "+@return_temp.round(2).to_s)

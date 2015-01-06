@@ -20,6 +20,9 @@
 # Shifg the HW ntc curve up/down with the parameter - for calibration reasosns only
 :hw_temp_shift: 6
 #
+# Target water temperature when floor heating only is specified 
+:FLOOR_watertemp: 35.0
+#
 # Mock values for non-existent/dry run sensors
 :forward_mock_temp: 37.0
 :return_mock_temp: 31.0
