@@ -814,6 +814,7 @@ class Heating_State_Machine
     
     $heating_logger.debug("LOGITEM BEGIN @"+Time.now.asctime)
     $heating_logger.debug("Active state: "+@state.name.to_s)
+
     sth=""
     @state_history.each {|e| sth+= ") => ("+e[:state].to_s+","+e[:power].to_s+", "+(Time.now.to_i-e[:timestamp]).to_s+" sec ago"}
     $heating_logger.debug("State and power_needed history : "+sth[5,1000]+")")
