@@ -284,7 +284,7 @@ COMM_DATA = [
       retry_count += 1
       
       # Print response history if already retried once
-      if retry_count > 1
+      if retry_count > 0
         ret_c = 1
         response_history.each { |resp|
           $app_logger.warn("Messaging retry #"+ret_c.to_s+" Error code: "+resp[:Return_code].to_s+" - "+RESPONSE_TEXT[resp[:Return_code]]+" Device return code: "+resp[:DeviceResponseCode].to_s)
@@ -346,7 +346,7 @@ private
    while true
 
      # Handle timeout
-     (Time.now.to_f - timeout_start) > COMM_DATA[@comm_speed][TIMEOUT_DATA].to_f / 1000 and return_value = {:Return_code => MESSAGING_TIMEOUT, :Content => nil}
+     return_value = {:Return_code => MESSAGING_TIMEOUT, :Content => nil} if (Time.now.to_f - timeout_start) > COMM_DATA[@comm_speed][TIMEOUT_DATA].to_f / 1000
 
      # If return_value is set then return it otherwise continue receiving
      unless return_value == nil
@@ -380,7 +380,7 @@ private
          # enough train is seen
          if byte_recieved == TRAIN_CHR
            train_length += 1
-           train_length == TRAIN_LENGTH_RCV and response_state = IN_SYNC
+           response_state = IN_SYNC if train_length == TRAIN_LENGTH_RCV
          else
            if response_state == RECEIVING_TRAIN
              # Not a train character is received, not yet synced
