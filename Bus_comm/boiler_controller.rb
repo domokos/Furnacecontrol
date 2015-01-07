@@ -399,10 +399,10 @@ class Heating_State_Machine
 # The main loop of the controller
   def operate
     @cycle = 0
-    @state_history = Array.new(4,{:state=>@state.name,:power=>determine_power_needed,:timestamp=>Time.now})
+    @state_history = Array.new(4,{:state=>@state.name,:power=>determine_power_needed,:timestamp=>Time.now.getlocal(0)})
 
-    prev_power_needed = {:state=>:Off,:power=>:NONE,:timestamp=>Time.now}
-    power_needed = {:state=>@state.name(),:power=>determine_power_needed,:timestamp=>Time.now}
+    prev_power_needed = {:state=>:Off,:power=>:NONE,:timestamp=>Time.now.getlocal(0)}
+    power_needed = {:state=>@state.name(),:power=>determine_power_needed,:timestamp=>Time.now.getlocal(0)}
 
     # Do the main loop until shutdown is requested
     while($shutdown_reason == Globals::NO_SHUTDOWN) do
@@ -413,7 +413,7 @@ class Heating_State_Machine
       
       if !DRY_RUN
         read_sensors
-        temp_power_needed = {:state=>@state.name(),:power=>determine_power_needed,:timestamp=>Time.now}
+        temp_power_needed = {:state=>@state.name(),:power=>determine_power_needed,:timestamp=>Time.now.getlocal(0)}
         if temp_power_needed[:state] != power_needed[:state] or temp_power_needed[:power] != power_needed[:power] 
           prev_power_needed = power_needed
           power_needed = temp_power_needed
@@ -814,7 +814,7 @@ class Heating_State_Machine
     $heating_logger.debug("Active state: "+@state.name.to_s)
 
     sth=""
-    @state_history.each {|e| sth+= ") => ("+e[:state].to_s+","+e[:power].to_s+","+(Time.now-e[:timestamp].to_i).strftime("%H:%M:%S")+" ago"}
+    @state_history.each {|e| sth+= ") => ("+e[:state].to_s+","+e[:power].to_s+","+(Time.now.getlocal(0)-e[:timestamp].to_i).strftime("%T")+" ago"}
     $heating_logger.debug("State and power_needed history : "+sth[5,1000]+")")
     $heating_logger.debug("Forward temperature: "+@forward_temp.round(2).to_s)
     $heating_logger.debug("Return water temperature: "+@return_temp.round(2).to_s)
