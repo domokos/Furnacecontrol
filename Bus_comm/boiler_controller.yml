@@ -23,6 +23,15 @@
 # Target water temperature when floor heating only is specified
 :FLOOR_watertemp: 35.0
 #
+# Parameters of target water temperature calculation curve
+# Target water temperature is calculated by the following linear equation:
+# target_temperature = watertemp_slope*external temperature + watertemp_shift
+# The result of the formula is then limited to the upper and lower limits
+:watertemp_slope: -1.1
+:watertemp_shift: 37.5
+:watertemp_upper_limit: 70.0
+:watertemp_lower_limit: 35.0
+#
 # Mock values for non-existent/dry run sensors
 :forward_mock_temp: 37.0
 :return_mock_temp: 31.0

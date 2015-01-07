@@ -131,11 +131,11 @@ class Heating_State_Machine
     # Create thermostats, with default threshold values and hysteresis values
     @living_thermostat = BoilerBase::Symmetric_thermostat.new(@living_sensor,0.3,0.0,8)
     @HW_thermostat = BoilerBase::Asymmetric_thermostat.new(@HW_sensor,2,0,0.0,8)
-    @living_floor_thermostat = BoilerBase::PwmThermostat.new(@external_sensor,10,@living_floor_thermostat_valueproc,@is_HW_or_valve_proc)
-    @mode_thermostat = BoilerBase::Symmetric_thermostat.new(@external_sensor,0.8,5.0,8)
-    @upstairs_floor_thermostat = BoilerBase::PwmThermostat.new(@external_sensor,10,@upstairs_floor_thermostat_valueproc,@is_HW_or_valve_proc)
+    @living_floor_thermostat = BoilerBase::PwmThermostat.new(@external_sensor,30,@living_floor_thermostat_valueproc,@is_HW_or_valve_proc)
+    @mode_thermostat = BoilerBase::Symmetric_thermostat.new(@external_sensor,0.8,5.0,50)
+    @upstairs_floor_thermostat = BoilerBase::PwmThermostat.new(@external_sensor,30,@upstairs_floor_thermostat_valueproc,@is_HW_or_valve_proc)
     @upstairs_thermostat = BoilerBase::Symmetric_thermostat.new(@upstairs_sensor,0.3,5.0,8)
-    @basement_thermostat = BoilerBase::PwmThermostat.new(@basement_sensor,10,@basement_thermostat_valueproc,@is_HW_or_valve_proc)
+    @basement_thermostat = BoilerBase::PwmThermostat.new(@basement_sensor,30,@basement_thermostat_valueproc,@is_HW_or_valve_proc)
 
     #Technical targets must be set to allow PWM proc to detect changes
     @upstairs_floor_thermostat.set_target(0)
@@ -481,11 +481,11 @@ class Heating_State_Machine
       
     when :RAD, :RADFLOOR
       # Use @living_floor_thermostat.temp to get a filtered external temperature
-      @target_boiler_temp = -0.83*@living_floor_thermostat.temp+37.5
-      if @target_boiler_temp > 70.0
-        @target_boiler_temp = 70.0
-      elsif @target_boiler_temp < 34.0
-        @target_boiler_temp = 34.0
+      @target_boiler_temp = @config[:watertemp_slope]*@living_floor_thermostat.temp+@config[:watertemp_shift]
+      if @target_boiler_temp > @config[:watertemp_upper_limit]
+        @target_boiler_temp = @config[:watertemp_upper_limit]
+      elsif @target_boiler_temp < @config[:watertemp_lower_limit]
+        @target_boiler_temp = @config[:watertemp_lower_limit]
       end
     
     when :FLOOR

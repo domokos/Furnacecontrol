@@ -554,14 +554,22 @@ module BoilerBase
   
     def input_sample(the_sample)
       @content.push(the_sample)
-      @content.size > @size and @content.shift
+      @content.shift if @content.size > @size 
       @dirty = true
       return value
     end
   
     def value
       if @dirty
-        @content.size == 0 and return nil
+        return nil if @content.size == 0
+        
+        # Filter out min-max values to further minimize jitter
+        if @content.size > 3
+          @content = Array.new(@content.sort)
+          @content.delete_at(@content.size-1) if @content[@content.size-1] != @content[@content.size-2]
+          @content.delete_at(0) if @content[0] != @content[1]
+        end
+
         sum = 0
         @content.each do
           |element|
@@ -687,11 +695,10 @@ module BoilerBase
       @@thermostat_instances = [] if defined?(@@thermostat_instances) == nil
       @@thermostat_instances << self
       
-      
-      self.class.start_pwm_thread if defined?(@@pwm_thread) == nil
+      start_pwm_thread if defined?(@@pwm_thread) == nil
     end
   
-    def self.start_pwm_thread
+    def start_pwm_thread
       @@newly_initialized_thermostat_present = false
       @@pwm_thread = Thread.new do
         #Wait for the main thread to create all objects we need
