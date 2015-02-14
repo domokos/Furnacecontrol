@@ -403,7 +403,7 @@ private
          elsif crc16(response[0,msg_size.ord-2]) != ((response[msg_size.ord-2].ord << 8 ) | response[msg_size.ord-1].ord) or response[OPCODE] == CRC_ERROR
            return_value = {:Return_code => COMM_CRC_ERROR, :Content => response}
          else
-           if response[OPCODE].ord == COMMAND_SUCCESS
+           if response[OPCODE].ord == COMMAND_SUCCESS or response[OPCODE].ord == ECHO or response[OPCODE].ord == MASTER_ECHO
              return_value = {:Return_code => NO_ERROR, :Content => response}
            else
              return_value = {:Return_code => DEVICE_ERROR, :Content => response, :DeviceResponseCode => response[OPCODE].ord}
