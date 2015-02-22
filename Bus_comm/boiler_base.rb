@@ -1,4 +1,4 @@
-
+F
 require "/usr/local/lib/boiler_controller/Buscomm"
 require "/usr/local/lib/boiler_controller/Globals"
 require "rubygems"
@@ -86,7 +86,7 @@ module BusDevice
       
       # Initialize state to off
       @state = :off
-      !@dry_run and write_device(0)
+      write_device(0) if !@dry_run
       register_check_process
     end
       
@@ -236,11 +236,88 @@ module BusDevice
     def open
       on
     end
-    
-     
   # End of class DelayedCloseMagneticValve
   end
+
   
+class PulseSwitch < DeviceBase
+  attr_accessor :dry_run
+  attr_reader :state, :name, :slave_address, :location
+
+  STATE_READ_PERIOD 1
+    
+  def initialize(name, location, slave_address, register_address, dry_run)
+    @name = name
+    @slave_address = slave_address 
+    @location = location
+    @register_address = register_address
+    @dry_run = dry_run
+    
+    # Wait until the device becomes inactive to establish a known state
+    $app_logger.info("Waiting until Pulse Switch'"+@name+"' becomes inactive")
+    wait_until_inactive
+    start_state_reader_thread if @state == :active 
+  end
+
+  # Turn the device on           
+  def pulse(duration)
+    write_device(duration) == :Success and $app_logger.info("Succesfully started pulsing Switch '"+@name+"'")
+    sleep STATE_READ_PERIOD
+    wait_until_inactive
+  end
+  
+  private
+
+  def wait_until_inactive
+    while read_device == 1
+      sleep STATE_READ_PERIOD
+    end
+  end
+    
+  def read_device
+    if !@dry_run
+      begin
+        retval = @@comm_interface.send_message(@slave_address,Buscomm::READ_REGISTER,@register_address.chr)
+        $app_logger.debug("Sucessfully read device '"+@name+"' address "+@register_address.to_s)
+      rescue MessagingError => e
+        retval = e.return_message
+        $app_logger.fatal("Unrecoverable communication error on bus, reading '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
+        $shutdown_reason = Globals::FATAL_SHUTDOWN
+        return 0
+      end
+
+      return retval[:Content][Buscomm::PARAMETER_START]
+
+    else
+      $app_logger.debug("Dry run - reading device '"+@name+"' address "+@register_address.to_s)
+      return 0
+    end
+  end
+
+
+  # Write the value of the parameter to the device on the bus
+  # Request fatal shutdown on unrecoverable communication error
+  def write_device(value)
+    if !@dry_run 
+      begin
+        retval = @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+value.chr)
+        $app_logger.debug("Sucessfully written "+value.to_s+" to pulse switch '"+@name+"'")
+      rescue MessagingError => e
+        retval = e.return_message
+        $app_logger.fatal("Unrecoverable communication error on bus, writing '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
+        $shutdown_reason = Globals::FATAL_SHUTDOWN
+        return :Failure
+      end
+    else
+      $app_logger.debug("Dry run - writing "+value.to_s+" to register '"+@name+"'")
+    end
+    return :Success
+  end
+#End of class PulseSwitch    
+end
+  
+  
+    
   class TempSensor < DeviceBase
     attr_reader :name, :slave_address, :location
     attr_accessor :mock_temp 
@@ -410,7 +487,7 @@ module BusDevice
          # Re-read the result to see if the device side update was succesful
          retval = @@comm_interface.send_message(@slave_address,Buscomm::READ_REGISTER,@register_address.chr+0x00.chr)
          
-         # Sleem more each round hoping for a resolution
+         # Sleep more each round hoping for a resolution
          sleep retry_count*0.23                
          retry_count += 1
        end
@@ -786,7 +863,145 @@ module BoilerBase
         return 0
       end
     end
+  #End of class PwmThermostat
   end
   
+  class Mixer_control
+    
+    FILTER_SAMPLE_SIZE = 4
+    SAMPLING_DELAY = 2.1
+    ERROR_THRESHOLD = 1.1
+    MOTOR_TIME_PARAMETER = 1
+    UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT = 60
+    MOVEMENT_TIME_HYSTERESIS = 5
+    
+    def initialize(mix_sensor,cw_switch,ccw_switch,initial_target_temp=34.0)
+
+      # Initialize class variables
+      @mix_sensor = mix_sensor
+      @target_temp = initial_target_temp
+      @cw_switch = cw_switch
+      @ccw_switch = ccw_switch
+
+      # Create Filters
+      @mix_filter = Filter.new(FILTER_SAMPLE_SIZE)
+      
+      @target_mutex = Mutex.new
+      @control_mutex = Mutex.new
+      
+      @reset_thread = nil
+      @control_thread = nil
+            
+      @integrated_cw_movement_time = 0
+      @integrated_ccw_movement_time = 0
+
+      # Reset the device
+      reset      
+    end
+
+    def set_target_temp(new_target_temp)
+      @target_mutex.synchronize {@target_temp = new_target_temp}
+    end
+
+    # Move it to the middle
+    def reset
+      Thread.new do
+        if @control_mutex.try_lock
+          sleep 2
+          ccw_switch.pulse(36)
+          sleep 2
+          cw_switch.pulse(15)
+          sleep 2
+          @control_mutex.unlock
+        end
+      end
+    end
+        
+    def start_control(delay=0)
+      # Only start control thread if not yet started
+      retrun if @control_thread != nil
+      
+      # Start control thread
+      @control_thread = Thread.new do
+        # Acquire lock for controlling switches
+        @control_mutex.synchronize do
+          # Delay starting the controller process if requested
+          sleep delay
+          
+          # Prefill sample buffer to get rid of false values
+          FILTER_SAMPLE_SIZE.times {@mix_filter.input_sample(@mix_sensor.temp)}
+            
+          # Do the actual control, which will return ending the thread if done
+          do_control_thread
+          @control_thread = nil
+        end
+      end
+    end
+      
+    def stop_control
+      @stop_control_requested = true
+    end
+    
+    # The actual control thread  
+    def do_control_thread
+      @stop_control_requested = false
+
+      # Control until if stop is requested
+      while !@stop_control_requested do
+        
+        # Read target temp thread safely
+        @target_mutex.synchronize {target = @target_temp} 
+        
+        error = target - @mix_filter
+        
+        # Adjust mixing motor if error is out of bounds
+        if error.abs > ERROR_THRESHOLD
+          
+          adjustment_time = calculate_adjustment_time(error.abs)
+
+          # Move CCW
+          if error > 0 and @integrated_CCW_movement_time < UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT
+            ccw_switch.pulse(adjustment_time)
+
+            # Keep track of movement time for limiting movement
+            @integrated_CCW_movement_time += adjustment_time
+            
+            # Adjust available movement time for the other direction
+            @integrated_CW_movement_time = MOVEMENT_TIME_LIMIT - @integrated_CCW_movement_time - MOVEMENT_TIME_HYSTERESIS
+            @integrated_CW_movement_time = 0 if @integrated_CW_movement_time < 0
+             
+          # Move CW 
+          elsif @integrated_CW_movement_time < UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT
+            cw_switch.pulse(adjustment_time)
+
+            # Keep track of movement time for limiting movement
+            @integrated_CW_movement_time += adjustment_time
+            
+            # Adjust available movement time for the other direction
+            @integrated_CCW_movement_time = MOVEMENT_TIME_LIMIT - @integrated_CW_movement_time - MOVEMENT_TIME_HYSTERESIS
+            @integrated_CCW_movement_time = 0 if @integrated_CCW_movement_time < 0
+          end
+          
+        end
+        @mix_filter.input_sample(@mix_sensor.temp)
+        sleep SAMPLING_DELAY
+      end
+
+    @integrated_cw_movement_time = 0
+    @integrated_ccw_movement_time = 0
+
+    end
+    
+    # Calculate mixer motor actuation time based on error
+    # This implements a simple P type controller with limited boundaries
+    def calculate_adjustment_time(error)
+      retval = MOTOR_TIME_PARAMETER * error
+      return 1 if retval < 1
+      return 10 if retval > 10
+      return retval
+    end
+    
+  #End of class MixerControl
+  end
   
 end

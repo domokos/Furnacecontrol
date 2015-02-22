@@ -113,6 +113,8 @@ class TimerGeneral
   end
 end
 
+# A class that approximates a curve by returning the value of the linear function
+# defined by two neighbour points. Points' X values are expected to be sorted and monotonously increasig.
 class Polycurve
   def initialize(pointlist, shift = 0)
     @pointlist = Array.new(pointlist)
@@ -130,7 +132,7 @@ class Polycurve
     return @pointlist.first[1] if index == 0 
     return @pointlist.last[1] if index == @pointlist.size-1
     
-    # Linear curve between points 
+    # Linear curve between the two neighbour points 
     return ((@pointlist[index-1][1]-@pointlist[index][1]) / (@pointlist[index-1][0]-@pointlist[index][0]).to_f * (x_in-@pointlist[index-1][0].to_f) + @pointlist[index-1][1]).round
   end
 
