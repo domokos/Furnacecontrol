@@ -188,6 +188,8 @@ class Heating_State_Machine
       @living_floor_valve.delayed_close
       @upstairs_floor_valve.delayed_close
       
+      # Wait for the delayed closure to happen
+      sleep 3
     })
 
     # Activation actions for Heating
