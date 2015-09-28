@@ -637,10 +637,11 @@ module BoilerBase
   
     def value
       if @dirty
-        return nil if @content.size == 0
+        return nil if @content.empty?
         
         # Filter out min-max values to further minimize jitter
-        if @content.size > 3
+        # in case of big enough filters
+        if @content.size > 7
           content_tmp = Array.new(@content.sort)
           content_tmp.pop if content_tmp[content_tmp.size-1] != content_tmp[content_tmp.size-2]
           content_tmp.shift if content_tmp[0] != content_tmp[1]
@@ -752,7 +753,7 @@ module BoilerBase
   # A Pulse Width Modulation (PWM) Thermostat class providing a PWM output signal 
   # based on sensor value
   # The class' PWM behaviour takes into account the real operating time of the heating by calling a reference function
-  # passed to it as the last argument. The reference function should return true at times, when the PWM thermostat
+  # passed to it as an argument. The reference function should return true at times, when the PWM thermostat
   # should consider the PWM to be active.
   class PwmThermostat
     attr_accessor :cycle_threshold, :state
@@ -804,8 +805,8 @@ module BoilerBase
   
             sleep(1)
             # Time does not pass if HW or valve movement is active and any of the PWM thermostats 
-            # are to be on as in this case furnace effort is spent on HW or valve movement rather
-            # than on heating. This actually is only good for the active thermostats as others
+            # are to be on as in this case time is spent on HW or valve movement rather
+            # than heating. This actually is only good for the active thermostats as others
             # being switched off suffer an increased off time - no easy way around this...
             (@@sec_elapsed = @@sec_elapsed + 1) unless (@@is_HW_or_valve.call and any_thermostats_on)
   
@@ -823,10 +824,6 @@ module BoilerBase
           $app_logger.debug("End of PWM thermostat cycle")
       end
      end
-    end
-  
-    def PwmThermostat.finalize
-      @@pwm_thread.kill
     end
   
     def update
