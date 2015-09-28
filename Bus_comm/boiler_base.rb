@@ -243,7 +243,7 @@ class PulseSwitch < DeviceBase
   attr_accessor :dry_run
   attr_reader :state, :name, :slave_address, :location
 
-  STATE_READ_PERIOD 1
+  STATE_READ_PERIOD=1
     
   def initialize(name, location, slave_address, register_address, dry_run)
     @name = name
