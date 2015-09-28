@@ -641,17 +641,19 @@ module BoilerBase
         
         # Filter out min-max values to further minimize jitter
         if @content.size > 3
-          @content = Array.new(@content.sort)
-          @content.delete_at(@content.size-1) if @content[@content.size-1] != @content[@content.size-2]
-          @content.delete_at(0) if @content[0] != @content[1]
+          content_tmp = Array.new(@content.sort)
+          content_tmp.pop if content_tmp[content_tmp.size-1] != content_tmp[content_tmp.size-2]
+          content_tmp.shift if content_tmp[0] != content_tmp[1]
+        else
+          content_tmp = @content 
         end
 
         sum = 0
-        @content.each do
+        content_tmp.each do
           |element|
           sum += element
         end
-        @value = sum.to_f / @content.size
+        @value = sum.to_f / content_tmp.size
         @dirty = false
       end
       return @value
