@@ -37,7 +37,7 @@ class Heating_State_Machine
   
   def initialize(initial_state,initial_mode)
 
-    # Init class variables
+    # Init instance variables
     @target_boiler_temp = 0.0
     @forward_temp = 0.0
     @return_temp = 0.0
@@ -57,20 +57,31 @@ class Heating_State_Machine
     @mode_Heat_HW = BoilerBase::Mode.new("Heat","Heating and hot water")
     
     # Create pumps
-    @radiator_pump = BusDevice::Switch.new("Radiator pump", "In the basement boiler room - Contact 4 on Main Panel", 11, 7, DRY_RUN)
-    @floor_pump = BusDevice::Switch.new("Floor pump", "In the basement boiler room - Contact 5 on Main Panel", 11, 8, DRY_RUN)
-    @hydr_shift_pump = BusDevice::Switch.new("Hydraulic shift pump", "In the basement boiler room - Contact 6 on Main Panel", 11, 9, DRY_RUN)
-    @hot_water_pump = BusDevice::Switch.new("Hot water pump", "In the basement boiler room - Contact 7 on Main Panel", 11, 10, DRY_RUN)
+    @radiator_pump = BusDevice::Switch.new("Radiator pump", "In the basement boiler room - Contact 4 on Main Panel",
+                                           @config[:main_controller_dev_addr], @config[:radiator_pump_reg_addr], DRY_RUN)
+    @floor_pump = BusDevice::Switch.new("Floor pump", "In the basement boiler room - Contact 5 on Main Panel",
+                                           @config[:main_controller_dev_addr], @config[:floor_pump_reg_addr], DRY_RUN)
+    @hydr_shift_pump = BusDevice::Switch.new("Hydraulic shift pump", "In the basement boiler room - Contact 6 on Main Panel",
+                                           @config[:main_controller_dev_addr], @config[:hydr_shift_pump_reg_addr], DRY_RUN)
+    @hot_water_pump = BusDevice::Switch.new("Hot water pump", "In the basement boiler room - Contact 7 on Main Panel",
+                                           @config[:main_controller_dev_addr], @config[:hot_water_pump_reg_addr], DRY_RUN)
 
     # Create temp sensors
-    @forward_sensor = BusDevice::TempSensor.new("Forward boiler temperature", "On the forward piping of the boiler", 11, 4, DRY_RUN, @config[:forward_mock_temp])
-    @return_sensor = BusDevice::TempSensor.new("Return water temperature", "On the return piping of the boiler", 11, 3, DRY_RUN, @config[:return_mock_temp])
-    @HW_sensor = BusDevice::TempSensor.new("Hot Water temperature","Inside the Hot water container main sensing tube", 11, 1, DRY_RUN, @config[:HW_mock_temp])
+    @forward_sensor = BusDevice::TempSensor.new("Forward boiler temperature", "On the forward piping of the boiler",
+                                           @config[:main_controller_dev_addr], @config[:forward_sensor_reg_addr], DRY_RUN, @config[:forward_mock_temp])
+    @return_sensor = BusDevice::TempSensor.new("Return water temperature", "On the return piping of the boiler",
+                                           @config[:main_controller_dev_addr], @config[:return_sensor_reg_addr], DRY_RUN, @config[:return_mock_temp])
+    @HW_sensor = BusDevice::TempSensor.new("Hot Water temperature","Inside the Hot water container main sensing tube",
+                                           @config[:main_controller_dev_addr], @config[:hw_sensor_reg_addr], DRY_RUN, @config[:HW_mock_temp])
 
-    @living_sensor = BusDevice::TempSensor.new("Living room temperature","Temperature in the living room", 10, 2, DRY_RUN, @config[:living_mock_temp])
-    @upstairs_sensor = BusDevice::TempSensor.new("Upstairs temperature","Upstairs forest room", 10, 3, DRY_RUN, @config[:upstairs_mock_temp])
-    @basement_sensor = BusDevice::TempSensor.new("Basement temperature","In the sauna rest area", 11, 2, DRY_RUN, @config[:basement_mock_temp])
-    @external_sensor = BusDevice::TempSensor.new("External temperature","On the northwestern external wall", 10, 1, DRY_RUN, @config[:external_mock_temp])
+    @living_sensor = BusDevice::TempSensor.new("Living room temperature","Temperature in the living room",
+                                           @config[:six_owbus_dev_addr], @config[:living_sensor_reg_addr], DRY_RUN, @config[:living_mock_temp])
+    @upstairs_sensor = BusDevice::TempSensor.new("Upstairs temperature","Upstairs forest room",
+                                           @config[:six_owbus_dev_addr], @config[:upstairs_sensor_reg_addr], DRY_RUN, @config[:upstairs_mock_temp])
+    @basement_sensor = BusDevice::TempSensor.new("Basement temperature","In the sauna rest area",
+                                           @config[:main_controller_dev_addr], @config[:basement_sensor_reg_addr], DRY_RUN, @config[:basement_mock_temp])
+    @external_sensor = BusDevice::TempSensor.new("External temperature","On the northwestern external wall",
+                                           @config[:six_owbus_dev_addr], @config[:external_sensor_reg_addr], DRY_RUN, @config[:external_mock_temp])
 
     # Create the is_HW or valve movement proc for the floor PWM thermostats
     @is_HW_or_valve_proc = proc {
@@ -142,15 +153,22 @@ class Heating_State_Machine
     @living_floor_thermostat.set_target(0)
 
     # Create magnetic valves
-    @basement_radiator_valve = BusDevice::DelayedCloseMagneticValve.new("Basement radiator valve","Contact 8 on main board", 11, 11, DRY_RUN)
-    @basement_floor_valve = BusDevice::DelayedCloseMagneticValve.new("Basement floor valve","Contact 9 on main board" ,11 , 12, DRY_RUN)
-    @living_floor_valve = BusDevice::DelayedCloseMagneticValve.new("Living level floor valve","In the living floor water distributor", 10 , 4, DRY_RUN)
-    @upstairs_floor_valve = BusDevice::DelayedCloseMagneticValve.new("Upstairs floor valve","In the upstairs water distributor",10, 5, DRY_RUN)
-
+    @basement_radiator_valve = BusDevice::DelayedCloseMagneticValve.new("Basement radiator valve","Contact 8 on main board",
+                                       @config[:main_controller_dev_addr], @config[:basement_radiator_valve_reg_addr], DRY_RUN)
+    @basement_floor_valve = BusDevice::DelayedCloseMagneticValve.new("Basement floor valve","Contact 9 on main board",
+                                       @config[:main_controller_dev_addr], @config[:basement_floor_valve_reg_addr], DRY_RUN)
+    @living_floor_valve = BusDevice::DelayedCloseMagneticValve.new("Living level floor valve","In the living floor water distributor",
+                                       @config[:six_owbus_dev_addr], @config[:living_floor_valve_reg_addr], DRY_RUN)
+    @upstairs_floor_valve = BusDevice::DelayedCloseMagneticValve.new("Upstairs floor valve","In the upstairs water distributor",
+                                       @config[:six_owbus_dev_addr], @config[:upstairs_floor_valve_reg_addr], DRY_RUN)
+      
     # Create heater relay valves
-    @heater_relay = BusDevice::Switch.new("Heater relay","Heater contact on main panel", 11, 13, DRY_RUN)
-    @heating_watertemp = BusDevice::HeatingWaterTemp.new("Heating temp wiper", "Heating wiper contact on main panel", 11, 15, DRY_RUN)
-    @HW_watertemp = BusDevice::HWWaterTemp.new("HW temp wiper", "HW wiper contact on main panel", 11, 14, DRY_RUN, @config[:hw_temp_shift])
+    @heater_relay = BusDevice::Switch.new("Heater relay","Heater contact on main panel",
+                                       @config[:main_controller_dev_addr], @config[:heater_relay_reg_addr], DRY_RUN)
+    @heating_watertemp = BusDevice::HeatingWaterTemp.new("Heating temp wiper", "Heating wiper contact on main panel",
+                                       @config[:main_controller_dev_addr], @config[:heating_wiper_reg_addr], DRY_RUN)
+    @HW_watertemp = BusDevice::HWWaterTemp.new("HW temp wiper", "HW wiper contact on main panel",
+                                       @config[:main_controller_dev_addr], @config[:hw_wiper_reg_addr], DRY_RUN, @config[:hw_temp_shift])
 
     # Define the states of the heating
     @state_Off = BoilerBase::State.new(:Off,"Boiler switched off")

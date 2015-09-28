@@ -1,10 +1,24 @@
 --- # Boiler controller config file
+#
+#
+#
+# *********************************************************************************************
+# Temperature targets - setting these is intended to actively infulence the controller 
+# *********************************************************************************************
+# 
 # Targets
 :target_living_temp: 22.0
 :target_upstairs_temp: 22.0
 :target_basement_temp: 25.5
 :mode_threshold: 15.0
 :target_HW_temp: 51.0
+#
+#
+#
+# *********************************************************************************************
+# Low level Operation parameters 
+# *********************************************************************************************
+# 
 #
 # Magnetic valve parameters
 :magnetic_valve_movement_days: 3
@@ -40,3 +54,48 @@
 :upstairs_mock_temp: 23.0
 :basement_mock_temp: 26.0
 :external_mock_temp: 5.0
+#
+#
+#
+# *********************************************************************************************
+# Controller network addresses 
+# *********************************************************************************************
+# 
+# Main panel device - Boiler room
+:main_controller_dev_addr: 11
+:hw_sensor_reg_addr: 1
+:basement_sensor_reg_addr: 2
+:return_sensor_reg_addr: 3
+:forward_sensor_reg_addr: 4
+:buffertop_valve_reg_addr: 5
+:return_valve_reg_addr: 6
+:radiator_pump_reg_addr: 7
+:floor_pump_reg_addr: 8
+:hydr_shift_pump_reg_addr: 9
+:hot_water_pump_reg_addr: 10
+:basement_radiator_valve_reg_addr: 11
+:basement_floor_valve_reg_addr: 12
+:heater_relay_reg_addr: 13
+:hw_wiper_reg_addr: 14
+:heating_wiper_reg_addr: 15
+#
+# Six owbus device - Living floor
+:six_owbus_dev_addr: 10
+:external_sensor_reg_addr: 1
+:living_sensor_reg_addr: 2
+:upstairs_sensor_reg_addr: 3
+:living_floor_valve_reg_addr: 4
+:upstairs_floor_valve_reg_addr: 5
+:read_single_rom_code_on_owbus_0_reg_addr: 6
+#
+# Mixer controller - Boiler room
+:mixer_controller_dev_addr: 12
+:mixer_fwd_sensor_reg_addr: 1
+:upper_buffer_sensor_reg_addr: 2
+:lower_buffer_sensor_reg_addr: 3
+:mixer_cw_reg_addr: 4
+:mixer_ccw_reg_addr: 5
+:mixer_sparea_switch_reg_addr: 6
+:mixer_spareb_switch_reg_addr: 7
+:mixer_gpio_reg_addr: 8
+:read_single_rom_code_on_owbus_reg_addr: 9
