@@ -251,6 +251,7 @@ class PulseSwitch < DeviceBase
     @location = location
     @register_address = register_address
     @dry_run = dry_run
+    @movement_active = false
     
     # Wait until the device becomes inactive to establish a known state
     $app_logger.info("Waiting until Pulse Switch'"+@name+"' becomes inactive")
@@ -258,19 +259,25 @@ class PulseSwitch < DeviceBase
     start_state_reader_thread if @state == :active 
   end
 
-  # Turn the device on           
-  def pulse(duration)
+  # Turn the device on
+  def pulse_block(duration)
     write_device(duration) == :Success and $app_logger.info("Succesfully started pulsing Switch '"+@name+"'")
     sleep STATE_READ_PERIOD
     wait_until_inactive
   end
-  
+ 
+  def active?
+    return @movement_active
+  end
+
   private
 
   def wait_until_inactive
     while read_device == 1
+      @movement_active = true
       sleep STATE_READ_PERIOD
     end
+    @movement_active = false
   end
     
   def read_device
@@ -866,7 +873,7 @@ module BoilerBase
   
   class Mixer_control
     
-    FILTER_SAMPLE_SIZE = 4
+    FILTER_SAMPLE_SIZE = 3
     SAMPLING_DELAY = 2.1
     ERROR_THRESHOLD = 1.1
     MOTOR_TIME_PARAMETER = 1
@@ -886,9 +893,10 @@ module BoilerBase
       
       @target_mutex = Mutex.new
       @control_mutex = Mutex.new
+      @measurement_mutex = Mutex.new
       
-      @reset_thread = nil
       @control_thread = nil
+      @measurement_thread = nil
             
       @integrated_cw_movement_time = 0
       @integrated_ccw_movement_time = 0
@@ -940,17 +948,34 @@ module BoilerBase
       @stop_control_requested = true
     end
     
+    def start_measurement_thread
+      return if @measurement_thread != nil
+      
+      #Create a temperature measurement thread 
+      @measurement_thread = Thread.new do
+        @measurement_mutex.synchronize {@mix_filter.input_sample(@mix_sensor.temp)}
+        sleep SAMPLING_DELAY
+      end
+    end
+    
+    def stop_measurement_thread
+      return if @measurement_thread == nil
+      @measurement_thread.kill
+      @measurement_thread = nil
+    end
+    
     # The actual control thread  
     def do_control_thread
       @stop_control_requested = false
 
+      start_measurement_thread
+      
       # Control until if stop is requested
       while !@stop_control_requested do
         
         # Read target temp thread safely
-        @target_mutex.synchronize {target = @target_temp} 
-        
-        error = target - @mix_filter
+        @target_mutex.synchronize {target = @target_temp}
+        @measurement_mutex.synchronize {error = target - @mix_filter}
         
         # Adjust mixing motor if error is out of bounds
         if error.abs > ERROR_THRESHOLD
@@ -981,8 +1006,9 @@ module BoilerBase
           end
           
         end
-        @mix_filter.input_sample(@mix_sensor.temp)
-        sleep SAMPLING_DELAY
+        
+        # Stop the measurement thread before exiting 
+        stop_measurement_thread
       end
 
     @integrated_cw_movement_time = 0
