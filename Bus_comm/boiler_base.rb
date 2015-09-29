@@ -876,6 +876,7 @@ module BoilerBase
     FILTER_SAMPLE_SIZE = 3
     SAMPLING_DELAY = 2.1
     ERROR_THRESHOLD = 1.1
+    CONTROL_LOOP_DELAY = 6
     MOTOR_TIME_PARAMETER = 1
     UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT = 60
     MOVEMENT_TIME_HYSTERESIS = 5
@@ -973,13 +974,16 @@ module BoilerBase
       # Control until if stop is requested
       while !@stop_control_requested do
         
+        # Minimum delay between motor actuations
+        sleep CONTROL_LOOP_DELAY
+
         # Read target temp thread safely
         @target_mutex.synchronize {target = @target_temp}
         @measurement_mutex.synchronize {error = target - @mix_filter}
-        
+
         # Adjust mixing motor if error is out of bounds
         if error.abs > ERROR_THRESHOLD
-          
+
           adjustment_time = calculate_adjustment_time(error.abs)
 
           # Move CCW
