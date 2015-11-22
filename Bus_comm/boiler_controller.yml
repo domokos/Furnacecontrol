@@ -49,6 +49,8 @@
 # Mock values for non-existent/dry run sensors
 :forward_mock_temp: 37.0
 :return_mock_temp: 31.0
+:upper_buffer_mock_temp: 31.0
+:lower_buffer_mock_temp: 31.0
 :HW_mock_temp: 55.0
 :living_mock_temp: 19.0
 :upstairs_mock_temp: 23.0
@@ -65,9 +67,9 @@
 :main_controller_dev_addr: 11
 :hw_sensor_reg_addr: 1
 :basement_sensor_reg_addr: 2
-:return_sensor_reg_addr: 3
-:forward_sensor_reg_addr: 4
-:buffertop_valve_reg_addr: 5
+:upper_buffer_sensor_reg_addr: 3
+:lower_buffer_sensor_reg_addr: 4
+:forward_valve_reg_addr: 5
 :return_valve_reg_addr: 6
 :radiator_pump_reg_addr: 7
 :floor_pump_reg_addr: 8
@@ -91,8 +93,8 @@
 # Mixer controller - Boiler room
 :mixer_controller_dev_addr: 12
 :mixer_fwd_sensor_reg_addr: 1
-:upper_buffer_sensor_reg_addr: 2
-:lower_buffer_sensor_reg_addr: 3
+:forward_sensor_reg_addr: 2
+:return_sensor_reg_addr: 3
 :mixer_cw_reg_addr: 4
 :mixer_ccw_reg_addr: 5
 :mixer_sparea_switch_reg_addr: 6
