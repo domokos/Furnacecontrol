@@ -182,7 +182,7 @@ class Heating_State_Machine
     @config[:main_controller_dev_addr], @config[:hw_wiper_reg_addr], DRY_RUN, @config[:hw_temp_shift])
 
     #Create the BufferHeat controller
-    @buffer_heater = BufferHeat(@forward_sensor, @upper_buffer_sensor, @lower_buffer_sensorsensor, @return_sensor,
+    @buffer_heater = BoilerBase::BufferHeat.new(@forward_sensor, @upper_buffer_sensor, @lower_buffer_sensor, @return_sensor,
     @HW_sensor, @forward_valve, @return_valve, @heater_relay, @hydr_shift_pump, @hot_water_pump,
     @HW_watertemp, @heating_watertemp, @config)
 
@@ -288,7 +288,7 @@ class Heating_State_Machine
 
       # Set the buffer for direct connection
       @buffer_heater.set_relays(:direct_boiler)
-      
+
       # Set water temperature of the boiler low
       @heating_watertemp.set_water_temp(5.0)
 
@@ -569,8 +569,8 @@ class Heating_State_Machine
   def control_pumps_valves_heat(prev_power_needed,power_needed)
     $app_logger.debug("Controlling valves and pumps")
 
-    # Do only heat control if there is a change in power_needed
-    if prev_power_needed != power_needed
+    # Do only heat control if there is no change in power_needed
+    if prev_power_needed == power_needed
       control_heat(power_needed)
       return
     end

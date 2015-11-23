@@ -1073,7 +1073,7 @@ module BoilerBase
 
       # Initialize the heating history
       @heating_history = []
-      @delta_analyzer = TempAnalyzer.new(6)
+      @delta_analyzer = Globals::TempAnalyzer.new(6)
       @initialize_heating = true
       @buffer_exit_limit = 0
 
@@ -1081,7 +1081,6 @@ module BoilerBase
       @mode = :off
       @control_thread = nil
       @relay_state = nil
-      @transition_timer = TimerSec.new(TRANSITION_DELAY)
       set_relays(:direct_boiler)
       @heating_feed_state = :initializing
       @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>(@lower_sensor.temp - BUFFER_BASE_TEMP)/(@upper_sensor.temp - BUFFER_BASE_TEMP)}
@@ -1117,8 +1116,6 @@ module BoilerBase
           set_relays(:direct_boiler)
           start_control_thread
         end
-      else
-        @mode_changed = false
       end
     end
 
@@ -1382,6 +1379,7 @@ module BoilerBase
       @control_mutex.synchronize do
         @stop_control = false
         @control_thread = Thread.new do
+          $app_logger.debug("Heater control thread created")
           while !@stop_control
             do_control
             sleep BUFFER_HEAT_CONTROL_LOOP_DELAY
