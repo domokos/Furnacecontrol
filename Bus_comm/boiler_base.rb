@@ -862,7 +862,7 @@ module BoilerBase
     FILTER_SAMPLE_SIZE = 3
     SAMPLING_DELAY = 2.1
     ERROR_THRESHOLD = 1.1
-    CONTROL_LOOP_DELAY = 6
+    BUFFER_HEAT_CONTROL_LOOP_DELAY = 6
     MOTOR_TIME_PARAMETER = 1
     UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT = 60
     MOVEMENT_TIME_HYSTERESIS = 5
@@ -886,8 +886,6 @@ module BoilerBase
 
       @integrated_cw_movement_time = 0
       @integrated_ccw_movement_time = 0
-
-      @delta_analyzer = TempAnalyzer.new(6)
 
       # Reset the device
       reset
@@ -962,7 +960,7 @@ module BoilerBase
       while !@stop_control_requested do
 
         # Minimum delay between motor actuations
-        sleep CONTROL_LOOP_DELAY
+        sleep BUFFER_HEAT_CONTROL_LOOP_DELAY
 
         # Read target temp thread safely
         @target_mutex.synchronize {target = @target_temp}
@@ -1022,22 +1020,21 @@ module BoilerBase
   class BufferHeat
     # Constants of the class
     VALVE_MOVEMENT_TIME = 6
-    HEATING_HISTORY_AGE_LIMIT = 180
-    MINIMUM_HEATING_HISTORY_STABILITY_AGE = 20
-    CONTROL_LOOP_DELAY = 1
+    MAX_HEATING_HISTORY_AGE = 180
+    MINIMUM_HEATING_HISTORY_STABILITY_AGE = 15
+    BUFFER_HEAT_CONTROL_LOOP_DELAY = 1
     DELTA_T_STABILITY_SLOPE_THRESHOLD = 2
     BUFFER_BASE_TEMP = 20.0
 
     # Heat initialization constants
-    INIT_BUFFER_REQUD_TEMP_RESERVE = 3.0
+    INIT_BUFFER_REQD_TEMP_RESERVE = 3.0
     INIT_BUFFER_REQUD_FILL_RESERVE = 0.5
-    INIT_BUFFER_SAFETY_THRESHOLD = 5.0
 
     #Heating delta_t maintenance related constants
     MINIMUM_DELTA_T_TO_MAINTAIN = 3.0
     BUFFER_PASSTHROUGH_OVERSHOOT = 3.0
     BUFFER_EXPIRY_THRESHOLD = 3.0
-    BUFFER_PASSTHROUGH_REQ_TEMP_LIMIT = 40.0
+    BUFFER_PASSTHROUGH_FWD_TEMP_LIMIT = 40.0
     TRANSITION_DELAY = 10
     # Initialize the buffer taking its sensors and control valves
     def initialize(forward_sensor, upper_sensor, lower_sensor, return_sensor,
@@ -1076,6 +1073,9 @@ module BoilerBase
 
       # Initialize the heating history
       @heating_history = []
+      @delta_analyzer = TempAnalyzer.new(6)
+      @initialize_heating = true
+      @buffer_exit_limit = 0
 
       # Set the initial state
       @mode = :off
@@ -1097,7 +1097,6 @@ module BoilerBase
     # :off - The system is configured for being turned off. The remaining heat from the boiler - if any - is transferred to the buffer.
     #
     # :HW - The system is configured for HW - Boiler relays are switched off  - this now does not take the solar option into account.
-    #
 
     def set_mode(mode)
       # Check validity of the parameter
@@ -1165,8 +1164,8 @@ module BoilerBase
 
       # Wait until valve movement is complete
       sleep VALVE_MOVEMENT_TIME unless !moved
-      
-      if moved 
+
+      if moved
         return :delayed
       else
         return :immediate
@@ -1178,7 +1177,10 @@ module BoilerBase
     # Maintain the heating history
     def maintain_heating_metadata
       # Maintain the heating history
-      @heating_history = [] if @restart_heating_history
+      if @initialize_heating
+        @heating_history.clear
+        @delta_analyzer.reset
+      end
 
       current_heating_history_entry = {:forward_temp=>@forward_sensor.temp,:return_temp=>@return_sensor.temp,
         :upper_temp=>@upper_sensor.temp,:lower_temp=>@lower_sensor.temp,:delta_t=>0,
@@ -1188,15 +1190,21 @@ module BoilerBase
 
       @heating_history.push(current_heating_history_entry)
 
-      @heating_history.shift if heating_feed_age > HEATING_HISTORY_AGE_LIMIT
+      @heating_history.shift if heating_feed_age > MAX_HEATING_HISTORY_AGE
 
       # Maintain the amount of heat stored in the buffer
       @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>(@lower_sensor.temp - BUFFER_BASE_TEMP)/(@upper_sensor.temp - BUFFER_BASE_TEMP)}
 
-    end
+      # Update the heating delta analyzer
+      @delta_analyzer.update(current_heating_history_entry[:delta_t])
+    end # of maintain_heating_metadata
 
+    #
     # Evaluate heating conditions and
-    # set feed strategy accordingly
+    # set feed strategy
+    # This routine only sets relays and heat switches no pumps
+    # circulation is expected to be stable when called
+    #
     def set_heating_feed
 
       maintain_heating_metadata
@@ -1204,28 +1212,26 @@ module BoilerBase
       current_delta_t = @heating_history.last[:delta_t]
       current_forward_temp = @heating_history.last[:forward_temp]
 
-      delta_analyzer.update(current_delta_t)
-
       # Determine the heating feed state
       @prev_heating_feed_state = @heating_feed_state
 
-      if Time.now.getlocal(0) - @heating_history.first[:timestamp]  < MINIMUM_HEATING_HISTORY_STABILITY_AGE
+      if @initialize_heating
         @heating_feed_state = :initializing
-      elsif delta_analyzer.slope.abs > DELTA_T_STABILITY_SLOPE_THRESHOLD
+        @initialize_heating = false
+      elsif @delta_analyzer.slope.abs > DELTA_T_STABILITY_SLOPE_THRESHOLD or
+      Time.now.getlocal(0) - @heating_history.first[:timestamp]  < MINIMUM_HEATING_HISTORY_STABILITY_AGE
         @heating_feed_state = :unstable
       else
         @heating_feed_state = :stable
       end
 
-      # If the measurement has not yet started a long time ago
-      # or the delte_t is changing too fast, then
+      # If the measurement has not yet started perform initialization
       if heating_feed_state == :initializing
 
-        if @heat_in_buffer[:temp] > @target_temp + INIT_BUFFER_REQUD_TEMP_RESERVE and @heat_in_buffer[:perecentage] > INIT_BUFFER_REQUD_FILL_RESERVE and
-        @heat_in_buffer[:temp] < @target_temp + INIT_BUFFER_SAFETY_THRESHOLD
+        if @heat_in_buffer[:temp] > @target_temp + INIT_BUFFER_REQD_TEMP_RESERVE and @heat_in_buffer[:perecentage] > INIT_BUFFER_REQUD_FILL_RESERVE
           @heater_relay.off
-          set_relays(:feed_from_buffer)
           @heat_wiper.set_water_temp(7.0)
+          set_relays(:feed_from_buffer)
         else
           set_relays(:direct_boiler)
           @heater_relay.on
@@ -1239,18 +1245,30 @@ module BoilerBase
         if @relay_state == :direct_boiler
 
           # Direct Boiler - State change condition evaluation
-          if current_delta_t < MINIMUM_DELTA_T_TO_MAINTAIN and @target_temp < BUFFER_PASSTHROUGH_REQ_TEMP_LIMIT
-            if @heat_in_buffer[:temp] > @target_temp + INIT_BUFFER_REQUD_TEMP_RESERVE and @heat_in_buffer[:perecentage] > INIT_BUFFER_REQUD_FILL_RESERVE and
-            @heat_in_buffer[:temp] < @target_temp + INIT_BUFFER_SAFETY_THRESHOLD
+          if current_delta_t < MINIMUM_DELTA_T_TO_MAINTAIN
+            # Too much heat with direct heat - let's either feed from buffer or fill the buffer
+            # based on how much heat is stored in the buffer
+
+            if @heat_in_buffer[:temp] > @target_temp + INIT_BUFFER_REQD_TEMP_RESERVE and @heat_in_buffer[:perecentage] > INIT_BUFFER_REQUD_FILL_RESERVE
               @heater_relay.off
               @heat_wiper.set_water_temp(7.0)
               set_relays(:feed_from_buffer)
             else
               set_relays(:buffer_passthrough)
+
+              # Remember the target temp that the system was unable to dissipate
+              # in direct feed mode. This is then used as a lower limiter for exiting from
+              # buffer passthrough mode - this is a learning type mechanism for allowing the boiler temp
+              # to be raised up until temperatures that have already been seen as temperatures that
+              # the system is unable to dissipate. A hysteresis logic is used using the same hysteresis as is used for
+              # the extra amount of heat requred from the boiled in case of buffer passthrough heating
+              @buffer_exit_limit = @target_temp + BUFFER_PASSTHROUGH_OVERSHOOT
+              # If feed heat into buffer raise the boiler temperature to be able to move heat out of the buffer later
               @heat_wiper.set_water_temp(@target_temp + BUFFER_PASSTHROUGH_OVERSHOOT)
             end
 
             # Direct Boiler - State maintenance operations
+            # Just set the required water temperature
           else
             @heat_wiper.set_water_temp(@target_temp)
           end
@@ -1259,16 +1277,27 @@ module BoilerBase
         elsif @relay_state == :buffer_passthrough
 
           # Buffer Passthrough - State change evaluation conditions
-          if @target_temp > BUFFER_PASSTHROUGH_REQ_TEMP_LIMIT
+
+          # Move out of buffer feed if the required temperature rose above the exit limit
+          # This logic is here to try forcing the heating back to direct heating in cases where
+          # the heat generated can be dissipated. This is more of a safety escrow
+          # to try avoiding unnecessary buffer filling
+          if @target_temp > @buffer_exit_limit
             set_relays(:direct_boiler)
             @heat_wiper.set_water_temp(@target_temp)
 
+            # If the buffer is nearly full - too low delta T or
+            # too hot then start feeding from the buffer.
+            # As of now we assume that the boiler is able to generate the output temp requred
+            # therefore it is enough to monitor the deltaT to find out if the above condition is met
           elsif current_delta_t < MINIMUM_DELTA_T_TO_MAINTAIN
             @heater_relay.off
             @heat_wiper.set_water_temp(7.0)
             set_relays(:feed_from_buffer)
 
             # Buffer Passthrough - State maintenance operations
+            # Just set the required water temperature
+            # raised with the buffer filling offset
           else
             @heat_wiper.set_water_temp(@target_temp + BUFFER_PASSTHROUGH_OVERSHOOT)
           end
@@ -1277,11 +1306,23 @@ module BoilerBase
         elsif @relay_state == :feed_from_buffer
 
           # Feeed from Buffer - - State change evaluation conditions
+
+          # If the buffer is empty: unable to provide at least the target temp minus the hysteresis
+          # then it needs re-filling. This will ensure an operation of filling the buffer with
+          # target+BUFFER_PASSTHROUGH_OVERSHOOT and consuming until target-BUFFER_EXPIRY_THRESHOLD
+          # The effective hysteresis is therefore BUFFER_PASSTHROUGH_OVERSHOOT+BUFFER_EXPIRY_THRESHOLD
           if current_forward_temp < @target_temp - BUFFER_EXPIRY_THRESHOLD
-            if @target_temp < BUFFER_PASSTHROUGH_REQ_TEMP_LIMIT
+
+            # If we are below the exit limit then go for filling the buffer
+            # This starts off from zero (0), so for the first time it will need a limit set in
+            # direct_boiler operation mode
+            if @target_temp < @buffer_exit_limit
               set_relays(:buffer_passthrough)
               @heater_relay.on
               @heat_wiper.set_water_temp(@target_temp + BUFFER_PASSTHROUGH_OVERSHOOT)
+
+              # If the target is above the exit limit then go for the direct feed
+              # which in turn may set a viable exit limit
             else
               set_relays(:direct_boiler)
               @heater_relay.on
@@ -1291,11 +1332,13 @@ module BoilerBase
 
           # Raise an exception - no matching source state
         else
-          raise "Encountered invalid relay state in set_heating_feed: "+@relay_state.to_s
+          raise "Unexpected relay state in set_heating_feed: "+@relay_state.to_s
         end
 
-      else # heating_feed_state == :unstable
-        $app_logger.debug("Delta T unstable. "+delta_analyzer.slope.to_s)
+      elsif heating_feed_state == :unstable
+        $app_logger.debug("Heating unstable. DeltaT slope: "+delta_analyzer.slope.to_s+"; History age: "+(Time.now.getlocal(0) - @heating_history.first[:timestamp]).to_s)
+      else
+        raise "Unexpected heating_feed_state: "+heating_feed_state.to_s
       end
     end # of set_heating_feed
 
@@ -1312,11 +1355,11 @@ module BoilerBase
           # Make sure HW mode of the boiler is off
           @hw_wiper.set_water_temp(65.0)
           @hydr_shift_pump.on
-          sleep 2
-          @restart_heating_history = true
+          sleep @config[:circulation_maintenance_delay]
+          @initialize_heating = true
           set_heating_feed
         else
-          raise "Invalid mode in do_control. Expecting either ':HW' or ':heat' got: '"+@mode.to_s+"'"
+          raise "Invalid mode in do_control after mode change. Expecting either ':HW' or ':heat' got: '"+@mode.to_s+"'"
         end
         @mode_changed = false
       else
@@ -1328,7 +1371,6 @@ module BoilerBase
         else
           raise "Invalid mode in do_control. Expecting either ':HW' or ':heat' got: '"+@mode.to_s+"'"
         end
-        sleep CONTROL_LOOP_DELAY
       end
     end
 
@@ -1342,6 +1384,7 @@ module BoilerBase
         @control_thread = Thread.new do
           while !@stop_control
             do_control
+            sleep BUFFER_HEAT_CONTROL_LOOP_DELAY
           end
           # Stop heat production of the boiler
           @heater_relay.off
