@@ -198,6 +198,12 @@ class Heating_State_Machine
     proc {
       $app_logger.debug("Activating \"Off\" state")
 
+      # Make sure the heater is stopped
+      @buffer_heater.set_mode(:off)
+
+      # Set the buffer for direct connection
+      @buffer_heater.set_relays(:direct_boiler)
+
       # Set water temperature of the boiler low
       @heating_watertemp.set_water_temp(5.0)
 
@@ -222,9 +228,6 @@ class Heating_State_Machine
       @living_floor_valve.delayed_close
       @upstairs_floor_valve.delayed_close
 
-      # Set the buffer for direct connection
-      @buffer_heater.set_relays(:direct_boiler)
-
       # Wait for the delayed closure to happen
       sleep 3
     })
@@ -240,6 +243,11 @@ class Heating_State_Machine
     @state_Postheat.set_activate(
     proc {
       $app_logger.debug("Activating \"Postheat\" state")
+      # Make sure the heater is stopped
+      @buffer_heater.set_mode(:off)
+
+      # Set the buffer for direct connection
+      @buffer_heater.set_relays(:direct_boiler)
 
       # Set water temperature of the boiler low
       @heating_watertemp.set_water_temp(5.0)
@@ -256,9 +264,6 @@ class Heating_State_Machine
       # Radiator pumps on
       @hydr_shift_pump.on
       @radiator_pump.on
-
-      # Set the buffer for direct connection
-      @buffer_heater.set_relays(:direct_boiler)
 
       # Wait before turning pumps off to make sure we do not lose circulation
       sleep @config[:circulation_maintenance_delay]
@@ -278,6 +283,12 @@ class Heating_State_Machine
     proc {
       $app_logger.debug("Activating \"PostHW\" state")
 
+      # Make sure the heater is stopped
+      @buffer_heater.set_mode(:off)
+
+      # Set the buffer for direct connection
+      @buffer_heater.set_relays(:direct_boiler)
+      
       # Set water temperature of the boiler low
       @heating_watertemp.set_water_temp(5.0)
 
@@ -286,9 +297,6 @@ class Heating_State_Machine
 
       # Turn off heater relay
       @heater_relay.off
-
-      # Set the buffer for direct connection
-      @buffer_heater.set_relays(:direct_boiler)
 
       @hot_water_pump.on
       # Wait before turning pumps off to make sure we do not lose circulation
@@ -561,8 +569,8 @@ class Heating_State_Machine
   def control_pumps_valves_heat(prev_power_needed,power_needed)
     $app_logger.debug("Controlling valves and pumps")
 
-    # Do only heat control if there is no change in power_needed
-    if prev_power_needed == power_needed
+    # Do only heat control if there is a change in power_needed
+    if prev_power_needed != power_needed
       control_heat(power_needed)
       return
     end
