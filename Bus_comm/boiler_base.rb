@@ -220,7 +220,7 @@ module BusDevice
           parent_off
         end
       end
-      @delayed_close_semaphore.unlock
+      @delayed_close_semaphore.unlock 
     end
 
     def on
@@ -916,7 +916,7 @@ module BoilerBase
       return unless @control_thread_mutex.try_lock
 
       # Clear control thread stop sugnaling mutex
-      @stop_control_requested.unlock
+      @stop_control_requested.unlock if @stop_control_requested.locked?
       # Start control thread
       @control_thread = Thread.new do
         # Acquire lock for controlling switches
@@ -953,7 +953,7 @@ module BoilerBase
       return unless @measurement_thread_mutex.try_lock
 
       # Unlock the measurement thread exis signal
-      @stop_measurement_requested.unlock
+      @stop_measurement_requested.unlock if @stop_measurement_requested.locked?
 
       #Create a temperature measurement thread
       @measurement_thread = Thread.new do
@@ -1453,7 +1453,7 @@ module BoilerBase
       return unless @control_mutex.try_lock
 
       # Set the stop thread signal inactive
-      @stop_control.unlock
+      @stop_control.unlock if @stop_control.locked? 
 
       # The controller thread
       @control_thread = Thread.new do
