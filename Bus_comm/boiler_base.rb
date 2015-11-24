@@ -29,25 +29,25 @@ module BusDevice
       actual_check_list = []
       @@check_process = Thread.new do
         while true
-          $app_logger.debug("Check round started")
+          $app_logger.trace("Check round started")
           @@check_process_mutex.synchronize {actual_check_list = @@check_list.dup}
-          $app_logger.debug("Element count in checkround: "+actual_check_list.size.to_s)
+          $app_logger.trace("Element count in checkround: "+actual_check_list.size.to_s)
           el_count = 1
           actual_check_list.each do |element|
-            $app_logger.debug("Element # "+el_count.to_s+" checking launched")
+            $app_logger.trace("Element # "+el_count.to_s+" checking launched")
             el_count +=1
 
             # Distribute checking each object across CHECK_INTERVAL_PERIOD_SEC evenly
             actual_check_list.size > 0 and sleep CHECK_INTERVAL_PERIOD_SEC / actual_check_list.size
             sleep 1
-            $app_logger.debug("Bus device consistency checker process: Checking '"+element[:Obj].name+"'")
+            $app_logger.trace("Bus device consistency checker process: Checking '"+element[:Obj].name+"'")
 
             # Check if the checker process is accessible
             if (defined? element[:Proc]) != nil
 
               # Call the checker process and capture result
               result = element[:Proc].call
-              $app_logger.debug("Bus device consistency checker process: Checkresult for '"+element[:Obj].name+"': "+result.to_s)
+              $app_logger.trace("Bus device consistency checker process: Checkresult for '"+element[:Obj].name+"': "+result.to_s)
             else
 
               # Log that the checker process is not accessible, and forcibly unregister it
@@ -56,7 +56,7 @@ module BusDevice
             end
 
             # Just log the result - the checker process itself is expected to take the appropriate action upon failure
-            $app_logger.debug("Bus device consistency checker process: Check method result for: '"+element[:Obj].name+"': "+result.to_s)
+            $app_logger.trace("Bus device consistency checker process: Check method result for: '"+element[:Obj].name+"': "+result.to_s)
           end
         end
       end
@@ -99,7 +99,7 @@ module BusDevice
       @state_semaphore.synchronize do
         if @state != :on
           @state = :on
-          write_device(1) == :Success and $app_logger.info("Succesfully turned Switch '"+@name+"' on.")
+          write_device(1) == :Success and $app_logger.trace("Succesfully turned Switch '"+@name+"' on.")
         end
       end
     end
@@ -109,7 +109,7 @@ module BusDevice
       @state_semaphore.synchronize do
         if @state != :off
           @state = :off
-          write_device(0) == :Success and $app_logger.info("Succesfully turned Switch '"+@name+"' off.")
+          write_device(0) == :Success and $app_logger.trace("Succesfully turned Switch '"+@name+"' off.")
         end
       end
     end
@@ -122,7 +122,7 @@ module BusDevice
       if !@dry_run
         begin
           retval = @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+value.chr)
-          $app_logger.debug("Sucessfully written "+value.to_s+" to register '"+@name+"'")
+          $app_logger.trace("Sucessfully written "+value.to_s+" to register '"+@name+"'")
         rescue MessagingError => e
           retval = e.return_message
           $app_logger.fatal("Unrecoverable communication error on bus, writing '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
@@ -130,7 +130,7 @@ module BusDevice
           return :Failure
         end
       else
-        $app_logger.debug("Dry run - writing "+value.to_s+" to register '"+@name+"'")
+        $app_logger.trace("Dry run - writing "+value.to_s+" to register '"+@name+"'")
       end
       return :Success
     end
@@ -224,9 +224,7 @@ module BusDevice
     end
 
     def on
-      @modification_semaphore.synchronize do
-        parent_on
-      end
+      @modification_semaphore.synchronize { parent_on }
     end
 
     def open
@@ -249,14 +247,14 @@ module BusDevice
       @movement_active = false
 
       # Wait until the device becomes inactive to establish a known state
-      $app_logger.info("Waiting until Pulse Switch'"+@name+"' becomes inactive")
+      $app_logger.debug("Waiting until Pulse Switch'"+@name+"' becomes inactive")
       wait_until_inactive
       start_state_reader_thread if @state == :active
     end
 
     # Turn the device on
     def pulse_block(duration)
-      write_device(duration) == :Success and $app_logger.info("Succesfully started pulsing Switch '"+@name+"'")
+      write_device(duration) == :Success and $app_logger.debug("Succesfully started pulsing Switch '"+@name+"'")
       sleep STATE_READ_PERIOD
       wait_until_inactive
     end
@@ -301,7 +299,7 @@ module BusDevice
       if !@dry_run
         begin
           retval = @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+value.chr)
-          $app_logger.debug("Sucessfully written "+value.to_s+" to pulse switch '"+@name+"'")
+          $app_logger.trace("Sucessfully written "+value.to_s+" to pulse switch '"+@name+"'")
         rescue MessagingError => e
           retval = e.return_message
           $app_logger.fatal("Unrecoverable communication error on bus, writing '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
@@ -309,7 +307,7 @@ module BusDevice
           return :Failure
         end
       else
-        $app_logger.debug("Dry run - writing "+value.to_s+" to register '"+@name+"'")
+        $app_logger.trace("Dry run - writing "+value.to_s+" to register '"+@name+"'")
       end
       return :Success
     end
@@ -365,7 +363,7 @@ module BusDevice
       begin
         # Reat the register on the bus
         retval = @@comm_interface.send_message(@slave_address,Buscomm::READ_REGISTER,@register_address.chr)
-        $app_logger.debug("Succesful read from temp register of '"+@name+"'")
+        $app_logger.trace("Succesful read from temp register of '"+@name+"'")
 
         # Calculate temperature value from the data returned
         temp = "" << retval[:Content][Buscomm::PARAMETER_START] << retval[:Content][Buscomm::PARAMETER_START+1]
@@ -421,7 +419,7 @@ module BusDevice
       if value_requested != @value
         @value = value_requested
         write_device(@value, VOLATILE)
-        $app_logger.info(@name+" set to value "+@value.to_s+" meaning water temperature "+@temp_required.to_s+" C")
+        $app_logger.debug(@name+" set to value "+@value.to_s+" meaning water temperature "+@temp_required.to_s+" C")
       end
     end
 
@@ -437,7 +435,7 @@ module BusDevice
           else
             @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+0x01.chr+0xff.chr+is_volatile.chr)
           end
-          $app_logger.debug("Dry run - writing "+value.to_s(16)+" to wiper register with is_volatile flag set to "+is_volatile.to_s+" in '"+@name+"'")
+          $app_logger.trace("Dry run - writing "+value.to_s(16)+" to wiper register with is_volatile flag set to "+is_volatile.to_s+" in '"+@name+"'")
         rescue MessagingError => e
           # Get the returned message
           retval = e.return_message
@@ -862,7 +860,7 @@ module BoilerBase
     FILTER_SAMPLE_SIZE = 3
     SAMPLING_DELAY = 2.1
     ERROR_THRESHOLD = 1.1
-    BUFFER_HEAT_CONTROL_LOOP_DELAY = 6
+    MIXER_CONTROL_LOOP_DELAY = 6
     MOTOR_TIME_PARAMETER = 1
     UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT = 60
     MOVEMENT_TIME_HYSTERESIS = 5
@@ -880,6 +878,10 @@ module BoilerBase
       @target_mutex = Mutex.new
       @control_mutex = Mutex.new
       @measurement_mutex = Mutex.new
+      @measurement_thread_mutex = Mutex.new
+      @stop_measurement_requested = Mutex.new
+      @control_thread_mutex = Mutex.new
+      @stop_control_requested = Mutex.new
 
       @control_thread = nil
       @measurement_thread = nil
@@ -911,8 +913,10 @@ module BoilerBase
 
     def start_control(delay=0)
       # Only start control thread if not yet started
-      retrun if @control_thread != nil
+      return unless @control_thread_mutex.try_lock
 
+      # Clear control thread stop sugnaling mutex
+      @stop_control_requested.unlock
       # Start control thread
       @control_thread = Thread.new do
         # Acquire lock for controlling switches
@@ -925,42 +929,68 @@ module BoilerBase
 
           # Do the actual control, which will return ending the thread if done
           do_control_thread
+
+          # Clear the control thread
           @control_thread = nil
         end
       end
     end
 
     def stop_control
-      @stop_control_requested = true
+      # Return if we do not have a control thread
+      return if !@control_thread_mutex.locked?
+
+      # Signal the control thread to exit
+      @stop_control_requested.lock
+      # Wait for the control thread to exit
+      @control_thread.join
+
+      # Allow the next call to start control to create a new control thread
+      @control_thread_mutex.unlock
     end
 
     def start_measurement_thread
-      return if @measurement_thread != nil
+      return unless @measurement_thread_mutex.try_lock
+
+      # Unlock the measurement thread exis signal
+      @stop_measurement_requested.unlock
 
       #Create a temperature measurement thread
       @measurement_thread = Thread.new do
-        @measurement_mutex.synchronize {@mix_filter.input_sample(@mix_sensor.temp)}
-        sleep SAMPLING_DELAY
+        while !@stop_measurement_requested.locked? do
+          @measurement_mutex.synchronize {@mix_filter.input_sample(@mix_sensor.temp)}
+          sleep SAMPLING_DELAY unless @stop_measurement_requested.locked?
+        end
+        $app_logger.debug("Mixer controller measurement thread exiting")
       end
     end
 
     def stop_measurement_thread
-      return if @measurement_thread == nil
-      @measurement_thread.kill
-      @measurement_thread = nil
+      # Return if we do not have a measurement thread
+      return if !@measurement_thread_mutex.locked?
+
+      # Signal the measurement thread to exit
+      @stop_measurement_requested.lock
+
+      # Wait for the measurement thread to exit
+      $app_logger.debug("Mixer controller waiting for measurement thread to exit")
+      @measurement_thread.join
+
+      # Allow a next call to start_measurement thread to create
+      # a new measurement thread
+      @measurement_thread_mutex.unlock
     end
 
     # The actual control thread
     def do_control_thread
-      @stop_control_requested = false
 
       start_measurement_thread
 
       # Control until if stop is requested
-      while !@stop_control_requested do
+      while !@stop_control_requested.locked? do
 
         # Minimum delay between motor actuations
-        sleep BUFFER_HEAT_CONTROL_LOOP_DELAY
+        sleep MIXER_CONTROL_LOOP_DELAY
 
         # Read target temp thread safely
         @target_mutex.synchronize {target = @target_temp}
@@ -1068,8 +1098,13 @@ module BoilerBase
       # Remember the heating config map by reference
       @config = config
 
-      # The control mutex - ensure that only one thread does active control
+      # The control thread signalling mutexes
+
+      # This one ensures that there is only one control thread running
       @control_mutex = Mutex.new
+
+      # This one signals the control thread to exit
+      @stop_control = Mutex.new
 
       # Initialize the heating history
       @heating_history = []
@@ -1097,32 +1132,37 @@ module BoilerBase
     #
     # :HW - The system is configured for HW - Boiler relays are switched off  - this now does not take the solar option into account.
 
-    def set_mode(mode)
+    def set_mode(new_mode)
       # Check validity of the parameter
       raise "Invalid mode parameter '"+mode.to_s+"' passed to set_mode(mode)" unless [:heat,:off,:HW].include? mode
 
-      if @mode != mode
-        @prev_mode = @mode
-        @mode_changed = true
-        case mode
-        when :heat
-          @mode = :heat
-          start_control_thread
-        when :off
-          @mode = :off
-          stop_control_thread
-        when :HW
-          @mode = :HW
-          set_relays(:direct_boiler)
-          start_control_thread
-        end
+      # Take action only if the mode is changing
+      return if @mode == new_mode
+
+      # Maintain the mode history and set the mode change flag
+      @prev_mode = @mode
+      @mode = new_mode
+      @mode_changed = true
+
+      case new_mode
+      when :heat
+        $app_logger.debug("Heater set_mode. Got new mode: :heat")
+        start_control_thread
+      when :off
+        $app_logger.debug("Heater set_mode. Got new mode: :off")
+        stop_control_thread
+      when :HW
+        $app_logger.debug("Heater set_mode. Got new mode: :HW")
+        set_relays(:direct_boiler)
+        start_control_thread
       end
+
     end
 
     # Set the required forward water temperature
-    def set_target(target)
-      return if @target_temp == target
-      @target_temp = target
+    def set_target(new_target_temp)
+      #      @target_changed = (new_target_temp == @target_temp)
+      @target_temp = new_target
     end
 
     # Configure the relays for a certain purpose
@@ -1130,6 +1170,8 @@ module BoilerBase
       # Check validity of the parameter
       raise "Invalid relay config parameter '"+config.to_s+"' passed to set_relays(config)" unless
       [:direct_boiler,:buffer_passthrough,:feed_from_buffer].include? config
+
+      $app_logger.debug("Relay state is: "+@relay_state.to_s)
 
       return if @relay_state == config
 
@@ -1159,6 +1201,12 @@ module BoilerBase
         @relay_state = :feed_from_buffer
       end
 
+      if moved
+        $app_logger.debug("Waiting for relays to move state")
+      else
+        $app_logger.debug("Relays not moved - skippling sleep")
+      end
+
       # Wait until valve movement is complete
       sleep VALVE_MOVEMENT_TIME unless !moved
 
@@ -1172,11 +1220,14 @@ module BoilerBase
     private
 
     # Maintain the heating history
-    def maintain_heating_metadata
+    def maintain_heating_metadata(calling_mode)
       # Maintain the heating history
-      if @initialize_heating
+      if calling_mode == :initialize
+        $app_logger.debug("Maintaining heatnig metadata - initializing metadata storage: "+calling_mode.to_s)
         @heating_history.clear
         @delta_analyzer.reset
+      else
+        $app_logger.debug("Maintaining heatnig metadata - appending to metadata storage: "+calling_mode.to_s)
       end
 
       current_heating_history_entry = {:forward_temp=>@forward_sensor.temp,:return_temp=>@return_sensor.temp,
@@ -1202,9 +1253,9 @@ module BoilerBase
     # This routine only sets relays and heat switches no pumps
     # circulation is expected to be stable when called
     #
-    def set_heating_feed
+    def set_heating_feed(calling_mode)
 
-      maintain_heating_metadata
+      maintain_heating_metadata(calling_mode)
 
       current_delta_t = @heating_history.last[:delta_t]
       current_forward_temp = @heating_history.last[:forward_temp]
@@ -1212,15 +1263,17 @@ module BoilerBase
       # Determine the heating feed state
       @prev_heating_feed_state = @heating_feed_state
 
-      if @initialize_heating
+      if calling_mode == :initialize
         @heating_feed_state = :initializing
-        @initialize_heating = false
       elsif @delta_analyzer.slope.abs > DELTA_T_STABILITY_SLOPE_THRESHOLD or
       Time.now.getlocal(0) - @heating_history.first[:timestamp]  < MINIMUM_HEATING_HISTORY_STABILITY_AGE
         @heating_feed_state = :unstable
       else
         @heating_feed_state = :stable
       end
+
+      $app_logger.debug("Determined heating feed state: "+@heating_feed_state.to_s)
+      $app_logger.debug("Prev heating feed state was: "+@prev_heating_feed_state.to_s)
 
       # If the measurement has not yet started perform initialization
       if heating_feed_state == :initializing
@@ -1237,20 +1290,25 @@ module BoilerBase
 
         # Monitor Delta_t and make feed decison based on it
       elsif heating_feed_state == :stable
+        $app_logger.debug("Relay state: "+@relay_state.to_s)
 
         # Evaluate Direct Boiler state
         if @relay_state == :direct_boiler
+          $app_logger.debug("current_delta_t: "+current_delta_t.to_s)
 
           # Direct Boiler - State change condition evaluation
           if current_delta_t < MINIMUM_DELTA_T_TO_MAINTAIN
             # Too much heat with direct heat - let's either feed from buffer or fill the buffer
             # based on how much heat is stored in the buffer
+            $app_logger.debug("State will change")
+            $app_logger.debug("Heat in buffer: "+@heat_in_buffer[:temp].to_s+" Percentage: "+@heat_in_buffer[:perecentage].to_s)
 
             if @heat_in_buffer[:temp] > @target_temp + INIT_BUFFER_REQD_TEMP_RESERVE and @heat_in_buffer[:perecentage] > INIT_BUFFER_REQUD_FILL_RESERVE
               @heater_relay.off
               @heat_wiper.set_water_temp(7.0)
               set_relays(:feed_from_buffer)
             else
+              $app_logger.debug("State will change")
               set_relays(:buffer_passthrough)
 
               # Remember the target temp that the system was unable to dissipate
@@ -1267,12 +1325,14 @@ module BoilerBase
             # Direct Boiler - State maintenance operations
             # Just set the required water temperature
           else
+            $app_logger.debug("State does not change - setting target: "+@target_temp.to_s)
             @heat_wiper.set_water_temp(@target_temp)
           end
 
           # Evaluate Buffer Passthrough state
         elsif @relay_state == :buffer_passthrough
-
+          $app_logger.debug("Target temp: "+@target_temp.to_s+" Buffer exit limit: "+@buffer_exit_limit.to_s)
+          $app_logger.debug("Current_delta_t: "+current_delta_t.to_s)
           # Buffer Passthrough - State change evaluation conditions
 
           # Move out of buffer feed if the required temperature rose above the exit limit
@@ -1280,6 +1340,8 @@ module BoilerBase
           # the heat generated can be dissipated. This is more of a safety escrow
           # to try avoiding unnecessary buffer filling
           if @target_temp > @buffer_exit_limit
+            $app_logger.debug("State will change")
+
             set_relays(:direct_boiler)
             @heat_wiper.set_water_temp(@target_temp)
 
@@ -1288,6 +1350,8 @@ module BoilerBase
             # As of now we assume that the boiler is able to generate the output temp requred
             # therefore it is enough to monitor the deltaT to find out if the above condition is met
           elsif current_delta_t < MINIMUM_DELTA_T_TO_MAINTAIN
+            $app_logger.debug("State will change")
+
             @heater_relay.off
             @heat_wiper.set_water_temp(7.0)
             set_relays(:feed_from_buffer)
@@ -1296,11 +1360,14 @@ module BoilerBase
             # Just set the required water temperature
             # raised with the buffer filling offset
           else
+            $app_logger.debug("State will not change setting target temp to: "+(@target_temp + BUFFER_PASSTHROUGH_OVERSHOOT).to_s)
             @heat_wiper.set_water_temp(@target_temp + BUFFER_PASSTHROUGH_OVERSHOOT)
           end
 
           # Evaluate feed from Buffer state
         elsif @relay_state == :feed_from_buffer
+          $app_logger.debug("Current_forward_temp: "+current_forward_temp.to_s)
+          $app_logger.debug("Target temp: "+@target_temp.to_s+" Buffer exit limit: "+@buffer_exit_limit.to_s)
 
           # Feeed from Buffer - - State change evaluation conditions
 
@@ -1314,6 +1381,8 @@ module BoilerBase
             # This starts off from zero (0), so for the first time it will need a limit set in
             # direct_boiler operation mode
             if @target_temp < @buffer_exit_limit
+              $app_logger.debug("State will change")
+
               set_relays(:buffer_passthrough)
               @heater_relay.on
               @heat_wiper.set_water_temp(@target_temp + BUFFER_PASSTHROUGH_OVERSHOOT)
@@ -1321,19 +1390,21 @@ module BoilerBase
               # If the target is above the exit limit then go for the direct feed
               # which in turn may set a viable exit limit
             else
+              $app_logger.debug("State will change")
+
               set_relays(:direct_boiler)
               @heater_relay.on
               @heat_wiper.set_water_temp(@target_temp)
             end
           end
-
+          $app_logger.debug("State will not change - continue feeding from buffer while doing nothing")
           # Raise an exception - no matching source state
         else
           raise "Unexpected relay state in set_heating_feed: "+@relay_state.to_s
         end
 
       elsif heating_feed_state == :unstable
-        $app_logger.debug("Heating unstable. DeltaT slope: "+delta_analyzer.slope.to_s+"; History age: "+(Time.now.getlocal(0) - @heating_history.first[:timestamp]).to_s)
+        $app_logger.info("Heating unstable. DeltaT slope: "+delta_analyzer.slope.to_s+"; History age: "+(Time.now.getlocal(0) - @heating_history.first[:timestamp]).to_s)
       else
         raise "Unexpected heating_feed_state: "+heating_feed_state.to_s
       end
@@ -1341,7 +1412,9 @@ module BoilerBase
 
     # The actual tasks of the control thread
     def do_control
+
       if @mode_changed
+        $app_logger.debug("Heater control mode changed, got new mode: "+@mode.to_s)
         case @mode
         when :HW
           @hw_pump.on
@@ -1353,18 +1426,18 @@ module BoilerBase
           @hw_wiper.set_water_temp(65.0)
           @hydr_shift_pump.on
           sleep @config[:circulation_maintenance_delay]
-          @initialize_heating = true
-          set_heating_feed
+          set_heating_feed(:initialize)
         else
           raise "Invalid mode in do_control after mode change. Expecting either ':HW' or ':heat' got: '"+@mode.to_s+"'"
         end
         @mode_changed = false
       else
+        $app_logger.debug("Heater control mode not changed, mode is: "+@mode.to_s)
         case @mode
         when :HW
           @hw_wiper.set_water_temp(@hw_thermostat.temp)
         when :heat
-          set_heating_feed
+          set_heating_feed(:continuous)
         else
           raise "Invalid mode in do_control. Expecting either ':HW' or ':heat' got: '"+@mode.to_s+"'"
         end
@@ -1374,28 +1447,43 @@ module BoilerBase
     # Control thread controlling functions
     # Start the control thread
     def start_control_thread
-      return unless @control_thread == nil
       # This section is synchronized to the control mutex.
-      @control_mutex.synchronize do
-        @stop_control = false
-        @control_thread = Thread.new do
-          $app_logger.debug("Heater control thread created")
-          while !@stop_control
-            do_control
-            sleep BUFFER_HEAT_CONTROL_LOOP_DELAY
-          end
-          # Stop heat production of the boiler
-          @heater_relay.off
-        end # Of control Therad
-      end # of @control_mutex.synchronize
+      # Only a single control thread may exist
+      return unless @control_mutex.try_lock
+
+      # Set the stop thread signal inactive
+      @stop_control.unlock
+
+      # The controller thread
+      @control_thread = Thread.new do
+        $app_logger.debug("Heater control thread created")
+
+        # Loop until signalled to exit
+        while !@stop_control.locked?
+          do_control
+          sleep BUFFER_HEAT_CONTROL_LOOP_DELAY unless @stop_control.locked?
+        end
+        # Stop heat production of the boiler
+        @heater_relay.off
+
+        $app_logger.debug("Heater control thread exiting")
+      end # Of control Thread
+
     end # Of start_control_thread
 
     # Signal the control thread to stop
     def stop_control_thread
-      @stop_control = true
-      @control_thread = nil
+      # Only stop the control therad if it is alive
+      return if !@control_mutex.locked?
+
+      # Signal control thread to exit
+      @stop_control.lock
+      # Wait for the thread to exit
+      @control_thread.join
+
+      # Unlock the thread lock so a new call to start_control_thread
+      # can create the control thread
+      @control_mutex.unlock
     end
-
   end
-
 end

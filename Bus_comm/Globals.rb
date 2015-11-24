@@ -14,8 +14,52 @@ module Globals
   NO_SHUTDOWN = "No Shutdown"
   NORMAL_SHUTDOWN = "Normal Shutdown"
   FATAL_SHUTDOWN = "Shutdown on Fatal Error"
+  class BoilerLogger < Logger
 
-  $app_logger = Logger.new(APPLOG_LOGFILE, 6 , 1000000)
+    INFO = 0
+    FATAL = 1
+    ERROR = 2
+    WARN = 3
+    DEBUG = 4
+    VERBOSE = 5
+    TRACE = 6
+
+    SEVS = %w(INFO FATAL ERROR WARN DEBUG VERBOSE TRACE)
+    def format_severity(severity)
+      SEVS[severity] || 'ANY'
+    end
+
+    def info(progname = nil, &block)
+      add(0, nil, progname, &block)
+    end
+
+    def fatal(progname = nil, &block)
+      add(1, nil, progname, &block)
+    end
+
+    def error(progname = nil, &block)
+      add(2, nil, progname, &block)
+    end
+
+    def warn(progname = nil, &block)
+      add(3, nil, progname, &block)
+    end
+
+    def debug(progname = nil, &block)
+      add(4, nil, progname, &block)
+    end
+
+    def verbose(progname = nil, &block)
+      add(5, nil, progname, &block)
+    end
+
+    def trace(progname = nil, &block)
+      add(6, nil, progname, &block)
+    end
+
+  end
+
+  $app_logger = BoilerLogger.new(APPLOG_LOGFILE, 6 , 1000000)
 
   $app_logger.formatter = proc { |severity, datetime, progname, msg|
     if caller[4].class == String
@@ -179,11 +223,11 @@ module Globals
       @starting_timestamp = Time.now.to_f
       @slope = nil
     end
-    
+
     def size
       @timestamp_vector.size
     end
-    
+
     def update(current_temp)
       now = Time.now.to_f
 

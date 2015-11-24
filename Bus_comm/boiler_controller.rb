@@ -42,7 +42,6 @@ class Heating_State_Machine
     @return_temp = 0.0
     @HW_temp = 0.0
     @test_cycle_cnt = 0
-    @cycle = 0.0
     @moving_valves_required = false
     @config = []
 
@@ -357,78 +356,75 @@ class Heating_State_Machine
     case @state.name
     # The evaluation of the Off state
     when :Off
-      $app_logger.debug("Evaluating Off state:")
-      $app_logger.debug("\tIf need power then -> Heat")
-      $app_logger.debug("\tIf forward temp increases and forward temp above HW temp + 7 C in HW mode then -> PostHW")
-      $app_logger.debug("\tIf forward temp increases and forward temp above HW temp + 7 C not in HW mode then -> PostHeat")
-      $app_logger.debug("\tElse: Stay in Off state")
+      # Evaluating Off state:
+      # If need power then -> Heat
+      # If forward temp increases and forward temp above HW temp + 7 C in HW mode then -> PostHW
+      # If forward temp increases and forward temp above HW temp + 7 C not in HW mode then -> PostHeat
+      # Else: Stay in Off state
+
       if power_needed[:power] != :NONE
-        $app_logger.debug("Decision: Need power changing state to Heat")
+        $app_logger.debug("Decision: Need power changing state Off => Heat")
         $app_logger.debug("power_needed: "+power_needed[:power].to_s)
         @state = @state_Heat
         @state.activate()
       else
-        $app_logger.debug("Decision: No power requirement - not changing state")
+        $app_logger.trace("Decision: No power requirement - not changing state")
       end
 
     when :Heat
-      $app_logger.debug("Evaluating Heat state:")
-      $app_logger.debug("\tControl valves and pumps based on measured temperatures")
-      $app_logger.debug("\tControl boiler wipers to maintain target boiler temperature")
-      $app_logger.debug("\tIf not need power anymore then -> Postheat or PostHW based on operating mode")
+      # Evaluating Heat state:
+      # Control valves and pumps based on measured temperatures
+      # Control boiler wipers to maintain target boiler temperature
+      # If not need power anymore then -> Postheat or PostHW based on operating mode
 
-      # If not need power anymore then -> Postheat or PostHW
       if power_needed[:power] == :NONE and @mode == @mode_HW
-        $app_logger.debug("Decision: No more power needed in HW mode - changing state to PostHW")
+        $app_logger.debug("Decision: No more power needed in HW mode - changing state Heat => PostHW")
         $app_logger.debug("power_needed: NONE")
         @state = @state_PostHW
         @state.activate()
       elsif power_needed[:power] == :NONE
-        $app_logger.debug("Decision: No more power needed not in HW mode - changing state to Postheat")
+        $app_logger.debug("Decision: No more power needed not in HW mode - changing state Heat => Postheat")
         $app_logger.debug("power_needed: NONE")
         @state = @state_Postheat
         @state.activate()
-      else
-        # Control valves, pumps and boiler based on measured temperatures
-        control_pumps_valves_heat(prev_power_needed,power_needed)
       end
 
     when :Postheat
-      $app_logger.debug("Evaluating Postheat state:")
-      $app_logger.debug("\tIf Delta T on the Furnace drops below 5 C then -> Off")
-      $app_logger.debug("\tIf need power is not false then -> Heat")
-
+      # Evaluating Postheat state:
       # If Delta T on the Furnace drops below 5 C then -> Off
+      # If need power is not false then -> Heat
+      # If Delta T on the Furnace drops below 5 C then -> Off
+
       if @forward_temp - @return_temp < 5.0
-        $app_logger.debug("Decision: Delta T on the Furnace dropped below 5 C - changing state to Off")
+        $app_logger.debug("Decision: Delta T on the Furnace dropped below 5 C - changing state Postheat => Off")
         @state = @state_Off
         @state.activate()
         # If need power then -> Heat
       elsif power_needed[:power] != :NONE
-        $app_logger.debug("Decision: Need power is "+power_needed[:power].to_s+" - changing state to Heat")
+        $app_logger.debug("Decision: Need power is "+power_needed[:power].to_s+" - changing state Postheat => Heat")
         @state = @state_Heat
         @state.activate()
       end
 
     when :PostHW
-      $app_logger.debug("Evaluating PostHW state:")
-      $app_logger.debug("\tIf Delta T on the Furnace drops below 5 C then -> Off")
-      $app_logger.debug("\tIf Furnace temp below HW temp + 4 C then -> Off")
-      $app_logger.debug("\tIf need power is not false then -> Heat")
-
+      # Evaluating PostHW state:
       # If Delta T on the Furnace drops below 5 C then -> Off
+      # If Furnace temp below HW temp + 4 C then -> Off
+      # If need power is not false then -> Heat
+      # If Delta T on the Furnace drops below 5 C then -> Off
+
       if @forward_temp - @return_temp < 5.0
-        $app_logger.debug("Decision: Delta T on the Furnace dropped below 5 C - changing state to Off")
+        $app_logger.debug("Decision: Delta T on the Furnace dropped below 5 C - changing state PostHW => Off")
         @state = @state_Off
         @state.activate()
         # If Furnace temp below HW temp + 4 C then -> Off
       elsif @forward_temp < @HW_thermostat.temp + 4
-        $app_logger.debug("Decision: Furnace temp below HW temp + 4 C  - changing state to Off")
+        $app_logger.debug("Decision: Furnace temp below HW temp + 4 C  - changing state PostHW => Off")
         @state = @state_Off
         @state.activate()
         # If need power then -> Heat
       elsif power_needed[:power] != :NONE
-        $app_logger.debug("Decision: Need power is "+power_needed[:power].to_s+" - changing state to Heat")
+        $app_logger.debug("Decision: Need power is "+power_needed[:power].to_s+" - changing state PostHW => Heat")
         @state = @state_Heat
         @state.activate()
       end
@@ -450,7 +446,6 @@ class Heating_State_Machine
 
   # The main loop of the controller
   def operate
-    @cycle = 0
     @state_history = Array.new(4,{:state=>@state.name,:power=>determine_power_needed,:timestamp=>Time.now.getlocal(0)})
 
     prev_power_needed = {:state=>:Off,:power=>:NONE,:timestamp=>Time.now.getlocal(0)}
@@ -459,10 +454,16 @@ class Heating_State_Machine
     # Do the main loop until shutdown is requested
     while($shutdown_reason == Globals::NO_SHUTDOWN) do
 
-      $app_logger.debug("Main boiler loop cycle: "+@cycle.to_s)
+      $app_logger.trace("Main boiler loop cycle start")
 
+      # Sleep to spare processor time
       sleep @config[:main_loop_delay]
 
+      # Apply the test conrol if in dry run
+      apply_test_control if DRY_RUN
+
+      # Determinde power needed - its cahange
+      # and real heating tartgets if not in dry run
       if !DRY_RUN
         read_sensors
         temp_power_needed = {:state=>@state.name(),:power=>determine_power_needed,:timestamp=>Time.now.getlocal(0)}
@@ -477,34 +478,33 @@ class Heating_State_Machine
           prev_power_needed = power_needed
         end
         determine_targets(prev_power_needed,power_needed)
-      else
-        apply_test_control
       end
 
       # Call the state machine state transition decision method
       evaluate_state_change(prev_power_needed,power_needed)
 
-      # If magnetic valve movement is required then carry out moving process
+      # Conrtol heating when in heating state
+      if @state.name == :Heat
+        # Control heat
+        control_heat(prev_power_needed,power_needed)
+
+        # Control valves and pumps
+        control_pumps_valves_for_heating(prev_power_needed,power_needed)
+      end
+
+      # Perform cycle logging
+      app_cycle_logging(power_needed)
+      heating_cycle_logging(power_needed)
+
+      # Evaluate if moving valves is required and
+      # schedule a movement cycle if needed
+      valve_move_evaluation
+
+      # If magnetic valve movement is required then carry out moving process 
+      # and reset movement required flag
       if @moving_valves_required and @state.name == :Off
         do_magnetic_valve_movement
         @moving_valves_required = false
-      end
-
-      # Increment the cycle and reset it if 40 cycles is reached
-      @cycle = 0 if @cycle % 40 == 0
-      @cycle = @cycle + 1
-
-      $app_logger.debug("Forward boiler temp: "+@forward_temp.to_s)
-      $app_logger.debug("Return temp: "+@return_temp.to_s)
-      $app_logger.debug("HW temp: "+@HW_thermostat.temp.to_s)
-      $app_logger.debug("Need power: "+power_needed.to_s)
-
-      heating_logging(power_needed)
-
-      # Check Move if time is between 11:00 and 11:15 in the morning
-      if (((Time.now.to_i % (24*60*60))+ 60*60) > (10*60*60)) and
-      (((Time.now.to_i % (24*60*60))+ 60*60) < (10.25*60*60))
-        magnetic_valve_move_evaluation
       end
     end
     shutdown
@@ -551,29 +551,37 @@ class Heating_State_Machine
   end
 
   # Control heating
-  def control_heat(power_needed)
+  def control_heat(prev_power_needed,power_needed)
+
+    power_changed = prev_power_needed == power_needed
+
     case power_needed[:power]
     when :HW
       # Set the water temp so that the boiler changes to HW mode and it knows how far we are from the required HW temperature
-      @buffer_heater.set_mode(:HW)
+      if power_changed
+        $app_logger.debug("Setting heater mode to HW")
+        @buffer_heater.set_mode(:HW)
+      end
     when :RAD, :RADFLOOR, :FLOOR
       # Set required water temperature of the boiler
+      if power_changed
+        $app_logger.debug("Setting heater mode to heat")
+        @buffer_heater.set_mode(:heat)
+      end
+      $app_logger.debug("Setting heater target temp to: "+@target_boiler_temp.to_s)
       @buffer_heater.set_target(@target_boiler_temp)
-      @buffer_heater.set_mode(:heat)
-    when :NONE
-      @buffer_heater.set_mode(:off)
+    else
+      raise "Unexpected power_needed encountered in heating state: "+power_needed[:power].to_s
     end
   end
 
   # This function controls valves, pumps and heat during heating by evaluating the required power
-  def control_pumps_valves_heat(prev_power_needed,power_needed)
-    $app_logger.debug("Controlling valves and pumps")
+  def control_pumps_valves_for_heating(prev_power_needed,power_needed)
 
-    # Do only heat control if there is no change in power_needed
-    if prev_power_needed == power_needed
-      control_heat(power_needed)
-      return
-    end
+    # Only control pumps and valves if there was a change in power_needed
+    return unless prev_power_needed != power_needed
+
+    $app_logger.trace("Setting valves and pumps")
 
     case power_needed[:power]
     when :HW # Only Hot water supplies on
@@ -718,8 +726,13 @@ class Heating_State_Machine
     @external_sensor.mock_temp = @config[:external_mock_temp] if (defined? @external_sensor != nil)
   end
 
-  def magnetic_valve_move_evaluation
-    # If moving already required then return
+  def valve_move_evaluation
+
+    # Only perform real check if time is between 11:00 and 11:15 in the morning
+    return unless (((Time.now.to_i % (24*60*60))+ 60*60) > (10*60*60)) and
+    (((Time.now.to_i % (24*60*60))+ 60*60) < (10.25*60*60))
+
+    # If moving already scheduled then return
     return if @moving_valves_required
 
     # If there is no logfile we need to move
@@ -802,7 +815,16 @@ class Heating_State_Machine
     $app_logger.info("Moving valves finished")
   end
 
-  def heating_logging(power_needed)
+  # Perform app cycle logging
+  def app_cycle_logging(power_needed)
+    $app_logger.trace("Forward boiler temp: "+@forward_temp.to_s)
+    $app_logger.trace("Return temp: "+@return_temp.to_s)
+    $app_logger.trace("HW temp: "+@HW_thermostat.temp.to_s)
+    $app_logger.trace("Need power: "+power_needed.to_s)
+  end
+
+  # Perform heating cycle logging
+  def heating_cycle_logging(power_needed)
     return unless @logger_timer.expired?
     @logger_timer.reset
 
