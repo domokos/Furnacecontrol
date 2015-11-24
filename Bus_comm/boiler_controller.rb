@@ -500,7 +500,7 @@ class Heating_State_Machine
       # schedule a movement cycle if needed
       valve_move_evaluation
 
-      # If magnetic valve movement is required then carry out moving process 
+      # If magnetic valve movement is required then carry out moving process
       # and reset movement required flag
       if @moving_valves_required and @state.name == :Off
         do_magnetic_valve_movement
@@ -555,20 +555,14 @@ class Heating_State_Machine
 
     case power_needed[:power]
     when :HW
-      power_changed = prev_power_needed[:power] != :HW
-      # Set the water temp so that the boiler changes to HW mode and it knows how far we are from the required HW temperature
-      if power_changed
-        $app_logger.debug("Setting heater mode to HW")
-        @buffer_heater.set_mode(:HW)
-      end
+      # Set mode of the heater
+      $app_logger.trace("Setting heater mode to HW")
+      @buffer_heater.set_mode(:HW)
     when :RAD, :RADFLOOR, :FLOOR
-      power_changed = !([:RAD,:RADFLOOR,:FLOOR].include? prev_power_needed[:power]) 
-      # Set required water temperature of the boiler
-      if power_changed
-        $app_logger.debug("Setting heater mode to heat")
-        @buffer_heater.set_mode(:heat)
-      end
-      $app_logger.debug("Setting heater target temp to: "+@target_boiler_temp.to_s)
+      # Set mode and required water temperature of the boiler
+      $app_logger.trace("Setting heater mode to heat")
+      @buffer_heater.set_mode(:heat)
+      $app_logger.trace("Setting heater target temp to: "+@target_boiler_temp.to_s)
       @buffer_heater.set_target(@target_boiler_temp)
     else
       raise "Unexpected power_needed encountered in heating state: "+power_needed[:power].to_s
