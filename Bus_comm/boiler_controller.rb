@@ -11,7 +11,7 @@ require "yaml"
 
 $stdout.sync = true
 
-$app_logger.level = Globals::BoilerLogger::INFO
+$app_logger.level = Globals::BoilerLogger::DEBUG
 $heating_logger.level = Logger::INFO
 
 DRY_RUN = false
@@ -348,7 +348,7 @@ class Heating_State_Machine
     end
 
     $app_logger.debug("Boiler controller initialized initial state set to: "+@state.description+", Initial mode set to: "+@mode.description)
-
+    
   end
 
   # The function evaluating states and performing necessary
