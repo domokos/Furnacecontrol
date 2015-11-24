@@ -220,7 +220,7 @@ module BusDevice
           parent_off
         end
       end
-      @delayed_close_semaphore.unlock 
+      @delayed_close_semaphore.unlock
     end
 
     def on
@@ -1239,7 +1239,7 @@ module BoilerBase
 
       @heating_history.push(current_heating_history_entry)
 
-      @heating_history.shift if heating_feed_age > MAX_HEATING_HISTORY_AGE
+      @heating_history.shift if Time.now.getlocal(0) - @heating_history.first[:timestamp] > MAX_HEATING_HISTORY_AGE
 
       # Maintain the amount of heat stored in the buffer
       @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>(@lower_sensor.temp - BUFFER_BASE_TEMP)/(@upper_sensor.temp - BUFFER_BASE_TEMP)}
@@ -1278,6 +1278,8 @@ module BoilerBase
 
       # If the measurement has not yet started perform initialization
       if heating_feed_state == :initializing
+        $app_logger.debug("Heat in buffer: "+@heat_in_buffer[:temp].to_s+" Percentage: "+@heat_in_buffer[:perecentage].to_s)
+        $app_logger.debug("Target temp: "+@target_temp.to_s)
 
         if @heat_in_buffer[:temp] > @target_temp + INIT_BUFFER_REQD_TEMP_RESERVE and @heat_in_buffer[:perecentage] > INIT_BUFFER_REQUD_FILL_RESERVE
           @heater_relay.off
@@ -1303,6 +1305,7 @@ module BoilerBase
             # based on how much heat is stored in the buffer
             $app_logger.debug("State will change")
             $app_logger.debug("Heat in buffer: "+@heat_in_buffer[:temp].to_s+" Percentage: "+@heat_in_buffer[:perecentage].to_s)
+            $app_logger.debug("Target temp: "+@target_temp.to_s)
 
             if @heat_in_buffer[:temp] > @target_temp + INIT_BUFFER_REQD_TEMP_RESERVE and @heat_in_buffer[:perecentage] > INIT_BUFFER_REQUD_FILL_RESERVE
               @heater_relay.off
@@ -1453,7 +1456,7 @@ module BoilerBase
       return unless @control_mutex.try_lock
 
       # Set the stop thread signal inactive
-      @stop_control.unlock if @stop_control.locked? 
+      @stop_control.unlock if @stop_control.locked?
 
       # The controller thread
       @control_thread = Thread.new do
