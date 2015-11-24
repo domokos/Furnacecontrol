@@ -16,15 +16,14 @@ module Globals
   FATAL_SHUTDOWN = "Shutdown on Fatal Error"
   class BoilerLogger < Logger
 
-    INFO = 0
-    FATAL = 1
-    ERROR = 2
+    INFO = 6
+    FATAL = 5
+    ERROR = 4
     WARN = 3
-    DEBUG = 4
-    VERBOSE = 5
-    TRACE = 6
+    DEBUG = 2
+    VERBOSE = 1
+    TRACE = 0
 
-#    SEVS = %w(INFO FATAL ERROR WARN DEBUG VERBOSE TRACE)
     SEVS = %w(TRACE VERBOSE DEBUG WARN ERROR FATAL INFO)
     def format_severity(severity)
       SEVS[severity] || 'ANY'
