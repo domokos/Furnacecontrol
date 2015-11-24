@@ -1049,10 +1049,10 @@ module BoilerBase
 
   class BufferHeat
     # Constants of the class
-    VALVE_MOVEMENT_TIME = 6
+    VALVE_MOVEMENT_TIME = 10
     MAX_HEATING_HISTORY_AGE = 180
-    MINIMUM_HEATING_HISTORY_STABILITY_AGE = 15
-    BUFFER_HEAT_CONTROL_LOOP_DELAY = 1
+    MINIMUM_HEATING_HISTORY_STABILITY_AGE = 20
+    BUFFER_HEAT_CONTROL_LOOP_DELAY = 2
     DELTA_T_STABILITY_SLOPE_THRESHOLD = 2
     BUFFER_BASE_TEMP = 20.0
 
@@ -1065,7 +1065,6 @@ module BoilerBase
     BUFFER_PASSTHROUGH_OVERSHOOT = 3.0
     BUFFER_EXPIRY_THRESHOLD = 3.0
     BUFFER_PASSTHROUGH_FWD_TEMP_LIMIT = 40.0
-    TRANSITION_DELAY = 10
     # Initialize the buffer taking its sensors and control valves
     def initialize(forward_sensor, upper_sensor, lower_sensor, return_sensor,
       hw_thermostat,
