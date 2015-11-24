@@ -1058,7 +1058,7 @@ module BoilerBase
 
     # Heat initialization constants
     INIT_BUFFER_REQD_TEMP_RESERVE = 3.0
-    INIT_BUFFER_REQUD_FILL_RESERVE = 0.5
+    INIT_BUFFER_REQUD_FILL_RESERVE = 50
 
     #Heating delta_t maintenance related constants
     MINIMUM_DELTA_T_TO_MAINTAIN = 3.0
@@ -1278,10 +1278,10 @@ module BoilerBase
 
       # If the measurement has not yet started perform initialization
       if @heating_feed_state == :initializing
-        $app_logger.debug("Heat in buffer: "+@heat_in_buffer[:temp].to_s+" Percentage: "+@heat_in_buffer[:perecentage].to_s)
+        $app_logger.debug("Heat in buffer: "+@heat_in_buffer[:temp].to_s+" Percentage: "+@heat_in_buffer[:percentage].to_s)
         $app_logger.debug("Target temp: "+@target_temp.to_s)
 
-        if @heat_in_buffer[:temp] > @target_temp + INIT_BUFFER_REQD_TEMP_RESERVE and @heat_in_buffer[:perecentage] > INIT_BUFFER_REQUD_FILL_RESERVE
+        if @heat_in_buffer[:temp] > @target_temp + INIT_BUFFER_REQD_TEMP_RESERVE and @heat_in_buffer[:percentage] > INIT_BUFFER_REQUD_FILL_RESERVE
           @heater_relay.off
           @heat_wiper.set_water_temp(7.0)
           set_relays(:feed_from_buffer)
@@ -1304,10 +1304,10 @@ module BoilerBase
             # Too much heat with direct heat - let's either feed from buffer or fill the buffer
             # based on how much heat is stored in the buffer
             $app_logger.debug("State will change")
-            $app_logger.debug("Heat in buffer: "+@heat_in_buffer[:temp].to_s+" Percentage: "+@heat_in_buffer[:perecentage].to_s)
+            $app_logger.debug("Heat in buffer: "+@heat_in_buffer[:temp].to_s+" Percentage: "+@heat_in_buffer[:percentage].to_s)
             $app_logger.debug("Target temp: "+@target_temp.to_s)
 
-            if @heat_in_buffer[:temp] > @target_temp + INIT_BUFFER_REQD_TEMP_RESERVE and @heat_in_buffer[:perecentage] > INIT_BUFFER_REQUD_FILL_RESERVE
+            if @heat_in_buffer[:temp] > @target_temp + INIT_BUFFER_REQD_TEMP_RESERVE and @heat_in_buffer[:percentage] > INIT_BUFFER_REQUD_FILL_RESERVE
               @heater_relay.off
               @heat_wiper.set_water_temp(7.0)
               set_relays(:feed_from_buffer)

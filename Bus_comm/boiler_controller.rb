@@ -338,7 +338,8 @@ class Heating_State_Machine
     end
 
     # Prefill sensors and thermostats to ensure smooth startup operation
-    for i in 0..5 do
+    for i in 1..6 do
+      $app_logger.debug("Prefilling sensors. Round: "+i.to_s+" of 6")
       read_sensors
       temp_power_needed = {:state=>@state.name(),:power=>determine_power_needed}
       determine_targets(temp_power_needed,temp_power_needed)
