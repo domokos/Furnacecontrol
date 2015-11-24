@@ -938,7 +938,7 @@ module BoilerBase
 
     def stop_control
       # Return if we do not have a control thread
-      return if !@control_thread_mutex.locked?
+      return if !@control_thread_mutex.locked? or @control_thread == nil
 
       # Signal the control thread to exit
       @stop_control_requested.lock
@@ -967,7 +967,7 @@ module BoilerBase
 
     def stop_measurement_thread
       # Return if we do not have a measurement thread
-      return if !@measurement_thread_mutex.locked?
+      return if !@measurement_thread_mutex.locked? or @measurement_thread == nil 
 
       # Signal the measurement thread to exit
       @stop_measurement_requested.lock
@@ -1134,7 +1134,7 @@ module BoilerBase
 
     def set_mode(new_mode)
       # Check validity of the parameter
-      raise "Invalid mode parameter '"+mode.to_s+"' passed to set_mode(mode)" unless [:heat,:off,:HW].include? mode
+      raise "Invalid mode parameter '"+new_mode.to_s+"' passed to set_mode(mode)" unless [:heat,:off,:HW].include? new_mode
 
       # Take action only if the mode is changing
       return if @mode == new_mode
@@ -1474,7 +1474,7 @@ module BoilerBase
     # Signal the control thread to stop
     def stop_control_thread
       # Only stop the control therad if it is alive
-      return if !@control_mutex.locked?
+      return if !@control_mutex.locked? or @control_thread == nil 
 
       # Signal control thread to exit
       @stop_control.lock
