@@ -24,21 +24,22 @@ module Globals
     VERBOSE = 5
     TRACE = 6
 
-    SEVS = %w(INFO FATAL ERROR WARN DEBUG VERBOSE TRACE)
+#    SEVS = %w(INFO FATAL ERROR WARN DEBUG VERBOSE TRACE)
+    SEVS = %w(TRACE VERBOSE DEBUG WARN ERROR FATAL INFO)
     def format_severity(severity)
       SEVS[severity] || 'ANY'
     end
 
     def info(progname = nil, &block)
-      add(0, nil, progname, &block)
+      add(6, nil, progname, &block)
     end
 
     def fatal(progname = nil, &block)
-      add(1, nil, progname, &block)
+      add(5, nil, progname, &block)
     end
 
     def error(progname = nil, &block)
-      add(2, nil, progname, &block)
+      add(4, nil, progname, &block)
     end
 
     def warn(progname = nil, &block)
@@ -46,15 +47,15 @@ module Globals
     end
 
     def debug(progname = nil, &block)
-      add(4, nil, progname, &block)
+      add(2, nil, progname, &block)
     end
 
     def verbose(progname = nil, &block)
-      add(5, nil, progname, &block)
+      add(1, nil, progname, &block)
     end
 
     def trace(progname = nil, &block)
-      add(6, nil, progname, &block)
+      add(0, nil, progname, &block)
     end
 
   end
