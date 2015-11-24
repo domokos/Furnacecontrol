@@ -1242,7 +1242,7 @@ module BoilerBase
       @heating_history.shift if Time.now.getlocal(0) - @heating_history.first[:timestamp] > MAX_HEATING_HISTORY_AGE
 
       # Maintain the amount of heat stored in the buffer
-      @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>(@lower_sensor.temp - BUFFER_BASE_TEMP)/(@upper_sensor.temp - BUFFER_BASE_TEMP)}
+      @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>((@lower_sensor.temp - BUFFER_BASE_TEMP)*100.0)/(@upper_sensor.temp - BUFFER_BASE_TEMP)}
 
       # Update the heating delta analyzer
       @delta_analyzer.update(current_heating_history_entry[:delta_t])
@@ -1408,9 +1408,9 @@ module BoilerBase
         end
 
       elsif @heating_feed_state == :unstable
-        $app_logger.info("Heating unstable. DeltaT slope: "+delta_analyzer.slope.to_s+"; History age: "+(Time.now.getlocal(0) - @heating_history.first[:timestamp]).to_s)
+        $app_logger.info("Heating unstable. DeltaT slope: "+@delta_analyzer.slope.to_s+"; History age: "+(Time.now.getlocal(0) - @heating_history.first[:timestamp]).to_s)
       else
-        raise "Unexpected heating_feed_state: "+heating_feed_state.to_s
+        raise "Unexpected heating_feed_state: "+@heating_feed_state.to_s
       end
     end # of set_heating_feed
 
