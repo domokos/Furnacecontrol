@@ -553,16 +553,16 @@ class Heating_State_Machine
   # Control heating
   def control_heat(prev_power_needed,power_needed)
 
-    power_changed = prev_power_needed == power_needed
-
     case power_needed[:power]
     when :HW
+      power_changed = prev_power_needed[:power] != :HW
       # Set the water temp so that the boiler changes to HW mode and it knows how far we are from the required HW temperature
       if power_changed
         $app_logger.debug("Setting heater mode to HW")
         @buffer_heater.set_mode(:HW)
       end
     when :RAD, :RADFLOOR, :FLOOR
+      power_changed = !([:RAD,:RADFLOOR,:FLOOR].include? prev_power_needed[:power]) 
       # Set required water temperature of the boiler
       if power_changed
         $app_logger.debug("Setting heater mode to heat")

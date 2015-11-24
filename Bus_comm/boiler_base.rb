@@ -1163,7 +1163,7 @@ module BoilerBase
     # Set the required forward water temperature
     def set_target(new_target_temp)
       #      @target_changed = (new_target_temp == @target_temp)
-      @target_temp = new_target
+      @target_temp = new_target_temp
     end
 
     # Configure the relays for a certain purpose
