@@ -1119,7 +1119,7 @@ module BoilerBase
       @relay_state = nil
       set_relays(:direct_boiler)
       @heating_feed_state = :initializing
-      @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>(@lower_sensor.temp - BUFFER_BASE_TEMP)/(@upper_sensor.temp - BUFFER_BASE_TEMP)}
+      @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>((@lower_sensor.temp - BUFFER_BASE_TEMP)*100)/(@upper_sensor.temp - BUFFER_BASE_TEMP)}
       @target_temp = 7.0
     end
 
@@ -1203,7 +1203,7 @@ module BoilerBase
       end
 
       if moved
-        $app_logger.debug("Waiting for relays to move state")
+        $app_logger.debug("Waiting for relays to move into new state")
       else
         $app_logger.debug("Relays not moved - skippling sleep")
       end
