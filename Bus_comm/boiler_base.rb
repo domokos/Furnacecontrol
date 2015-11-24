@@ -967,7 +967,7 @@ module BoilerBase
 
     def stop_measurement_thread
       # Return if we do not have a measurement thread
-      return if !@measurement_thread_mutex.locked? or @measurement_thread == nil 
+      return if !@measurement_thread_mutex.locked? or @measurement_thread == nil
 
       # Signal the measurement thread to exit
       @stop_measurement_requested.lock
@@ -1100,7 +1100,7 @@ module BoilerBase
 
       # The control thread
       @control_thread = nil
-      
+
       # This one ensures that there is only one control thread running
       @control_mutex = Mutex.new
 
@@ -1475,7 +1475,7 @@ module BoilerBase
     # Signal the control thread to stop
     def stop_control_thread
       # Only stop the control therad if it is alive
-      return if !@control_mutex.locked? or @control_thread == nil 
+      return if !@control_mutex.locked? or @control_thread == nil
 
       # Signal control thread to exit
       @stop_control.lock
