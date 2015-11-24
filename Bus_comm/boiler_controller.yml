@@ -69,8 +69,8 @@
 :basement_sensor_reg_addr: 2
 :upper_buffer_sensor_reg_addr: 3
 :lower_buffer_sensor_reg_addr: 4
-:forward_valve_reg_addr: 5
-:return_valve_reg_addr: 6
+:return_valve_reg_addr: 5
+:forward_valve_reg_addr: 6
 :radiator_pump_reg_addr: 7
 :floor_pump_reg_addr: 8
 :hydr_shift_pump_reg_addr: 9

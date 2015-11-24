@@ -11,7 +11,7 @@ require "yaml"
 
 $stdout.sync = true
 
-$app_logger.level = Globals::BoilerLogger::DEBUG
+$app_logger.level = Globals::BoilerLogger::INFO
 $heating_logger.level = Logger::INFO
 
 DRY_RUN = false
