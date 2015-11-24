@@ -19,17 +19,17 @@ $shutdown_reason = Globals::NO_SHUTDOWN
 $low_floor_temp_mode = false
 
 Signal.trap("USR1") do
-  $app_logger.level = BoilerLogger::INFO
+  $app_logger.level = Globals::BoilerLogger::INFO
   $heating_logger.level = Logger::DEBUG
 end
 
 Signal.trap("USR2") do
-  $app_logger.level = BoilerLogger::INFO
+  $app_logger.level = Globals::BoilerLogger::INFO
   $heating_logger.level = Logger::INFO
 end
 
 Signal.trap("URG") do
-  $app_logger.level = BoilerLogger::DEBUG
+  $app_logger.level = Globals::BoilerLogger::DEBUG
   $heating_logger.level = Logger::DEBUG
 end
 
