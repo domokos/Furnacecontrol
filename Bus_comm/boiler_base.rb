@@ -1098,8 +1098,9 @@ module BoilerBase
       # Remember the heating config map by reference
       @config = config
 
-      # The control thread signalling mutexes
-
+      # The control thread
+      @control_thread = nil
+      
       # This one ensures that there is only one control thread running
       @control_mutex = Mutex.new
 
