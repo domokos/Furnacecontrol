@@ -1277,7 +1277,7 @@ module BoilerBase
       $app_logger.debug("Prev heating feed state was: "+@prev_heating_feed_state.to_s)
 
       # If the measurement has not yet started perform initialization
-      if heating_feed_state == :initializing
+      if @heating_feed_state == :initializing
         $app_logger.debug("Heat in buffer: "+@heat_in_buffer[:temp].to_s+" Percentage: "+@heat_in_buffer[:perecentage].to_s)
         $app_logger.debug("Target temp: "+@target_temp.to_s)
 
@@ -1292,7 +1292,7 @@ module BoilerBase
         end
 
         # Monitor Delta_t and make feed decison based on it
-      elsif heating_feed_state == :stable
+      elsif @heating_feed_state == :stable
         $app_logger.debug("Relay state: "+@relay_state.to_s)
 
         # Evaluate Direct Boiler state
@@ -1407,7 +1407,7 @@ module BoilerBase
           raise "Unexpected relay state in set_heating_feed: "+@relay_state.to_s
         end
 
-      elsif heating_feed_state == :unstable
+      elsif @heating_feed_state == :unstable
         $app_logger.info("Heating unstable. DeltaT slope: "+delta_analyzer.slope.to_s+"; History age: "+(Time.now.getlocal(0) - @heating_history.first[:timestamp]).to_s)
       else
         raise "Unexpected heating_feed_state: "+heating_feed_state.to_s

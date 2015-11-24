@@ -338,11 +338,11 @@ class Heating_State_Machine
     end
 
     # Prefill sensors and thermostats to ensure smooth startup operation
-    for i in 0..15 do
+    for i in 0..5 do
       read_sensors
       temp_power_needed = {:state=>@state.name(),:power=>determine_power_needed}
       determine_targets(temp_power_needed,temp_power_needed)
-      sleep 1.5
+      sleep 2
       break if $shutdown_reason != Globals::NO_SHUTDOWN
     end
 
