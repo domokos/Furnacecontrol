@@ -68,9 +68,9 @@ class Heating_State_Machine
 
     # Create temp sensors
     @forward_sensor = BusDevice::TempSensor.new("Forward boiler temperature", "On the forward piping of the boiler",
-                                           @config[:main_controller_dev_addr], @config[:forward_sensor_reg_addr], DRY_RUN, @config[:forward_mock_temp])
+                                           @config[:mixer_controller_dev_addr], @config[:forward_sensor_reg_addr], DRY_RUN, @config[:forward_mock_temp])
     @return_sensor = BusDevice::TempSensor.new("Return water temperature", "On the return piping of the boiler",
-                                           @config[:main_controller_dev_addr], @config[:return_sensor_reg_addr], DRY_RUN, @config[:return_mock_temp])
+                                           @config[:mixer_controller_dev_addr], @config[:return_sensor_reg_addr], DRY_RUN, @config[:return_mock_temp])
     @HW_sensor = BusDevice::TempSensor.new("Hot Water temperature","Inside the Hot water container main sensing tube",
                                            @config[:main_controller_dev_addr], @config[:hw_sensor_reg_addr], DRY_RUN, @config[:HW_mock_temp])
 
