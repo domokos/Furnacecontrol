@@ -58,6 +58,27 @@
 :external_mock_temp: 5.0
 #
 #
+# *********************************************************************************************
+# Controller network addresses 
+# *********************************************************************************************
+#
+:three_way_movement_time: 10
+:max_heating_history_age: 600
+:min_heating_history_age: 180
+:buffer_heat_control_loop_delay 2
+:delta_t_stability_slope_threshold 0.2
+:buffer_base_temp 20.0
+#
+# Heat initialization constants
+:init_buffer_reqd_temp_reserve 3.0
+:init_buffer_reqd_fill_reserve 50.0
+#
+# Heating delta_t maintenance related constants
+:min_delta_t_to_maintain 4.5
+:buffer_passthrough_overshoot 3
+:buffer_expiry_threshold 3.0
+:buffer_passthrough_fwd_temp_limit 40.0
+#
 #
 # *********************************************************************************************
 # Controller network addresses 

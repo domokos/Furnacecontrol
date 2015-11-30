@@ -83,6 +83,10 @@ module Globals
     end
   }
 
+  # The mutex and the map for synchronizing read/write the boiler configuration
+  $config_mutex = Mutex.new
+  $config = []
+
   # A Timer class for timing whole seconds
   class TimerSec
     def initialize(sec_to_sleep,name)
