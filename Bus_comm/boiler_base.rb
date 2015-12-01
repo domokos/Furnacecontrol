@@ -1091,7 +1091,9 @@ module BoilerBase
 
       # Initialize the heating history
       @heating_history = []
-      @delta_analyzer = Globals::TempAnalyzer.new(6)
+      @delta_analyzer = Globals::TempAnalyzer.new(15)
+      @forward_temp_analyzer = Globals::TempAnalyzer.new(90)
+
       @initialize_heating = true
       @buffer_exit_limit = 0
 
@@ -1209,6 +1211,7 @@ module BoilerBase
         $app_logger.debug("Maintaining heatnig metadata - initializing metadata storage: "+calling_mode.to_s)
         @heating_history.clear
         @delta_analyzer.reset
+        @forward_temp_analyzer.reset
       else
         $app_logger.debug("Maintaining heatnig metadata - appending to metadata storage: "+calling_mode.to_s)
       end
@@ -1226,8 +1229,9 @@ module BoilerBase
       # Maintain the amount of heat stored in the buffer
       @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>((@lower_sensor.temp - @config[:buffer_base_temp])*100.0)/(@upper_sensor.temp - @config[:buffer_base_temp])}
 
-      # Update the heating delta analyzer
+      # Update the heating delta and forward analyzers
       @delta_analyzer.update(current_heating_history_entry[:delta_t])
+      @forward_temp_analyzer.update(current_heating_history_entry[:forward_temp])
     end # of maintain_heating_metadata
 
     #

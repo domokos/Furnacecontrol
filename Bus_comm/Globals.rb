@@ -121,8 +121,10 @@ module Globals
     end
 
     def stop
-      @timer_thread != nil and @timer_thread.kill
-      @timer_thread = nil
+      if @timer_thread != nil
+        @timer_thread.kill
+        @timer_thread = nil
+      end
       @sec_left=0
     end
   end
@@ -143,7 +145,11 @@ module Globals
     end
 
     def expired?
-      @timer_thread == nil or @timer_thread.stop?
+      if @timer_thread == nil
+        return true
+      else
+        return @timer_thread.alive?
+      end
     end
 
     def reset
@@ -152,8 +158,10 @@ module Globals
     end
 
     def stop
-      @timer_thread != nil and @timer_thread.kill
-      @timer_thread = nil
+      if @timer_thread != nil
+        @timer_thread.kill
+        @timer_thread = nil
+      end
       @sec_left=0
     end
   end
@@ -226,6 +234,19 @@ module Globals
       @timestamp_vector = []
       @starting_timestamp = Time.now.to_f
       @slope = nil
+    end
+
+    def average
+      sum = 0.0
+      @temp_vector.each {|x| sum += x.to_f}
+      return sum / @temp_vector.size
+    end
+
+    def sigma
+      avg = average
+      nominator = 0.0
+      @temp_vector.each {|x| nominator += (x-avg)*(x-avg) }
+      return Math.sqrt(nominator/@temp_vector.size)
     end
 
     def size
