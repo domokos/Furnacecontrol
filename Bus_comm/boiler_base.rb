@@ -656,7 +656,7 @@ module BoilerBase
     # Maintain the heating history
     def maintain_heating_metadata
       # Maintain the heating history
-      $app_logger.debug("Updating metadata")
+      $app_logger.trace("Updating metadata")
 
       # Update the heating delta and forward analyzers
       @delta_analyzer.update(@forward_sensor.temp - @return_sensor.temp)
@@ -688,22 +688,26 @@ module BoilerBase
       @forward_temp_analyzer.slope.abs > @config[:forward_temp_stability_slope_threshold] or
       @forward_temp_analyzer.sigma > @config[:forward_temp_stability_sigma_threshold] or
       !@relax_timer.expired?
-        @heating_feed_state = :unstable
+        @heating_feed_state = :changing
 
-        # Log the possible reasons of non-stability
-        $app_logger.debug("Heating unstable.")
-        $app_logger.debug("DeltaT slope: "+@delta_analyzer.slope.to_s[0,6]+" Sigma: "+@delta_analyzer.sigma.to_s[0,6])
-        $app_logger.debug("Forward temp slope: "+@forward_temp_analyzer.slope.to_s[0,6]+" Sigma: "+@forward_temp_analyzer.sigma.to_s[0,6])
+        # Log the possible reasons of the not settled state
+        $app_logger.debug("Heating not settled.")
+        $app_logger.debug("Forward temp sl./thr.: "+@forward_temp_analyzer.slope.to_s[0,6]+"/"+@config[:forward_temp_stability_slope_threshold].to_s+
+        " Sigma/thr.: "+@forward_temp_analyzer.sigma.to_s[0,6]+"/"+@config[:forward_temp_stability_sigma_threshold].to_s)
+
+        $app_logger.debug("DeltaT sl/thr.: "+@delta_analyzer.slope.to_s[0,6]+"/"+@config[:delta_t_stability_slope_threshold].to_s+
+        " Sigma: "+@delta_analyzer.sigma.to_s[0,6]+"/"+@config[:delta_t_stability_sigma_threshold].to_s)
+
         @relax_timer.expired? ? $app_logger.debug("Relax timer inactive") : $app_logger.debug("Relax timer active: "+@relax_timer.sec_left.to_s)
       else
-        @heating_feed_state = :stable
+        @heating_feed_state = :settled
       end
 
       $app_logger.trace("Heating feed state not changing: "+@heating_feed_state.to_s) if @heating_feed_state == @prev_heating_feed_state
       $app_logger.debug("Heating feed state changing from "+@prev_heating_feed_state.to_s+" to "+@heating_feed_state.to_s) if @heating_feed_state != @prev_heating_feed_state
 
       # Monitor temperatures and make feed decisons
-      if @heating_feed_state == :stable
+      if @heating_feed_state == :settled
         $app_logger.debug("Relay state: "+@relay_state.to_s)
 
         # Evaluate Direct Boiler state
@@ -828,7 +832,7 @@ module BoilerBase
           raise "Unexpected relay state in set_heating_feed: "+@relay_state.to_s
         end
 
-      elsif @heating_feed_state == :unstable
+      elsif @heating_feed_state == :changing
         # Do nothing - wait for things to stabilize
       else
         raise "Unexpected heating_feed_state: "+@heating_feed_state.to_s
