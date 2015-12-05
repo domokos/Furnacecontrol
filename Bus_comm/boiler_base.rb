@@ -844,6 +844,12 @@ module BoilerBase
       elsif @heating_feed_state == :changing
         # Do nothing - wait for things to stabilize
         # Log the possible reasons of the not settled state
+
+        $app_logger.debug("Average forward temp: "+@forward_temp_analyzer.average.to_s[0,6])
+        $app_logger.debug("Target temp: "+@target_temp.to_s)
+        $app_logger.debug("Threshold forward_above_target: "+@config[:forward_above_target].to_s)
+        $app_logger.debug("Average delta_t: "+@delta_analyzer.average.to_s[0,6])
+
         $app_logger.debug("Heating not settled.")
         $app_logger.debug("Forward temp sl./thr.: "+@forward_temp_analyzer.slope.to_s[0,6]+"/"+@config[:forward_temp_stability_slope_threshold].to_s+
         " Sigma/thr.: "+@forward_temp_analyzer.sigma.to_s[0,6]+"/"+@config[:forward_temp_stability_sigma_threshold].to_s)
