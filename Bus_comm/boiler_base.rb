@@ -708,14 +708,13 @@ module BoilerBase
 
         # Evaluate Direct Boiler state
         if @relay_state == :direct_boiler
-          $app_logger.debug("Average delta_t: "+@delta_analyzer.average.to_s[0,6])
           $app_logger.debug("Average forward temp: "+@forward_temp_analyzer.average.to_s[0,6])
           $app_logger.debug("Target temp: "+@target_temp.to_s)
           $app_logger.debug("Threshold forward_above_target: "+@config[:forward_above_target].to_s)
+          $app_logger.debug("Average delta_t: "+@delta_analyzer.average.to_s[0,6])
 
           # Direct Boiler - State change condition evaluation
-          if @delta_analyzer.average < @config[:min_delta_t_to_maintain] or
-          @forward_temp_analyzer.average > @target_temp + @config[:forward_above_target]
+          if @forward_temp_analyzer.average > @target_temp + @config[:forward_above_target]
 
             # Too much heat with direct heat - let's either feed from buffer or fill the buffer
             # based on how much heat is stored in the buffer
@@ -747,8 +746,8 @@ module BoilerBase
         elsif @relay_state == :buffer_passthrough
           $app_logger.debug("Target temp: "+@target_temp.to_s)
           $app_logger.debug("Average forward temp: "+@forward_temp_analyzer.average.to_s[0,6])
-          $app_logger.debug("Average delta_t: "+@delta_analyzer.average.to_s[0,6])
           $app_logger.debug("buffer_passthrough_fwd_temp_limit: "+@config[:buffer_passthrough_fwd_temp_limit].to_s)
+          $app_logger.debug("Average delta_t: "+@delta_analyzer.average.to_s[0,6])
 
           # Buffer Passthrough - State change evaluation conditions
 
@@ -766,8 +765,7 @@ module BoilerBase
             # too hot then start feeding from the buffer.
             # As of now we assume that the boiler is able to generate the output temp requred
             # therefore it is enough to monitor the deltaT to find out if the above condition is met
-          elsif @delta_analyzer.average < @config[:min_delta_t_to_maintain] or
-          @forward_temp_analyzer.average > @target_temp + @config[:forward_above_target]
+          elsif @forward_temp_analyzer.average > @target_temp + @config[:forward_above_target]
             $app_logger.debug("State will change")
 
             @heater_relay.off
