@@ -512,11 +512,14 @@ module BoilerBase
       # This one ensures that there is only one control thread running
       @control_mutex = Mutex.new
 
-      # Cpoy the configuration
+      # Copy the configuration
       @config = $config.dup
 
       # This one signals the control thread to exit
       @stop_control = Mutex.new
+
+      # This one is used to ensure atomicity of mode setting
+      @modesetting_mutex = Mutex.new
 
       # Initialize the heating history
       @heating_history = []
@@ -565,33 +568,27 @@ module BoilerBase
       # Take action only if the mode is changing
       return if @mode == new_mode
 
-      case new_mode
-      when :heat
-        $app_logger.debug("Heater set_mode. Got new mode: :heat")
-        # Set back relays as they were when we left it off last time
-        if @prev_mode != :off
-          $app_logger.debug("Prev mode was not off it was: "+@prev_mode.to_s+" - setting relays to: "+@prev_relay_state_in_prev_mode.to_s+" & resetting relax timer")
-          set_relays(@prev_relay_state_in_prev_mode)
-        else
-          $app_logger.debug("Prev mode was off - not setting relays")
+      @modesetting_mutex.synchronize do
+        case new_mode
+        when :heat
+          $app_logger.debug("Heater set_mode. Got new mode: :heat")
+          start_control_thread
+        when :off
+          $app_logger.debug("Heater set_mode. Got new mode: :off")
+          stop_control_thread
+        when :HW
+          $app_logger.debug("Heater set_mode. Got new mode: :HW")
+          set_relays(:direct_boiler)
+          start_control_thread
         end
-        @relax_timer.reset
-        start_control_thread
-      when :off
-        $app_logger.debug("Heater set_mode. Got new mode: :off")
-        stop_control_thread
-      when :HW
-        $app_logger.debug("Heater set_mode. Got new mode: :HW")
-        set_relays(:direct_boiler)
-        start_control_thread
-      end
 
-      # Maintain the mode history and set the mode change flag
-      @prev_mode = @mode
-      @mode = new_mode
-      @mode_changed = true
-      @prev_relay_state_in_prev_mode = @relay_state
-    end
+        # Maintain the mode history and set the mode change flag
+        @prev_mode = @mode
+        @mode = new_mode
+        @mode_changed = true
+        @prev_relay_state_in_prev_mode = @relay_state
+      end # of modesetting mutex sync
+    end #of set_mode
 
     # Set the required forward water temperature
     def set_target(new_target_temp)
@@ -686,8 +683,7 @@ module BoilerBase
       if @delta_analyzer.slope.abs > @config[:delta_t_stability_slope_threshold] or
       @delta_analyzer.sigma > @config[:delta_t_stability_sigma_threshold] or
       @forward_temp_analyzer.slope.abs > @config[:forward_temp_stability_slope_threshold] or
-      @forward_temp_analyzer.sigma > @config[:forward_temp_stability_sigma_threshold] or
-      !@relax_timer.expired?
+      @forward_temp_analyzer.sigma > @config[:forward_temp_stability_sigma_threshold]
         @heating_feed_state = :changing
 
         # Log the possible reasons of the not settled state
@@ -719,7 +715,7 @@ module BoilerBase
           $app_logger.debug("Average delta_t: "+@delta_analyzer.average.to_s[0,6])
 
           # Direct Boiler - State change condition evaluation
-          if @forward_temp_analyzer.average > @target_temp + @config[:forward_above_target]
+          if @forward_temp_analyzer.average > @target_temp + @config[:forward_above_target] and @relax_timer.expired?
 
             # Too much heat with direct heat - let's either feed from buffer or fill the buffer
             # based on how much heat is stored in the buffer
@@ -767,7 +763,7 @@ module BoilerBase
           # This logic is here to try forcing the heating back to direct heating in cases where
           # the heat generated can be dissipated. This a safety escrow
           # to try avoiding unnecessary buffer filling
-          if @target_temp > @config[:buffer_passthrough_fwd_temp_limit]
+          if @target_temp > @config[:buffer_passthrough_fwd_temp_limit] and @relax_timer.expired?
             $app_logger.debug("State will change")
 
             set_relays(:direct_boiler)
@@ -777,7 +773,7 @@ module BoilerBase
             # too hot then start feeding from the buffer.
             # As of now we assume that the boiler is able to generate the output temp requred
             # therefore it is enough to monitor the deltaT to find out if the above condition is met
-          elsif @forward_temp_analyzer.average > @target_temp + @config[:forward_above_target]
+          elsif @forward_temp_analyzer.average > @target_temp + @config[:forward_above_target] and @relax_timer.expired?
             $app_logger.debug("State will change")
 
             if @heater_relay.state !=:off
@@ -814,7 +810,7 @@ module BoilerBase
           # then it needs re-filling. This will ensure an operation of filling the buffer with
           # target+@config[:buffer_passthrough_overshoot] and consuming until target-@config[:buffer_expiry_threshold]
           # The effective hysteresis is therefore @config[:buffer_passthrough_overshoot]+@config[:buffer_expiry_threshold]
-          if @forward_temp_analyzer.average < @target_temp - @config[:buffer_expiry_threshold]
+          if @forward_temp_analyzer.average < @target_temp - @config[:buffer_expiry_threshold]  and !@relax_timer.expired?
             $app_logger.debug("State will change")
 
             # If we are below the exit limit then go for filling the buffer
@@ -883,7 +879,19 @@ module BoilerBase
           # Make sure HW mode of the boiler is off
           @hw_wiper.set_water_temp(65.0)
           @hydr_shift_pump.on
+
+          # Set back relays as they were when we left it off last time
+          if @prev_mode != :off
+            $app_logger.debug("Prev mode was not off it was: "+@prev_mode.to_s+" - setting relays to: "+@prev_relay_state_in_prev_mode.to_s+" & resetting relax timer")
+            set_relays(@prev_relay_state_in_prev_mode)
+          else
+            $app_logger.debug("Prev mode was off - not setting relays")
+          end
+
+          # Finalize state change
           sleep @config[:circulation_maintenance_delay]
+          @hw_pump.off
+          @relax_timer.reset
           set_heating_feed
         else
           raise "Invalid mode in do_control after mode change. Expecting either ':HW' or ':heat' got: '"+@mode.to_s+"'"
@@ -922,11 +930,13 @@ module BoilerBase
         # Loop until signalled to exit
         while !@stop_control.locked?
           $config_mutex.synchronize {@config = $config.dup}
-          # Update any objects that may need items from the newly copied config
-          update_config_items
+          @modesetting_mutex.synchronize do
+            # Update any objects that may need items from the newly copied config
+            update_config_items
 
-          # Perform the actual periodic control loop actions
-          do_control
+            # Perform the actual periodic control loop actions
+            do_control
+          end
           sleep @config[:buffer_heat_control_loop_delay] unless @stop_control.locked?
         end
         # Stop heat production of the boiler
