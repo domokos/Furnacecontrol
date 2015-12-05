@@ -716,8 +716,8 @@ module BoilerBase
 
         # Log the possible reasons of non-stability
         $app_logger.debug("Heating unstable.")
-        $app_logger.debug("DeltaT slope: "+@delta_analyzer.slope.to_s+" Sigfma: "+@delta_analyzer.sigma.to_s)
-        $app_logger.debug("Forward temp slope: "+@forward_temp_analyzer.slope.to_s+" Sigfma: "+@forward_temp_analyzer.sigma.to_s)
+        $app_logger.debug("DeltaT slope: "+@delta_analyzer.slope.to_s[0,4]+" Sigfma: "+@delta_analyzer.sigma.to_s[0,4]])
+        $app_logger.debug("Forward temp slope: "+@forward_temp_analyzer.slope.to_s[0,4]+" Sigma: "+@forward_temp_analyzer.sigma.to_s[0,4])
         $app_logger.debug("History age: "+(Time.now.getlocal(0) - @heating_history.first[:timestamp]).to_s)
         @relax_timer.expired? ? $app_logger.debug("Relax timer inactive") : $app_logger.debug("Relax timer active")
       else
@@ -733,10 +733,12 @@ module BoilerBase
         $app_logger.debug("Target temp: "+@target_temp.to_s)
 
         if @heat_in_buffer[:temp] > @target_temp + @config[:init_buffer_reqd_temp_reserve] and @heat_in_buffer[:percentage] > @config[:init_buffer_reqd_fill_reserve]
+          $app_logger.debug("Commencing feedinf from buffer from init")
           @heater_relay.off
           @heat_wiper.set_water_temp(7.0)
           set_relays(:feed_from_buffer)
         else
+          $app_logger.debug("Commencing direct boiler heating from init")
           set_relays(:direct_boiler)
           @heater_relay.on
           @heat_wiper.set_water_temp(@target_temp)
