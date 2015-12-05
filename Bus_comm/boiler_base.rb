@@ -572,11 +572,10 @@ module BoilerBase
         if @prev_mode != :off
           $app_logger.debug("Prev mode was not off it was: "+@prev_mode.to_s+" - setting relays to: "+@prev_relay_state_in_prev_mode.to_s+" & resetting relax timer")
           set_relays(@prev_relay_state_in_prev_mode)
-          @relax_timer.reset
         else
           $app_logger.debug("Prev mode was off - not setting relays")
-          @relax_timer.stop
         end
+        @relax_timer.reset
         start_control_thread
       when :off
         $app_logger.debug("Heater set_mode. Got new mode: :off")
@@ -659,26 +658,11 @@ module BoilerBase
       # Maintain the heating history
       if calling_mode == :initialize
         $app_logger.debug("Maintaining heatnig metadata - initializing metadata storage: "+calling_mode.to_s)
-        @heating_history.clear
         @delta_analyzer.reset
         @forward_temp_analyzer.reset
       else
         $app_logger.debug("Maintaining heatnig metadata - appending to metadata storage: "+calling_mode.to_s)
       end
-
-      current_heating_history_entry = {:forward_temp=>@forward_sensor.temp,:return_temp=>@return_sensor.temp,
-        :upper_temp=>@upper_sensor.temp,:lower_temp=>@lower_sensor.temp,:delta_t=>0,
-        :timestamp=>Time.now.getlocal(0)}
-
-      current_heating_history_entry[:delta_t] = current_heating_history_entry[:forward_temp] - current_heating_history_entry[:return_temp]
-
-      @heating_history.push(current_heating_history_entry)
-
-      @heating_history.shift if Time.now.getlocal(0) - @heating_history.first[:timestamp] > @config[:max_heating_history_age]
-
-      # Maintain the amount of heat stored in the buffer
-      @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>((@lower_sensor.temp - @config[:buffer_base_temp])*100.0)/(@upper_sensor.temp - @config[:buffer_base_temp])}
-
       # Update the heating delta and forward analyzers
       @delta_analyzer.update(current_heating_history_entry[:delta_t])
       @forward_temp_analyzer.update(current_heating_history_entry[:forward_temp])
@@ -710,7 +694,6 @@ module BoilerBase
       @delta_analyzer.sigma < @config[:delta_t_stability_sigma_threshold] or
       @forward_temp_analyzer.slope.abs > @config[:forward_temp_stability_slope_threshold] or
       @forward_temp_analyzer.sigma < @config[:forward_temp_stability_sigma_threshold] or
-      Time.now.getlocal(0) - @heating_history.first[:timestamp]  < @config[:min_heating_history_age] or
       !@relax_timer.expired?
         @heating_feed_state = :unstable
 

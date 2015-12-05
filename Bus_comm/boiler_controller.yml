@@ -63,8 +63,6 @@
 # *********************************************************************************************
 #
 :three_way_movement_time: 10
-:max_heating_history_age: 600
-:min_heating_history_age: 60
 :buffer_heat_control_loop_delay: 2
 :buffer_base_temp: 20.0
 :buffer_limited_log_period: 20
