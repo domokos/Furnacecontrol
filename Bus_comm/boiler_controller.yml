@@ -80,7 +80,7 @@
 :buffer_heater_state_change_relaxation_time: 90
 #
 # Heating state change related constants
-:forward_above_target: 3.9
+:forward_above_target: 3.7
 :min_delta_t_to_maintain: 4.0
 :buffer_passthrough_overshoot: 2.0
 :buffer_expiry_threshold: 3.0

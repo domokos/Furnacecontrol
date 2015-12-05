@@ -755,7 +755,7 @@ module BoilerBase
 
           # Evaluate Buffer Passthrough state
         elsif @relay_state == :buffer_passthrough
-          $app_logger.debug("Reqd./effective target temps: "+@target_temp.to_s+"/"+@temp_required.get_target.to_s)
+          $app_logger.debug("Reqd./effective target temps: "+@target_temp.to_s+"/"+@heat_wiper.get_target.to_s)
           $app_logger.debug("Average forward temp: "+@forward_temp_analyzer.average.to_s[0,6])
           $app_logger.debug("buffer_passthrough_fwd_temp_limit: "+@config[:buffer_passthrough_fwd_temp_limit].to_s)
           $app_logger.debug("Average delta_t: "+@delta_analyzer.average.to_s[0,6])
