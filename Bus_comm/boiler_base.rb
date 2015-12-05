@@ -522,8 +522,8 @@ module BoilerBase
       @modesetting_mutex = Mutex.new
 
       # Initialize the heating history
-      @delta_analyzer = Globals::TempAnalyzer.new(8)
-      @forward_temp_analyzer = Globals::TempAnalyzer.new(8)
+      @delta_analyzer = Globals::TempAnalyzer.new(4)
+      @forward_temp_analyzer = Globals::TempAnalyzer.new(4)
 
       @initialize_heating = true
       @feed_log_rate_limiter = 1
