@@ -883,7 +883,7 @@ module BoilerBase
             $app_logger.debug("Prev mode was not off it was: "+@prev_mode.to_s+" - setting relays to: "+@prev_relay_state_in_prev_mode.to_s+" & resetting relax timer")
             set_relays(@prev_relay_state_in_prev_mode)
           else
-            $app_logger.debug("Prev mode was off - not setting relays")
+            $app_logger.debug("Prev mode was off - leaving relays as they are: "+@relay_state.to_s)
           end
 
           # Finalize state change
