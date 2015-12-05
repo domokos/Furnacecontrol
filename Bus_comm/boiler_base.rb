@@ -579,7 +579,7 @@ module BoilerBase
           $app_logger.debug("Heater set_mode. Got new mode: :HW")
 
           # Remember the relay state if going to HW from heat
-          @prev_relay_state_in_prev_heating_mode = @relay_state if @prev_mode == :heat
+          @prev_relay_state_in_prev_heating_mode = @relay_state if @mode == :heat
           set_relays(:direct_boiler)
           start_control_thread
         end
@@ -906,7 +906,7 @@ module BoilerBase
 
           # Set back relays as they were when we left it off last time
           if @prev_mode != :off
-            $app_logger.debug("Prev mode was not off it was: "+@prev_mode.to_s+" - setting relays to: "+@prev_relay_state_in_prev_heating_mode.to_s+" & resetting relax timer")
+            $app_logger.debug("Prev mode was not off it was: "+@prev_mode.to_s+" - setting relays to: "+@prev_relay_state_in_prev_heating_mode.to_s)
             set_relays(@prev_relay_state_in_prev_heating_mode)
           else
             $app_logger.debug("Prev mode was off - leaving relays as they are: "+@relay_state.to_s)
@@ -915,6 +915,7 @@ module BoilerBase
           # Finalize state change
           sleep @config[:circulation_maintenance_delay]
           @hw_pump.off
+          $app_logger.debug("Resetting relax timer")
           @relax_timer.reset
           set_heating_feed
         else
