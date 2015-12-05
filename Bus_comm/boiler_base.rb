@@ -716,7 +716,7 @@ module BoilerBase
 
         # Log the possible reasons of non-stability
         $app_logger.debug("Heating unstable.")
-        $app_logger.debug("DeltaT slope: "+@delta_analyzer.slope.to_s[0,4]+" Sigfma: "+@delta_analyzer.sigma.to_s[0,4]])
+        $app_logger.debug("DeltaT slope: "+@delta_analyzer.slope.to_s[0,4]+" Sigma: "+@delta_analyzer.sigma.to_s[0,4])
         $app_logger.debug("Forward temp slope: "+@forward_temp_analyzer.slope.to_s[0,4]+" Sigma: "+@forward_temp_analyzer.sigma.to_s[0,4])
         $app_logger.debug("History age: "+(Time.now.getlocal(0) - @heating_history.first[:timestamp]).to_s)
         @relax_timer.expired? ? $app_logger.debug("Relax timer inactive") : $app_logger.debug("Relax timer active")
