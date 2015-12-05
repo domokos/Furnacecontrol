@@ -528,7 +528,7 @@ module BoilerBase
       @do_limited_rate_logging = true
 
       # Create the state change relaxation timer
-      @relax_timer = TimerSec.new(@config[:buffer_heater_state_change_relaxation_time],"Buffer heater state change relaxation timer")
+      @relax_timer = Globals::TimerSec.new(@config[:buffer_heater_state_change_relaxation_time],"Buffer heater state change relaxation timer")
 
       # Set the initial state
       @mode = @prev_mode = :off

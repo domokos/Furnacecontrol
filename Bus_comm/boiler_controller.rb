@@ -5,7 +5,6 @@
 #
 
 require "/usr/local/lib/boiler_controller/boiler_base"
-require "/usr/local/lib/boiler_controller/buffer_heat"
 require "rubygems"
 require "robustthread"
 require "yaml"
