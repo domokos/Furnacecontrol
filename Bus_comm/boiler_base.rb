@@ -656,7 +656,7 @@ module BoilerBase
     # Maintain the heating history
     def maintain_heating_metadata
       # Maintain the heating history
-      $app_logger.debug("Updating metadata: "+calling_mode.to_s)
+      $app_logger.debug("Updating metadata")
 
       # Update the heating delta and forward analyzers
       @delta_analyzer.update(@forward_sensor.temp - @return_sensor.temp)
