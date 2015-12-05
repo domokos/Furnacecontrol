@@ -423,6 +423,11 @@ module BusDevice
       end
     end
 
+    # Get the target water temp
+    def get_target
+      return @temp_required
+    end
+
     private
 
     # Write the value of the parameter to the device on the bus

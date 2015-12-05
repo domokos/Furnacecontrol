@@ -755,7 +755,7 @@ module BoilerBase
 
           # Evaluate Buffer Passthrough state
         elsif @relay_state == :buffer_passthrough
-          $app_logger.debug("Target temp: "+@target_temp.to_s)
+          $app_logger.debug("Reqd./effective target temps: "+@target_temp.to_s+"/"+@temp_required.get_target.to_s)
           $app_logger.debug("Average forward temp: "+@forward_temp_analyzer.average.to_s[0,6])
           $app_logger.debug("buffer_passthrough_fwd_temp_limit: "+@config[:buffer_passthrough_fwd_temp_limit].to_s)
           $app_logger.debug("Average delta_t: "+@delta_analyzer.average.to_s[0,6])
@@ -849,6 +849,7 @@ module BoilerBase
             $app_logger.debug("Rate limited debug message in feed from buffer.\nState will not change - continue feeding from buffer")
             @do_limited_rate_logging = false
           end
+          @heat_wiper.set_water_temp(7.0)
           if @heater_relay.state !=:off
             $app_logger.debug("Turning off heater relay")
             @heater_relay.off
