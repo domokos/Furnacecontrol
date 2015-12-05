@@ -694,7 +694,7 @@ module BoilerBase
         $app_logger.debug("Heating unstable.")
         $app_logger.debug("DeltaT slope: "+@delta_analyzer.slope.to_s[0,6]+" Sigma: "+@delta_analyzer.sigma.to_s[0,6])
         $app_logger.debug("Forward temp slope: "+@forward_temp_analyzer.slope.to_s[0,6]+" Sigma: "+@forward_temp_analyzer.sigma.to_s[0,6])
-        @relax_timer.expired? ? $app_logger.debug("Relax timer inactive") : $app_logger.debug("Relax timer active")
+        @relax_timer.expired? ? $app_logger.debug("Relax timer inactive") : $app_logger.debug("Relax timer active: "+@relax_timer.sec_left.to_s)
       else
         @heating_feed_state = :stable
       end
@@ -740,6 +740,7 @@ module BoilerBase
               @do_limited_rate_logging = false
             end
             @heat_wiper.set_water_temp(@target_temp)
+            @heater_relay.on
           end
 
           # Evaluate Buffer Passthrough state
@@ -781,6 +782,7 @@ module BoilerBase
               @do_limited_rate_logging = false
             end
             @heat_wiper.set_water_temp(@target_temp + @config[:buffer_passthrough_overshoot])
+            @heater_relay.off
           end
 
           # Evaluate feed from Buffer state
@@ -820,6 +822,7 @@ module BoilerBase
             $app_logger.debug("Rate limited debug message in feed from buffer.\nState will not change - continue feeding from buffer")
             @do_limited_rate_logging = false
           end
+          @heater_relay.off
           # Raise an exception - no matching source state
         else
           raise "Unexpected relay state in set_heating_feed: "+@relay_state.to_s
