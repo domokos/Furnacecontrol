@@ -663,9 +663,10 @@ module BoilerBase
       else
         $app_logger.debug("Maintaining heatnig metadata - appending to metadata storage: "+calling_mode.to_s)
       end
+
       # Update the heating delta and forward analyzers
-      @delta_analyzer.update(current_heating_history_entry[:delta_t])
-      @forward_temp_analyzer.update(current_heating_history_entry[:forward_temp])
+      @delta_analyzer.update(@forward_sensor.temp - @return_sensor.temp)
+      @forward_temp_analyzer.update(@forward_sensor.temp)
     end # of maintain_heating_metadata
 
     #
