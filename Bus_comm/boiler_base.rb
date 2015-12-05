@@ -691,7 +691,7 @@ module BoilerBase
         @heating_feed_state = :changing
 
         # Log the possible reasons of the not settled state
-        $app_logger.debug("Heating not settled.")
+        $app_logger.debug("\nHeating not settled.")
         $app_logger.debug("Forward temp sl./thr.: "+@forward_temp_analyzer.slope.to_s[0,6]+"/"+@config[:forward_temp_stability_slope_threshold].to_s+
         " Sigma/thr.: "+@forward_temp_analyzer.sigma.to_s[0,6]+"/"+@config[:forward_temp_stability_sigma_threshold].to_s)
 
@@ -703,11 +703,12 @@ module BoilerBase
         @heating_feed_state = :settled
       end
 
-      $app_logger.trace("Heating feed state not changing: "+@heating_feed_state.to_s) if @heating_feed_state == @prev_heating_feed_state
+      $app_logger.debug("Heating feed state not changing: "+@heating_feed_state.to_s) if @heating_feed_state == @prev_heating_feed_state
       $app_logger.debug("Heating feed state changing from "+@prev_heating_feed_state.to_s+" to "+@heating_feed_state.to_s) if @heating_feed_state != @prev_heating_feed_state
 
       # Monitor temperatures and make feed decisons
       if @heating_feed_state == :settled
+        $app_logger.debug("\n Heating settled: "+@relay_state.to_s)
         $app_logger.debug("Relay state: "+@relay_state.to_s)
 
         # Evaluate Direct Boiler state
@@ -726,7 +727,10 @@ module BoilerBase
             $app_logger.debug("Heat in buffer: "+@heat_in_buffer[:temp].to_s+" Percentage: "+@heat_in_buffer[:percentage].to_s)
 
             if @heat_in_buffer[:temp] > @target_temp + @config[:init_buffer_reqd_temp_reserve] and @heat_in_buffer[:percentage] > @config[:init_buffer_reqd_fill_reserve]
-              @heater_relay.off
+              if @heater_relay.state !=:off
+                $app_logger.debug("Turning off heater relay")
+                @heater_relay.off
+              end
               @heat_wiper.set_water_temp(7.0)
               set_relays(:feed_from_buffer)
             else
@@ -744,7 +748,10 @@ module BoilerBase
               @do_limited_rate_logging = false
             end
             @heat_wiper.set_water_temp(@target_temp)
-            @heater_relay.on
+            if @heater_relay.state !=:on
+              $app_logger.debug("Turning on heater relay")
+              @heater_relay.on
+            end
           end
 
           # Evaluate Buffer Passthrough state
@@ -773,7 +780,10 @@ module BoilerBase
           elsif @forward_temp_analyzer.average > @target_temp + @config[:forward_above_target]
             $app_logger.debug("State will change")
 
-            @heater_relay.off
+            if @heater_relay.state !=:off
+              $app_logger.debug("Turning off heater relay")
+              @heater_relay.off
+            end
             @heat_wiper.set_water_temp(7.0)
             set_relays(:feed_from_buffer)
 
@@ -786,7 +796,10 @@ module BoilerBase
               @do_limited_rate_logging = false
             end
             @heat_wiper.set_water_temp(@target_temp + @config[:buffer_passthrough_overshoot])
-            @heater_relay.off
+            if @heater_relay.state !=:off
+              $app_logger.debug("Turning off heater relay")
+              @heater_relay.off
+            end
           end
 
           # Evaluate feed from Buffer state
@@ -810,7 +823,10 @@ module BoilerBase
             if @target_temp < @config[:buffer_passthrough_fwd_temp_limit]
 
               set_relays(:buffer_passthrough)
-              @heater_relay.on
+              if @heater_relay.state !=:on
+                $app_logger.debug("Turning on heater relay")
+                @heater_relay.on
+              end
               @heat_wiper.set_water_temp(@target_temp + @config[:buffer_passthrough_overshoot])
 
               # If the target is above the exit limit then go for the direct feed
@@ -818,7 +834,10 @@ module BoilerBase
             else
 
               set_relays(:direct_boiler)
-              @heater_relay.on
+              if @heater_relay.state !=:on
+                $app_logger.debug("Turning on heater relay")
+                @heater_relay.on
+              end
               @heat_wiper.set_water_temp(@target_temp)
             end
           end
@@ -826,7 +845,10 @@ module BoilerBase
             $app_logger.debug("Rate limited debug message in feed from buffer.\nState will not change - continue feeding from buffer")
             @do_limited_rate_logging = false
           end
-          @heater_relay.off
+          if @heater_relay.state !=:off
+            $app_logger.debug("Turning off heater relay")
+            @heater_relay.off
+          end
           # Raise an exception - no matching source state
         else
           raise "Unexpected relay state in set_heating_feed: "+@relay_state.to_s
@@ -869,7 +891,7 @@ module BoilerBase
         @mode_changed = false
       else
         if @do_limited_rate_control_logging
-          $app_logger.debug("Heater control mode not changed, mode is: "+@mode.to_s)
+          $app_logger.debug("Rate limited control logging\nHeater control mode not changed, mode is: "+@mode.to_s)
           @do_limited_rate_control_logging = false
         end
         case @mode
@@ -908,8 +930,10 @@ module BoilerBase
           sleep @config[:buffer_heat_control_loop_delay] unless @stop_control.locked?
         end
         # Stop heat production of the boiler
-        @heater_relay.off
-
+        if @heater_relay.state !=:off
+          $app_logger.debug("Turning off heater relay")
+          @heater_relay.off
+        end
         $app_logger.debug("Heater control thread exiting")
       end # Of control Thread
 

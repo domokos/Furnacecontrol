@@ -69,9 +69,9 @@
 :buffer_control_limited_log_period: 20
 #
 # Stability criteria
-:delta_t_stability_slope_threshold: 0.2
-:delta_t_stability_sigma_threshold: 0.1
-:forward_temp_stability_slope_threshold: 0.2
+:delta_t_stability_slope_threshold: 0.05
+:delta_t_stability_sigma_threshold: 0.2
+:forward_temp_stability_slope_threshold: 0.05
 :forward_temp_stability_sigma_threshold: 0.2
 #
 # Heat initialization constants
