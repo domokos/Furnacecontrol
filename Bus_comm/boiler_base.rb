@@ -654,15 +654,9 @@ module BoilerBase
     private
 
     # Maintain the heating history
-    def maintain_heating_metadata(calling_mode)
+    def maintain_heating_metadata
       # Maintain the heating history
-      if calling_mode == :initialize
-        $app_logger.debug("Maintaining heatnig metadata - initializing metadata storage: "+calling_mode.to_s)
-        @delta_analyzer.reset
-        @forward_temp_analyzer.reset
-      else
-        $app_logger.debug("Maintaining heatnig metadata - appending to metadata storage: "+calling_mode.to_s)
-      end
+      $app_logger.debug("Updating metadata: "+calling_mode.to_s)
 
       # Update the heating delta and forward analyzers
       @delta_analyzer.update(@forward_sensor.temp - @return_sensor.temp)
@@ -675,9 +669,9 @@ module BoilerBase
     # This routine only sets relays and heat switches no pumps
     # circulation is expected to be stable when called
     #
-    def set_heating_feed(calling_mode)
+    def set_heating_feed
 
-      maintain_heating_metadata(calling_mode)
+      maintain_heating_metadata
 
       if @feed_log_rate_limiter > @config[:buffer_limited_log_period]
         @feed_log_rate_limiter = 1
@@ -689,9 +683,7 @@ module BoilerBase
       # Determine the heating feed state
       @prev_heating_feed_state = @heating_feed_state
 
-      if calling_mode == :initialize
-        @heating_feed_state = :initializing
-      elsif @delta_analyzer.slope.abs > @config[:delta_t_stability_slope_threshold] or
+      if @delta_analyzer.slope.abs > @config[:delta_t_stability_slope_threshold] or
       @delta_analyzer.sigma < @config[:delta_t_stability_sigma_threshold] or
       @forward_temp_analyzer.slope.abs > @config[:forward_temp_stability_slope_threshold] or
       @forward_temp_analyzer.sigma < @config[:forward_temp_stability_sigma_threshold] or
@@ -710,25 +702,8 @@ module BoilerBase
       $app_logger.trace("Heating feed state not changing: "+@heating_feed_state.to_s) if @heating_feed_state == @prev_heating_feed_state
       $app_logger.debug("Heating feed state changing from "+@prev_heating_feed_state.to_s+" to "+@heating_feed_state.to_s) if @heating_feed_state != @prev_heating_feed_state
 
-      # If the measurement has not yet started perform initialization
-      if @heating_feed_state == :initializing
-        $app_logger.debug("Heat in buffer: "+@heat_in_buffer[:temp].to_s+" Percentage: "+@heat_in_buffer[:percentage].to_s)
-        $app_logger.debug("Target temp: "+@target_temp.to_s)
-
-        if @heat_in_buffer[:temp] > @target_temp + @config[:init_buffer_reqd_temp_reserve] and @heat_in_buffer[:percentage] > @config[:init_buffer_reqd_fill_reserve]
-          $app_logger.debug("Commencing feedinf from buffer from init")
-          @heater_relay.off
-          @heat_wiper.set_water_temp(7.0)
-          set_relays(:feed_from_buffer)
-        else
-          $app_logger.debug("Commencing direct boiler heating from init")
-          set_relays(:direct_boiler)
-          @heater_relay.on
-          @heat_wiper.set_water_temp(@target_temp)
-        end
-
-        # Monitor Delta_t and make feed decison based on it
-      elsif @heating_feed_state == :stable
+      # Monitor temperatures and make feed decisons
+      if @heating_feed_state == :stable
         $app_logger.debug("Relay state: "+@relay_state.to_s)
 
         # Evaluate Direct Boiler state
@@ -882,14 +857,7 @@ module BoilerBase
           @hw_wiper.set_water_temp(65.0)
           @hydr_shift_pump.on
           sleep @config[:circulation_maintenance_delay]
-
-          # If the prevoius mode was not off (HW) then return to where we left off
-          if @prev_mode != :off
-            set_heating_feed(:continuous)
-            # Else start with initialization
-          else
-            set_heating_feed(:initialize)
-          end
+          set_heating_feed
         else
           raise "Invalid mode in do_control after mode change. Expecting either ':HW' or ':heat' got: '"+@mode.to_s+"'"
         end
@@ -903,7 +871,7 @@ module BoilerBase
         when :HW
           @hw_wiper.set_water_temp(@hw_thermostat.temp)
         when :heat
-          set_heating_feed(:continuous)
+          set_heating_feed
         else
           raise "Invalid mode in do_control. Expecting either ':HW' or ':heat' got: '"+@mode.to_s+"'"
         end
