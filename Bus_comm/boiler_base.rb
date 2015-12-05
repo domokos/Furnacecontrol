@@ -798,9 +798,9 @@ module BoilerBase
               @do_limited_rate_logging = false
             end
             @heat_wiper.set_water_temp(@target_temp + @config[:buffer_passthrough_overshoot])
-            if @heater_relay.state !=:off
-              $app_logger.debug("Turning off heater relay")
-              @heater_relay.off
+            if @heater_relay.state != :on
+              $app_logger.debug("Turning on heater relay")
+              @heater_relay.on
             end
           end
 
