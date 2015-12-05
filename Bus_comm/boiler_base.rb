@@ -694,8 +694,6 @@ module BoilerBase
 
       maintain_heating_metadata(calling_mode)
 
-      current_delta_t = @heating_history.last[:delta_t]
-      current_forward_temp = @heating_history.last[:forward_temp]
       if @feed_log_rate_limiter > @config[:buffer_limited_log_period]
         @feed_log_rate_limiter = 1
         @do_limited_rate_logging = true
@@ -718,8 +716,8 @@ module BoilerBase
 
         # Log the possible reasons of non-stability
         $app_logger.debug("Heating unstable.")
-        $app_logger.debug("DeltaT slope: "+@delta_analyzer.slope.to_s[0,4]+" Sigma: "+@delta_analyzer.sigma.to_s[0,4])
-        $app_logger.debug("Forward temp slope: "+@forward_temp_analyzer.slope.to_s[0,4]+" Sigma: "+@forward_temp_analyzer.sigma.to_s[0,4])
+        $app_logger.debug("DeltaT slope: "+@delta_analyzer.slope.to_s[0,6]+" Sigma: "+@delta_analyzer.sigma.to_s[0,6])
+        $app_logger.debug("Forward temp slope: "+@forward_temp_analyzer.slope.to_s[0,6]+" Sigma: "+@forward_temp_analyzer.sigma.to_s[0,6])
         $app_logger.debug("History age: "+(Time.now.getlocal(0) - @heating_history.first[:timestamp]).to_s)
         @relax_timer.expired? ? $app_logger.debug("Relax timer inactive") : $app_logger.debug("Relax timer active")
       else
@@ -752,14 +750,14 @@ module BoilerBase
 
         # Evaluate Direct Boiler state
         if @relay_state == :direct_boiler
-          $app_logger.debug("current_delta_t: "+current_delta_t.to_s)
-          $app_logger.debug("current_forward_temp: "+current_forward_temp.to_s)
+          $app_logger.debug("Average delta_t: "+@delta_analyzer.average.to_s[0,6])
+          $app_logger.debug("Average forward temp: "+@forward_temp_analyzer.average.to_s[0,6])
           $app_logger.debug("Target temp: "+@target_temp.to_s)
           $app_logger.debug("Threshold forward_above_target: "+@config[:forward_above_target].to_s)
 
           # Direct Boiler - State change condition evaluation
-          if current_delta_t < @config[:min_delta_t_to_maintain] or
-          current_forward_temp > @target_temp + @config[:forward_above_target]
+          if @delta_analyzer.average < @config[:min_delta_t_to_maintain] or
+          @forward_temp_analyzer.average > @target_temp + @config[:forward_above_target]
 
             # Too much heat with direct heat - let's either feed from buffer or fill the buffer
             # based on how much heat is stored in the buffer
@@ -790,8 +788,8 @@ module BoilerBase
           # Evaluate Buffer Passthrough state
         elsif @relay_state == :buffer_passthrough
           $app_logger.debug("Target temp: "+@target_temp.to_s)
-          $app_logger.debug("current_forward_temp: "+current_forward_temp.to_s)
-          $app_logger.debug("Current_delta_t: "+current_delta_t.to_s)
+          $app_logger.debug("Average forward temp: "+@forward_temp_analyzer.average.to_s[0,6])
+          $app_logger.debug("Average delta_t: "+@delta_analyzer.average.to_s[0,6])
           $app_logger.debug("buffer_passthrough_fwd_temp_limit: "+@config[:buffer_passthrough_fwd_temp_limit].to_s)
 
           # Buffer Passthrough - State change evaluation conditions
@@ -810,8 +808,8 @@ module BoilerBase
             # too hot then start feeding from the buffer.
             # As of now we assume that the boiler is able to generate the output temp requred
             # therefore it is enough to monitor the deltaT to find out if the above condition is met
-          elsif current_delta_t < @config[:min_delta_t_to_maintain] or
-          current_forward_temp > @target_temp + @config[:forward_above_target]
+          elsif @delta_analyzer.average < @config[:min_delta_t_to_maintain] or
+          @forward_temp_analyzer.average > @target_temp + @config[:forward_above_target]
             $app_logger.debug("State will change")
 
             @heater_relay.off
@@ -831,7 +829,7 @@ module BoilerBase
 
           # Evaluate feed from Buffer state
         elsif @relay_state == :feed_from_buffer
-          $app_logger.debug("Current_forward_temp: "+current_forward_temp.to_s)
+          $app_logger.debug("Average forward temp: "+@forward_temp_analyzer.average.to_s[0,6])
           $app_logger.debug("Target temp: "+@target_temp.to_s)
           $app_logger.debug("buffer_passthrough_fwd_temp_limit :"+@config[:buffer_passthrough_fwd_temp_limit].to_s)
 
@@ -841,7 +839,7 @@ module BoilerBase
           # then it needs re-filling. This will ensure an operation of filling the buffer with
           # target+@config[:buffer_passthrough_overshoot] and consuming until target-@config[:buffer_expiry_threshold]
           # The effective hysteresis is therefore @config[:buffer_passthrough_overshoot]+@config[:buffer_expiry_threshold]
-          if current_forward_temp < @target_temp - @config[:buffer_expiry_threshold]
+          if @forward_temp_analyzer.average < @target_temp - @config[:buffer_expiry_threshold]
             $app_logger.debug("State will change")
 
             # If we are below the exit limit then go for filling the buffer
