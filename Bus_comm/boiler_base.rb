@@ -539,7 +539,7 @@ module BoilerBase
       @control_thread = nil
       @relay_state = nil
       set_relays(:direct_boiler)
-      @prev_relay_state_in_prev_mode = :direct_boiler
+      @prev_relay_state_in_prev_heating_mode = :direct_boiler
       @heating_feed_state = :initializing
       @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>((@upper_sensor.temp - @config[:buffer_base_temp])*100)/(@lower_sensor.temp - @config[:buffer_base_temp])}
       @target_temp = 7.0
@@ -577,6 +577,9 @@ module BoilerBase
           stop_control_thread
         when :HW
           $app_logger.debug("Heater set_mode. Got new mode: :HW")
+
+          # Remember the relay state if going to HW from heat
+          @prev_relay_state_in_prev_heating_mode = @relay_state if @prev_mode == :heat
           set_relays(:direct_boiler)
           start_control_thread
         end
@@ -585,7 +588,6 @@ module BoilerBase
         @prev_mode = @mode
         @mode = new_mode
         @mode_changed = true
-        @prev_relay_state_in_prev_mode = @relay_state
       end # of modesetting mutex sync
     end #of set_mode
 
@@ -904,8 +906,8 @@ module BoilerBase
 
           # Set back relays as they were when we left it off last time
           if @prev_mode != :off
-            $app_logger.debug("Prev mode was not off it was: "+@prev_mode.to_s+" - setting relays to: "+@prev_relay_state_in_prev_mode.to_s+" & resetting relax timer")
-            set_relays(@prev_relay_state_in_prev_mode)
+            $app_logger.debug("Prev mode was not off it was: "+@prev_mode.to_s+" - setting relays to: "+@prev_relay_state_in_prev_heating_mode.to_s+" & resetting relax timer")
+            set_relays(@prev_relay_state_in_prev_heating_mode)
           else
             $app_logger.debug("Prev mode was off - leaving relays as they are: "+@relay_state.to_s)
           end
