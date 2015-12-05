@@ -237,7 +237,7 @@ module Globals
       @temp_vector = []
       @timestamp_vector = []
       @starting_timestamp = Time.now.to_f
-      @slope = nil
+      @slope = 0
     end
 
     def average
