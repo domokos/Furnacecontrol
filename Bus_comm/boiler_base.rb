@@ -522,9 +522,8 @@ module BoilerBase
       @modesetting_mutex = Mutex.new
 
       # Initialize the heating history
-      @heating_history = []
-      @delta_analyzer = Globals::TempAnalyzer.new(15)
-      @forward_temp_analyzer = Globals::TempAnalyzer.new(15)
+      @delta_analyzer = Globals::TempAnalyzer.new(8)
+      @forward_temp_analyzer = Globals::TempAnalyzer.new(8)
 
       @initialize_heating = true
       @feed_log_rate_limiter = 1
@@ -542,7 +541,7 @@ module BoilerBase
       set_relays(:direct_boiler)
       @prev_relay_state_in_prev_mode = :direct_boiler
       @heating_feed_state = :initializing
-      @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>((@lower_sensor.temp - @config[:buffer_base_temp])*100)/(@upper_sensor.temp - @config[:buffer_base_temp])}
+      @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>((@upper_sensor.temp - @config[:buffer_base_temp])*100)/(@lower_sensor.temp - @config[:buffer_base_temp])}
       @target_temp = 7.0
     end
 
@@ -633,9 +632,9 @@ module BoilerBase
       end
 
       if moved
-        $app_logger.debug("Waiting for relays to move into new state")
+        $app_logger.debug("Waiting for relays to move into new position")
       else
-        $app_logger.debug("Relays not moved - skippling sleep")
+        $app_logger.debug("Relays not moved - not waiting")
       end
 
       # Wait until valve movement is complete
@@ -658,6 +657,9 @@ module BoilerBase
       # Update the heating delta and forward analyzers
       @delta_analyzer.update(@forward_sensor.temp - @return_sensor.temp)
       @forward_temp_analyzer.update(@forward_sensor.temp)
+
+      @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>((@upper_sensor.temp - @config[:buffer_base_temp])*100)/(@lower_sensor.temp - @config[:buffer_base_temp])}
+
     end # of maintain_heating_metadata
 
     #
@@ -680,10 +682,18 @@ module BoilerBase
       # Determine the heating feed state
       @prev_heating_feed_state = @heating_feed_state
 
-      if @delta_analyzer.slope.abs > @config[:delta_t_stability_slope_threshold] or
+      # Slope of the delta is not slow enough to change
+      if (@delta_analyzer.slope.abs > @config[:delta_t_stability_slope_threshold] or
+      # Sigma of the delta is not enough
       @delta_analyzer.sigma > @config[:delta_t_stability_sigma_threshold] or
+      # Slope of the forward temp is not slow enough
       @forward_temp_analyzer.slope.abs > @config[:forward_temp_stability_slope_threshold] or
-      @forward_temp_analyzer.sigma > @config[:forward_temp_stability_sigma_threshold]
+      # Sigma of the forward temp is not low enough
+      @forward_temp_analyzer.sigma > @config[:forward_temp_stability_sigma_threshold]) and
+
+      # AND the boiler is not depleting very fast
+      ! (@delta_analyzer.slope < (-3.0*@config[:delta_t_stability_slope_threshold]) or
+      @forward_temp_analyzer.slope > (3.0*@config[:forward_temp_stability_slope_threshold]))
         @heating_feed_state = :changing
       else
         @heating_feed_state = :settled
@@ -720,8 +730,10 @@ module BoilerBase
               end
               @heat_wiper.set_water_temp(7.0)
               set_relays(:feed_from_buffer)
+              @relax_timer.reset
             else
               set_relays(:buffer_passthrough)
+              @relax_timer.reset
 
               # If feed heat into buffer raise the boiler temperature to be able to move heat out of the buffer later
               @heat_wiper.set_water_temp(@target_temp + @config[:buffer_passthrough_overshoot])
@@ -760,6 +772,8 @@ module BoilerBase
             set_relays(:direct_boiler)
             @heat_wiper.set_water_temp(@target_temp)
 
+            @relax_timer.reset
+
             # If the buffer is nearly full - too low delta T or
             # too hot then start feeding from the buffer.
             # As of now we assume that the boiler is able to generate the output temp requred
@@ -773,6 +787,7 @@ module BoilerBase
             end
             @heat_wiper.set_water_temp(7.0)
             set_relays(:feed_from_buffer)
+            @relax_timer.reset
 
             # Buffer Passthrough - State maintenance operations
             # Just set the required water temperature
@@ -815,6 +830,7 @@ module BoilerBase
                 @heater_relay.on
               end
               @heat_wiper.set_water_temp(@target_temp + @config[:buffer_passthrough_overshoot])
+              @relax_timer.reset
 
               # If the target is above the exit limit then go for the direct feed
               # which in turn may set a viable exit limit
@@ -826,6 +842,7 @@ module BoilerBase
                 @heater_relay.on
               end
               @heat_wiper.set_water_temp(@target_temp)
+              @relax_timer.reset
             end
           end
           if @do_limited_rate_logging
