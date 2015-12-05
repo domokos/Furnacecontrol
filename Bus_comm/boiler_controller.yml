@@ -68,6 +68,7 @@
 :buffer_heat_control_loop_delay: 2
 :buffer_base_temp: 20.0
 :buffer_limited_log_period: 20
+:buffer_control_limited_log_period: 20
 #
 # Stability criteria
 :delta_t_stability_slope_threshold: 0.2

@@ -524,8 +524,10 @@ module BoilerBase
       @forward_temp_analyzer = Globals::TempAnalyzer.new(50)
 
       @initialize_heating = true
-      @log_rate_limiter = 1
+      @feed_log_rate_limiter = 1
       @do_limited_rate_logging = true
+      @control_log_rate_limiter = 1
+      @do_limited_rate_control_logging = true
 
       # Create the state change relaxation timer
       @relax_timer = Globals::TimerSec.new(@config[:buffer_heater_state_change_relaxation_time],"Buffer heater state change relaxation timer")
@@ -694,11 +696,11 @@ module BoilerBase
 
       current_delta_t = @heating_history.last[:delta_t]
       current_forward_temp = @heating_history.last[:forward_temp]
-      if @log_rate_limiter > @config[:buffer_limited_log_period]
-        @log_rate_limiter = 1
+      if @feed_log_rate_limiter > @config[:buffer_limited_log_period]
+        @feed_log_rate_limiter = 1
         @do_limited_rate_logging = true
       else
-        @log_rate_limiter += 1
+        @feed_log_rate_limiter += 1
       end
 
       # Determine the heating feed state
@@ -879,6 +881,13 @@ module BoilerBase
     # The actual tasks of the control thread
     def do_control
 
+      if @control_log_rate_limiter > @config[:buffer_control_limited_log_period]
+        @control_log_rate_limiter = 1
+        @do_limited_rate_control_logging = true
+      else
+        @control_log_rate_limiter += 1
+      end
+
       if @mode_changed
         $app_logger.debug("Heater control mode changed, got new mode: "+@mode.to_s)
         case @mode
@@ -905,7 +914,10 @@ module BoilerBase
         end
         @mode_changed = false
       else
-        $app_logger.debug("Heater control mode not changed, mode is: "+@mode.to_s)
+        if @do_limited_rate_control_logging
+          $app_logger.debug("Heater control mode not changed, mode is: "+@mode.to_s)
+          @do_limited_rate_control_logging = false
+        end
         case @mode
         when :HW
           @hw_wiper.set_water_temp(@hw_thermostat.temp)
