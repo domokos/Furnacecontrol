@@ -521,7 +521,7 @@ module BoilerBase
       # Initialize the heating history
       @heating_history = []
       @delta_analyzer = Globals::TempAnalyzer.new(15)
-      @forward_temp_analyzer = Globals::TempAnalyzer.new(50)
+      @forward_temp_analyzer = Globals::TempAnalyzer.new(15)
 
       @initialize_heating = true
       @feed_log_rate_limiter = 1
