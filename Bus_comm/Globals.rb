@@ -96,6 +96,10 @@ module Globals
       @sec_left = 0
     end
 
+    def set_sleep_time(sec_to_sleep)
+      @sec_to_sleep = sec_to_sleep
+    end
+
     def start
       @sec_left = @sec_to_sleep
       @timer_thread = Thread.new do
@@ -125,7 +129,7 @@ module Globals
         @timer_thread.kill
         @timer_thread = nil
       end
-      @sec_left=0
+      @sec_left = 0
     end
   end
 
@@ -237,12 +241,14 @@ module Globals
     end
 
     def average
+      return 0 if @temp_vector.size == 0
       sum = 0.0
       @temp_vector.each {|x| sum += x.to_f}
       return sum / @temp_vector.size
     end
 
     def sigma
+      return 0 if @temp_vector.size == 0
       avg = average
       nominator = 0.0
       @temp_vector.each {|x| nominator += (x-avg)*(x-avg) }
