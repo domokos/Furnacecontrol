@@ -684,9 +684,9 @@ module BoilerBase
       @prev_heating_feed_state = @heating_feed_state
 
       if @delta_analyzer.slope.abs > @config[:delta_t_stability_slope_threshold] or
-      @delta_analyzer.sigma < @config[:delta_t_stability_sigma_threshold] or
+      @delta_analyzer.sigma > @config[:delta_t_stability_sigma_threshold] or
       @forward_temp_analyzer.slope.abs > @config[:forward_temp_stability_slope_threshold] or
-      @forward_temp_analyzer.sigma < @config[:forward_temp_stability_sigma_threshold] or
+      @forward_temp_analyzer.sigma > @config[:forward_temp_stability_sigma_threshold] or
       !@relax_timer.expired?
         @heating_feed_state = :unstable
 
