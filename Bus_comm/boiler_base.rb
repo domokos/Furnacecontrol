@@ -623,7 +623,7 @@ module BoilerBase
         $app_logger.debug("Waiting for relays to move into new position")
 
         # Wait until valve movement is complete
-        sleep @config[:three_way_movement_time] unless
+        sleep @config[:three_way_movement_time]
         return :delayed
       else
         $app_logger.debug("Relays not moved - not waiting")
