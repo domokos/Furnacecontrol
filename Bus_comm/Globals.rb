@@ -238,21 +238,81 @@ module Globals
       @timestamp_vector = []
       @starting_timestamp = Time.now.to_f
       @slope = 0
+      @stable = false
     end
 
-    def average
-      return 0 if @temp_vector.size == 0
+    def average(vector=@temp_vector)
+      return 0 if vector.size == 0
       sum = 0.0
-      @temp_vector.each {|x| sum += x.to_f}
-      return sum / @temp_vector.size
+      vector.each {|x| sum += x.to_f}
+      return sum / vector.size
     end
 
-    def sigma
-      return 0 if @temp_vector.size == 0
-      avg = average
+    def sigma(vector=@temp_vector)
+      return 0 if vector.size == 0
+      avg = average(vector)
       nominator = 0.0
-      @temp_vector.each {|x| nominator += (x-avg)*(x-avg) }
-      return Math.sqrt(nominator/@temp_vector.size)
+      vector.each {|x| nominator += (x-avg)*(x-avg) }
+      return Math.sqrt(nominator/vector.size)
+    end
+
+    def stable?
+      return @stable
+    end
+
+    def compute_stability
+      return if @temp_vector.size != @buffersize
+
+      first_slopes = []
+      sign_changes = []
+
+      # Calculate slope based on first and second neighbors
+      @temp_vector.each_index do
+        |i|
+        first_slopes.push((@temp_vector[i+1] - @temp_vector[i])/(@timestamp_vector[i+1]-@timestamp_vector[i]))  if i < @buffersize-1
+        (sign_changes.push(i) if (first_slopes[i-1]<0 and first_slopes[i]>0) or (first_slopes[i-1]>0 and first_slopes[i]<0)) if (i<@buffersize-1 and i>0)
+      end
+
+      # Stable if the derivate vectors do not change direction/sign significantly
+      # this is tested by
+
+      sign = first_slopes[0] < 0 ? -1 : 1
+      max_negative_deviation = 0
+      max_positive_deviation = 0
+      inhomogenity = false
+      positives = []
+      negatives = []
+
+      first_slopes.each do
+        |element|
+        case
+        # OK
+        when (element<0 and sign<0)
+          max_negative_deviation = element if element < max_negative_deviation
+          negatives.push(element)
+          # Inhomogenity
+        when (element<0 and sign>=0)
+          inhomogenity = true
+          max_negative_deviation = element if element < max_negative_deviation
+          negatives.push(element)
+          # OK
+        when (element>0 and sign<0)
+          max_negative_deviation = element if element < max_negative_deviation
+          positives.push(element)
+          # Inhomogenity
+        when (element<0 and sign>=0)
+          inhomogenity = true
+          max_negative_deviation = element if element < max_negative_deviation
+          positives.push(element)
+        end
+      end
+
+      # If there is no inhomogenity then the vector is stable
+      return true if !inhomogenity
+
+      return true if sigma(@temp_vector[@temp_vector.size/4*3,@temp_vector.size-1]) < 0.06
+
+      return false
     end
 
     def size
@@ -276,11 +336,9 @@ module Globals
       end
 
       return unless @temp_vector.length > 1
-
       lr=LinearRegression.new(@timestamp_vector,@temp_vector)
-
       @slope = lr.slope
-
+      @stable = compute_stability
     end
   end # of Class TempAnalyzer
 

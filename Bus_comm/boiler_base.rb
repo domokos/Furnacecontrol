@@ -521,11 +521,6 @@ module BoilerBase
       # This one is used to ensure atomicity of mode setting
       @modesetting_mutex = Mutex.new
 
-      # Initialize the heating history
-      @delta_analyzer = Globals::TempAnalyzer.new(4)
-      @forward_temp_analyzer = Globals::TempAnalyzer.new(4)
-
-      @initialize_heating = true
       @feed_log_rate_limiter = 1
       @do_limited_rate_logging = true
       @control_log_rate_limiter = 1
@@ -540,7 +535,6 @@ module BoilerBase
       @relay_state = nil
       set_relays(:direct_boiler)
       @prev_relay_state_in_prev_heating_mode = :direct_boiler
-      @heating_feed_state = :initializing
       @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>((@upper_sensor.temp - @config[:buffer_base_temp])*100)/(@lower_sensor.temp - @config[:buffer_base_temp])}
       @target_temp = 7.0
     end
@@ -567,27 +561,19 @@ module BoilerBase
       # Take action only if the mode is changing
       return if @mode == new_mode
 
+      $app_logger.debug("Heater set_mode. Got new mode: "+new_mode.to_s)
+
+      # Synchronize mode setting to the potentially running control thread
       @modesetting_mutex.synchronize do
-        case new_mode
-        when :heat
-          $app_logger.debug("Heater set_mode. Got new mode: :heat")
-          start_control_thread
-        when :off
-          $app_logger.debug("Heater set_mode. Got new mode: :off")
-          stop_control_thread
-        when :HW
-          $app_logger.debug("Heater set_mode. Got new mode: :HW")
 
-          # Remember the relay state if going to HW from heat
-          @prev_relay_state_in_prev_heating_mode = @relay_state if @mode == :heat
-          set_relays(:direct_boiler)
-          start_control_thread
-        end
+        # Start and stop control thread according to the new mode
+        new_mode == :off ? stop_control_thread : start_control_thread
 
-        # Maintain the mode history and set the mode change flag
+        # Maintain a single level mode history and set the mode change flag
         @prev_mode = @mode
         @mode = new_mode
         @mode_changed = true
+
       end # of modesetting mutex sync
     end #of set_mode
 
@@ -635,34 +621,17 @@ module BoilerBase
 
       if moved
         $app_logger.debug("Waiting for relays to move into new position")
-      else
-        $app_logger.debug("Relays not moved - not waiting")
-      end
 
-      # Wait until valve movement is complete
-      sleep @config[:three_way_movement_time] unless !moved
-
-      if moved
+        # Wait until valve movement is complete
+        sleep @config[:three_way_movement_time] unless
         return :delayed
       else
+        $app_logger.debug("Relays not moved - not waiting")
         return :immediate
       end
     end
 
     private
-
-    # Maintain the heating history
-    def maintain_heating_metadata
-      # Maintain the heating history
-      $app_logger.trace("Updating metadata")
-
-      # Update the heating delta and forward analyzers
-      @delta_analyzer.update(@forward_sensor.temp - @return_sensor.temp)
-      @forward_temp_analyzer.update(@forward_sensor.temp)
-
-      @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>((@upper_sensor.temp - @config[:buffer_base_temp])*100)/(@lower_sensor.temp - @config[:buffer_base_temp])}
-
-    end # of maintain_heating_metadata
 
     #
     # Evaluate heating conditions and
@@ -672,7 +641,7 @@ module BoilerBase
     #
     def set_heating_feed
 
-      maintain_heating_metadata
+      @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>((@upper_sensor.temp - @config[:buffer_base_temp])*100)/(@lower_sensor.temp - @config[:buffer_base_temp])}
 
       if @feed_log_rate_limiter > @config[:buffer_limited_log_period]
         @feed_log_rate_limiter = 1
@@ -681,108 +650,29 @@ module BoilerBase
         @feed_log_rate_limiter += 1
       end
 
-      # Determine the heating feed state
-      @prev_heating_feed_state = @heating_feed_state
-
-      # Slope of the delta is not slow enough to change
-      if (@delta_analyzer.slope.abs > @config[:delta_t_stability_slope_threshold] or
-      # Sigma of the delta is not enough
-      @delta_analyzer.sigma > @config[:delta_t_stability_sigma_threshold] or
-      # Slope of the forward temp is not slow enough
-      @forward_temp_analyzer.slope.abs > @config[:forward_temp_stability_slope_threshold] or
-      # Sigma of the forward temp is not low enough
-      @forward_temp_analyzer.sigma > @config[:forward_temp_stability_sigma_threshold]) and
-
-      # AND the boiler is not depleting very fast
-      ! (@delta_analyzer.slope < (-3.0*@config[:delta_t_stability_slope_threshold]) or
-      @forward_temp_analyzer.slope > (3.0*@config[:forward_temp_stability_slope_threshold]))
-        @heating_feed_state = :changing
-      else
-        @heating_feed_state = :settled
-      end
+      forward_temp = @forward_sensor.temp
+      delta_t = @forward_sensor.temp - @return_sensor.temp
 
       $app_logger.debug("--------------------------------")
-      $app_logger.debug("Relax timer active: "+@relax_timer.sec_left.to_s) unless @relax_timer.expired?
-      @heating_feed_state == @prev_heating_feed_state ? $app_logger.debug("Unmodified heating feed state: "+@heating_feed_state.to_s) :
-      $app_logger.debug("Heating feed state modified from "+@prev_heating_feed_state.to_s+" to "+@heating_feed_state.to_s)
+      $app_logger.debug("Relax timer active: "+@relax_timer.sec_left.to_s) if !@relax_timer.expired?
+      $app_logger.debug("Relay state: "+@relay_state.to_s)
 
-      # Monitor temperatures and make feed decisons
-      if @heating_feed_state == :settled
-        $app_logger.debug("Relay state: "+@relay_state.to_s)
+      # Evaluate Direct Boiler state
+      if @relay_state == :direct_boiler
+        $app_logger.debug("Forward temp: "+forward_temp.to_s)
+        $app_logger.debug("Target temp: "+@target_temp.to_s)
+        $app_logger.debug("Threshold forward_above_target: "+@config[:forward_above_target].to_s)
+        $app_logger.debug("Delta_t: "+delta_t.to_s)
 
-        # Evaluate Direct Boiler state
-        if @relay_state == :direct_boiler
-          $app_logger.debug("Average forward temp: "+@forward_temp_analyzer.average.to_s[0,6])
-          $app_logger.debug("Target temp: "+@target_temp.to_s)
-          $app_logger.debug("Threshold forward_above_target: "+@config[:forward_above_target].to_s)
-          $app_logger.debug("Average delta_t: "+@delta_analyzer.average.to_s[0,6])
+        # Direct Boiler - State change condition evaluation
+        if forward_temp > @target_temp + @config[:forward_above_target] and @relax_timer.expired?
 
-          # Direct Boiler - State change condition evaluation
-          if @forward_temp_analyzer.average > @target_temp + @config[:forward_above_target] and @relax_timer.expired?
+          # Too much heat with direct heat - let's either feed from buffer or fill the buffer
+          # based on how much heat is stored in the buffer
+          $app_logger.debug("State will change")
+          $app_logger.debug("Heat in buffer: "+@heat_in_buffer[:temp].to_s+" Percentage: "+@heat_in_buffer[:percentage].to_s)
 
-            # Too much heat with direct heat - let's either feed from buffer or fill the buffer
-            # based on how much heat is stored in the buffer
-            $app_logger.debug("State will change")
-            $app_logger.debug("Heat in buffer: "+@heat_in_buffer[:temp].to_s+" Percentage: "+@heat_in_buffer[:percentage].to_s)
-
-            if @heat_in_buffer[:temp] > @target_temp + @config[:init_buffer_reqd_temp_reserve] and @heat_in_buffer[:percentage] > @config[:init_buffer_reqd_fill_reserve]
-              if @heater_relay.state !=:off
-                $app_logger.debug("Turning off heater relay")
-                @heater_relay.off
-              end
-              @heat_wiper.set_water_temp(7.0)
-              set_relays(:feed_from_buffer)
-              @relax_timer.reset
-            else
-              set_relays(:buffer_passthrough)
-              @relax_timer.reset
-
-              # If feed heat into buffer raise the boiler temperature to be able to move heat out of the buffer later
-              @heat_wiper.set_water_temp(@target_temp + @config[:buffer_passthrough_overshoot])
-            end
-
-            # Direct Boiler - State maintenance operations
-            # Just set the required water temperature
-          else
-            if @do_limited_rate_logging
-              $app_logger.debug("Rate limited debug message in direct boiler.\nState does not change - setting target: "+@target_temp.to_s)
-              @do_limited_rate_logging = false
-            end
-            @heat_wiper.set_water_temp(@target_temp)
-            if @heater_relay.state !=:on
-              $app_logger.debug("Turning on heater relay")
-              @heater_relay.on
-            end
-          end
-
-          # Evaluate Buffer Passthrough state
-        elsif @relay_state == :buffer_passthrough
-          $app_logger.debug("Reqd./effective target temps: "+@target_temp.to_s+"/"+@heat_wiper.get_target.to_s)
-          $app_logger.debug("Average forward temp: "+@forward_temp_analyzer.average.to_s[0,6])
-          $app_logger.debug("buffer_passthrough_fwd_temp_limit: "+@config[:buffer_passthrough_fwd_temp_limit].to_s)
-          $app_logger.debug("Average delta_t: "+@delta_analyzer.average.to_s[0,6])
-
-          # Buffer Passthrough - State change evaluation conditions
-
-          # Move out of buffer feed if the required temperature rose above the limit
-          # This logic is here to try forcing the heating back to direct heating in cases where
-          # the heat generated can be dissipated. This a safety escrow
-          # to try avoiding unnecessary buffer filling
-          if @target_temp > @config[:buffer_passthrough_fwd_temp_limit] and @relax_timer.expired?
-            $app_logger.debug("State will change")
-
-            set_relays(:direct_boiler)
-            @heat_wiper.set_water_temp(@target_temp)
-
-            @relax_timer.reset
-
-            # If the buffer is nearly full - too low delta T or
-            # too hot then start feeding from the buffer.
-            # As of now we assume that the boiler is able to generate the output temp requred
-            # therefore it is enough to monitor the deltaT to find out if the above condition is met
-          elsif @forward_temp_analyzer.average > @target_temp + @config[:forward_above_target] and @relax_timer.expired?
-            $app_logger.debug("State will change")
-
+          if @heat_in_buffer[:temp] > @target_temp + @config[:init_buffer_reqd_temp_reserve] and @heat_in_buffer[:percentage] > @config[:init_buffer_reqd_fill_reserve]
             if @heater_relay.state !=:off
               $app_logger.debug("Turning off heater relay")
               @heater_relay.off
@@ -790,94 +680,132 @@ module BoilerBase
             @heat_wiper.set_water_temp(7.0)
             set_relays(:feed_from_buffer)
             @relax_timer.reset
-
-            # Buffer Passthrough - State maintenance operations
-            # Just set the required water temperature
-            # raised with the buffer filling offset
           else
-            if @do_limited_rate_logging
-              $app_logger.debug("Rate limited debug message in Buffer Passthrough.\nState does not change setting target temp to: "+(@target_temp + @config[:buffer_passthrough_overshoot]).to_s)
-              @do_limited_rate_logging = false
-            end
+            set_relays(:buffer_passthrough)
+            @relax_timer.reset
+
+            # If feed heat into buffer raise the boiler temperature to be able to move heat out of the buffer later
             @heat_wiper.set_water_temp(@target_temp + @config[:buffer_passthrough_overshoot])
-            if @heater_relay.state != :on
-              $app_logger.debug("Turning on heater relay")
-              @heater_relay.on
-            end
           end
 
-          # Evaluate feed from Buffer state
-        elsif @relay_state == :feed_from_buffer
-          $app_logger.debug("Average forward temp: "+@forward_temp_analyzer.average.to_s[0,6])
-          $app_logger.debug("Target temp: "+@target_temp.to_s)
-          $app_logger.debug("buffer_passthrough_fwd_temp_limit :"+@config[:buffer_passthrough_fwd_temp_limit].to_s)
-
-          # Feeed from Buffer - - State change evaluation conditions
-
-          # If the buffer is empty: unable to provide at least the target temp minus the hysteresis
-          # then it needs re-filling. This will ensure an operation of filling the buffer with
-          # target+@config[:buffer_passthrough_overshoot] and consuming until target-@config[:buffer_expiry_threshold]
-          # The effective hysteresis is therefore @config[:buffer_passthrough_overshoot]+@config[:buffer_expiry_threshold]
-          if @forward_temp_analyzer.average < @target_temp - @config[:buffer_expiry_threshold]  and !@relax_timer.expired?
-            $app_logger.debug("State will change")
-
-            # If we are below the exit limit then go for filling the buffer
-            # This starts off from zero (0), so for the first time it will need a limit set in
-            # direct_boiler operation mode
-            if @target_temp < @config[:buffer_passthrough_fwd_temp_limit]
-
-              set_relays(:buffer_passthrough)
-              if @heater_relay.state !=:on
-                $app_logger.debug("Turning on heater relay")
-                @heater_relay.on
-              end
-              @heat_wiper.set_water_temp(@target_temp + @config[:buffer_passthrough_overshoot])
-              @relax_timer.reset
-
-              # If the target is above the exit limit then go for the direct feed
-              # which in turn may set a viable exit limit
-            else
-
-              set_relays(:direct_boiler)
-              if @heater_relay.state !=:on
-                $app_logger.debug("Turning on heater relay")
-                @heater_relay.on
-              end
-              @heat_wiper.set_water_temp(@target_temp)
-              @relax_timer.reset
-            end
-          end
+          # Direct Boiler - State maintenance operations
+          # Just set the required water temperature
+        else
           if @do_limited_rate_logging
-            $app_logger.debug("Rate limited debug message in feed from buffer.\nState will not change - continue feeding from buffer")
+            $app_logger.debug("Rate limited debug message in direct boiler.\nState does not change - setting target: "+@target_temp.to_s)
             @do_limited_rate_logging = false
           end
-          @heat_wiper.set_water_temp(7.0)
+          @heat_wiper.set_water_temp(@target_temp)
+          if @heater_relay.state !=:on
+            $app_logger.debug("Turning on heater relay")
+            @heater_relay.on
+          end
+        end
+
+        # Evaluate Buffer Passthrough state
+      elsif @relay_state == :buffer_passthrough
+        $app_logger.debug("Reqd./effective target temps: "+@target_temp.to_s+"/"+@heat_wiper.get_target.to_s)
+        $app_logger.debug("Forward temp: "+forward_temp.to_s)
+        $app_logger.debug("buffer_passthrough_fwd_temp_limit: "+@config[:buffer_passthrough_fwd_temp_limit].to_s)
+        $app_logger.debug("Delta_t: "+delta_t.to_s)
+
+        # Buffer Passthrough - State change evaluation conditions
+
+        # Move out of buffer feed if the required temperature rose above the limit
+        # This logic is here to try forcing the heating back to direct heating in cases where
+        # the heat generated can be dissipated. This a safety escrow
+        # to try avoiding unnecessary buffer filling
+        if @target_temp > @config[:buffer_passthrough_fwd_temp_limit] and @relax_timer.expired?
+          $app_logger.debug("State will change")
+
+          set_relays(:direct_boiler)
+          @heat_wiper.set_water_temp(@target_temp)
+
+          @relax_timer.reset
+
+          # If the buffer is nearly full - too low delta T or
+          # too hot then start feeding from the buffer.
+          # As of now we assume that the boiler is able to generate the output temp requred
+          # therefore it is enough to monitor the deltaT to find out if the above condition is met
+        elsif forward_temp > @target_temp + @config[:forward_above_target] and @relax_timer.expired?
+          $app_logger.debug("State will change")
+
           if @heater_relay.state !=:off
             $app_logger.debug("Turning off heater relay")
             @heater_relay.off
           end
-          # Raise an exception - no matching source state
+          @heat_wiper.set_water_temp(7.0)
+          set_relays(:feed_from_buffer)
+          @relax_timer.reset
+
+          # Buffer Passthrough - State maintenance operations
+          # Just set the required water temperature
+          # raised with the buffer filling offset
         else
-          raise "Unexpected relay state in set_heating_feed: "+@relay_state.to_s
+          if @do_limited_rate_logging
+            $app_logger.debug("Rate limited debug message in Buffer Passthrough.\nState does not change setting target temp to: "+(@target_temp + @config[:buffer_passthrough_overshoot]).to_s)
+            @do_limited_rate_logging = false
+          end
+          @heat_wiper.set_water_temp(@target_temp + @config[:buffer_passthrough_overshoot])
+          if @heater_relay.state != :on
+            $app_logger.debug("Turning on heater relay")
+            @heater_relay.on
+          end
         end
 
-      elsif @heating_feed_state == :changing
-        # Do nothing - wait for things to stabilize
-        # Log the possible reasons of the not settled state
-
-        $app_logger.debug("Average forward temp: "+@forward_temp_analyzer.average.to_s[0,6])
+        # Evaluate feed from Buffer state
+      elsif @relay_state == :feed_from_buffer
+        $app_logger.debug("Forward temp: "+forward_temp.to_s)
         $app_logger.debug("Target temp: "+@target_temp.to_s)
-        $app_logger.debug("Threshold forward_above_target: "+@config[:forward_above_target].to_s)
-        $app_logger.debug("Average delta_t: "+@delta_analyzer.average.to_s[0,6])
+        $app_logger.debug("buffer_passthrough_fwd_temp_limit :"+@config[:buffer_passthrough_fwd_temp_limit].to_s)
 
-        $app_logger.debug("Heating not settled.")
-        $app_logger.debug("Forward temp sl./thr.: "+@forward_temp_analyzer.slope.to_s[0,6]+"/"+@config[:forward_temp_stability_slope_threshold].to_s+
-        " Sigma/thr.: "+@forward_temp_analyzer.sigma.to_s[0,6]+"/"+@config[:forward_temp_stability_sigma_threshold].to_s)
+        # Feeed from Buffer - - State change evaluation conditions
 
-        $app_logger.debug("DeltaT sl/thr.: "+@delta_analyzer.slope.to_s[0,6]+"/"+@config[:delta_t_stability_slope_threshold].to_s+
-        " Sigma: "+@delta_analyzer.sigma.to_s[0,6]+"/"+@config[:delta_t_stability_sigma_threshold].to_s)
+        # If the buffer is empty: unable to provide at least the target temp minus the hysteresis
+        # then it needs re-filling. This will ensure an operation of filling the buffer with
+        # target+@config[:buffer_passthrough_overshoot] and consuming until target-@config[:buffer_expiry_threshold]
+        # The effective hysteresis is therefore @config[:buffer_passthrough_overshoot]+@config[:buffer_expiry_threshold]
+        if forward_temp < @target_temp - @config[:buffer_expiry_threshold]  and !@relax_timer.expired?
+          $app_logger.debug("State will change")
+
+          # If we are below the exit limit then go for filling the buffer
+          # This starts off from zero (0), so for the first time it will need a limit set in
+          # direct_boiler operation mode
+          if @target_temp < @config[:buffer_passthrough_fwd_temp_limit]
+
+            set_relays(:buffer_passthrough)
+            if @heater_relay.state !=:on
+              $app_logger.debug("Turning on heater relay")
+              @heater_relay.on
+            end
+            @heat_wiper.set_water_temp(@target_temp + @config[:buffer_passthrough_overshoot])
+            @relax_timer.reset
+
+            # If the target is above the exit limit then go for the direct feed
+            # which in turn may set a viable exit limit
+          else
+
+            set_relays(:direct_boiler)
+            if @heater_relay.state !=:on
+              $app_logger.debug("Turning on heater relay")
+              @heater_relay.on
+            end
+            @heat_wiper.set_water_temp(@target_temp)
+            @relax_timer.reset
+          end
+        end
+        if @do_limited_rate_logging
+          $app_logger.debug("Rate limited debug message in feed from buffer.\nState will not change - continue feeding from buffer")
+          @do_limited_rate_logging = false
+        end
+        @heat_wiper.set_water_temp(7.0)
+        if @heater_relay.state !=:off
+          $app_logger.debug("Turning off heater relay")
+          @heater_relay.off
+        end
+        # Raise an exception - no matching source state
       else
-        raise "Unexpected heating_feed_state: "+@heating_feed_state.to_s
+        raise "Unexpected relay state in set_heating_feed: "+@relay_state.to_s
       end
     end # of set_heating_feed
 
@@ -899,6 +827,8 @@ module BoilerBase
           sleep @config[:circulation_maintenance_delay] if ( set_relays(:direct_boiler) != :delayed)
           @hydr_shift_pump.off
           @hw_wiper.set_water_temp(@hw_thermostat.temp)
+          # Remember the relay state coming to HW from heat
+          @prev_relay_state_in_prev_heating_mode = @relay_state if @prev_mode == :heat
         when :heat
           # Make sure HW mode of the boiler is off
           @hw_wiper.set_water_temp(65.0)
@@ -956,7 +886,7 @@ module BoilerBase
         while !@stop_control.locked?
           $config_mutex.synchronize {@config = $config.dup}
           @modesetting_mutex.synchronize do
-            # Update any objects that may need items from the newly copied config
+            # Update any objects that may use parameters from the newly copied config
             update_config_items
 
             # Perform the actual periodic control loop actions
