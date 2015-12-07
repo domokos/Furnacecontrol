@@ -56,6 +56,7 @@
 :upstairs_mock_temp: 23.0
 :basement_mock_temp: 26.0
 :external_mock_temp: 5.0
+:mixer_forward_mock_temp: 35.0
 #
 #
 # *********************************************************************************************

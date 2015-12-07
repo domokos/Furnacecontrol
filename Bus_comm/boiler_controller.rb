@@ -64,6 +64,8 @@ class Heating_State_Machine
     $config[:main_controller_dev_addr], $config[:hot_water_pump_reg_addr], DRY_RUN)
 
     # Create temp sensors
+    @mixer_sensor = BusDevice::TempSensor.new("Forward floor temperature", "On the forward piping after the mixer valve",
+    $config[:mixer_controller_dev_addr], $config[:mixer_fwd_sensor_reg_addr], DRY_RUN, $config[:mixer_forward_mock_temp])
     @forward_sensor = BusDevice::TempSensor.new("Forward boiler temperature", "On the forward piping of the boiler",
     $config[:mixer_controller_dev_addr], $config[:forward_sensor_reg_addr], DRY_RUN, $config[:forward_mock_temp])
     @return_sensor = BusDevice::TempSensor.new("Return water temperature", "On the return piping of the boiler",
@@ -173,6 +175,12 @@ class Heating_State_Machine
     @heater_relay = BusDevice::Switch.new("Heater relay","Heater contact on main panel",
     $config[:main_controller_dev_addr], $config[:heater_relay_reg_addr], DRY_RUN)
 
+    #Create mixer switches
+    @cw_switch = BusDevice::Switch.new("CW mixer switch","In the mixer controller box",
+    $config[:mixer_controller_dev_addr], $config[:mixer_cw_reg_addr], DRY_RUN)
+    @ccw_switch = BusDevice::Switch.new("CCW mixer switch","In the mixer controller box",
+    $config[:mixer_controller_dev_addr], $config[:mixer_ccw_reg_addr], DRY_RUN)
+
     # Create water temp wipers
     @heating_watertemp = BusDevice::HeatingWaterTemp.new("Heating temp wiper", "Heating wiper contact on main panel",
     $config[:main_controller_dev_addr], $config[:heating_wiper_reg_addr], DRY_RUN)
@@ -183,6 +191,9 @@ class Heating_State_Machine
     @buffer_heater = BoilerBase::BufferHeat.new(@forward_sensor, @upper_buffer_sensor, @lower_buffer_sensor, @return_sensor,
     @HW_sensor, @forward_valve, @return_valve, @heater_relay, @hydr_shift_pump, @hot_water_pump,
     @HW_watertemp, @heating_watertemp)
+
+    #Create the Mixer controller
+    @mixer_controller = BoilerBase::Mixer_control.new(@mixer_sensor,@cw_switch,@ccw_switch)
 
     # Define the states of the heating
     @state_Off = BoilerBase::State.new(:Off,"Boiler switched off")
@@ -195,6 +206,9 @@ class Heating_State_Machine
     @state_Off.set_activate(
     proc {
       $app_logger.debug("Activating \"Off\" state")
+
+      # Stop the mixer controller
+      @mixer_controller.stop_control
 
       # Make sure the heater is stopped
       @buffer_heater.set_mode(:off)
@@ -247,6 +261,9 @@ class Heating_State_Machine
       # Set the buffer for direct connection
       @buffer_heater.set_relays(:direct_boiler)
 
+      # Stop the mixer controller
+      @mixer_controller.stop_control
+
       # Set water temperature of the boiler low
       @heating_watertemp.set_water_temp(5.0)
 
@@ -286,6 +303,9 @@ class Heating_State_Machine
 
       # Set the buffer for direct connection
       @buffer_heater.set_relays(:direct_boiler)
+
+      # Stop the mixer controller
+      @mixer_controller.stop_control
 
       # Set water temperature of the boiler low
       @heating_watertemp.set_water_temp(5.0)
@@ -542,6 +562,7 @@ class Heating_State_Machine
 
     when :FLOOR
       @target_boiler_temp = $config[:FLOOR_watertemp]
+      @mixer_controller.set_target_temp($config[:FLOOR_watertemp])
 
     when :NONE
       @target_boiler_temp = 7.0
@@ -558,12 +579,14 @@ class Heating_State_Machine
       # Set mode of the heater
       $app_logger.trace("Setting heater mode to HW")
       @buffer_heater.set_mode(:HW)
+      @mixer_controller.stop_control
     when :RAD, :RADFLOOR, :FLOOR
       # Set mode and required water temperature of the boiler
       $app_logger.trace("Setting heater mode to heat")
       @buffer_heater.set_mode(:heat)
       $app_logger.trace("Setting heater target temp to: "+@target_boiler_temp.to_s)
       @buffer_heater.set_target(@target_boiler_temp)
+      @mixer_controller.start_control
     else
       raise "Unexpected power_needed encountered in heating state: "+power_needed[:power].to_s
     end
