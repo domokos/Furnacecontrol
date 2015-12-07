@@ -839,12 +839,14 @@ module BoilerBase
         $app_logger.debug("Heater control mode changed, got new mode: "+@mode.to_s)
         case @mode
         when :HW
+          if @prev_mode == :heat
+            $app_logger.debug("Remembering the relay state if coming to HW from heat: "+@relay_state.to_s)
+            @prev_relay_state_in_prev_heating_mode = @relay_state
+          end
           @hw_pump.on
           sleep @config[:circulation_maintenance_delay] if ( set_relays(:direct_boiler) != :delayed)
           @hydr_shift_pump.off
           @hw_wiper.set_water_temp(@hw_thermostat.temp)
-          # Remember the relay state coming to HW from heat
-          @prev_relay_state_in_prev_heating_mode = @relay_state if @prev_mode == :heat
         when :heat
           # Make sure HW mode of the boiler is off
           @hw_wiper.set_water_temp(65.0)
