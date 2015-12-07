@@ -662,7 +662,7 @@ module BoilerBase
       # Safeguard heat in buffer when boiler heater is not turned on
       if @buffer_passhtrough_safeguard_active or
       (!boiler_on and @relay_state == :buffer_passthrough and
-      forward_temp < @heat_in_buffer[:temp] - @config[:buffer_passtrough_heat_protection_threshold]))
+      forward_temp < (@heat_in_buffer[:temp] - @config[:buffer_passtrough_heat_protection_threshold]))
         $app_logger.debug("Heater is not on in buffer passthrough. Activating safeguarding heat in buffer") unless @buffer_passhtrough_safeguard_active
         @buffer_passhtrough_safeguard_active = true
         set_relays(:direct_boiler)
