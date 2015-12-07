@@ -696,7 +696,7 @@ module BoilerBase
           # Just set the required water temperature
         else
           if @do_limited_rate_logging
-            $app_logger.debug("Direct boiler. State does not change - target: "+@target_temp.to_s)
+            $app_logger.debug("Direct boiler. Target: "+@target_temp.to_s)
             $app_logger.debug("Delta_t: "+delta_t.to_s)
             @do_limited_rate_logging = false
           end
