@@ -696,7 +696,7 @@ module BoilerBase
           # Just set the required water temperature
         else
           if @do_limited_rate_logging
-            $app_logger.debug("Rate limited debug message in direct boiler.\nState does not change - setting target: "+@target_temp.to_s)
+            $app_logger.debug("Direct boiler. State does not change - target: "+@target_temp.to_s)
             $app_logger.debug("Delta_t: "+delta_t.to_s)
             @do_limited_rate_logging = false
           end
@@ -753,7 +753,7 @@ module BoilerBase
           # raised with the buffer filling offset
         else
           if @do_limited_rate_logging
-            $app_logger.debug("Rate limited debug message in Buffer Passthrough.\nState does not change setting target temp to: "+(@target_temp + @config[:buffer_passthrough_overshoot]).to_s)
+            $app_logger.debug("Buffer Passthrough. Target: "+(@target_temp + @config[:buffer_passthrough_overshoot]).to_s)
             $app_logger.debug("Delta_t: "+delta_t.to_s)
             @do_limited_rate_logging = false
           end
@@ -814,7 +814,7 @@ module BoilerBase
           end
         end
         if @do_limited_rate_logging
-          $app_logger.debug("Rate limited debug message in feed from buffer.\nState will not change - continue feeding from buffer")
+          $app_logger.debug("Feed from buffer. Forward temp: "+forward_temp.to_s)
           @do_limited_rate_logging = false
         end
         @heat_wiper.set_water_temp(7.0)
