@@ -223,7 +223,7 @@ COMM_DATA = [
            @slaves.each { |slave_address, last_addressed|
              if last_addressed < Time.now.to_i - SLAVES_KEEPALIVE_INTERVAL_SEC
                begin
-                $app_logger.debug("Slave '"+slave_address.to_s+"' has seen no communication since '"+SLAVES_KEEPALIVE_INTERVAL_SEC.to_s+"' sec. Pinging to make sure it stays alive.")
+                $app_logger.verbose("Slave '"+slave_address.to_s+"' has seen no communication since '"+SLAVES_KEEPALIVE_INTERVAL_SEC.to_s+"' sec. Pinging to make sure it stays alive.")
                 send_message(slave_address,PING,"")
                rescue MessagingError => e
                  retval = e.return_message
@@ -231,7 +231,7 @@ COMM_DATA = [
                  $shutdown_reason = Globals::FATAL_SHUTDOWN
                end
              else
-               $app_logger.debug("Slave '"+slave_address.to_s+"' has last seen communication at '"+Time.at(last_addressed).strftime("%Y-%m-%d %H:%M:%S")+"', "+(Time.now.to_i-last_addressed).to_s+" secs ago. Skip pinging it.")
+               $app_logger.verbose("Slave '"+slave_address.to_s+"' has last seen communication at '"+Time.at(last_addressed).strftime("%Y-%m-%d %H:%M:%S")+"', "+(Time.now.to_i-last_addressed).to_s+" secs ago. Skip pinging it.")
              end
            }
          end
@@ -265,13 +265,13 @@ COMM_DATA = [
       @message_send_buffer = @train + @message_send_buffer + ( crc >> 8).chr + (crc & 0xff).chr + TRAIN_CHR.chr
   
       @sp.write(@message_send_buffer)
-      $app_logger.debug("Message sent waiting for response")
+      $app_logger.trace("Message sent waiting for response")
       
       @response = wait_for_response
       
       if @response[:Return_code] == Buscomm::NO_ERROR 
         if @slaves[slave_address] == nil
-          $app_logger.debug("New slave device '"+slave_address.to_s+"' identified - registering for keepalive")
+          $app_logger.verbose("New slave device '"+slave_address.to_s+"' identified - registering for keepalive")
           start_keepalive_process
         end
         @slaves[slave_address] = Time.now.to_i

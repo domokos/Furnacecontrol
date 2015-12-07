@@ -49,12 +49,44 @@
 # Mock values for non-existent/dry run sensors
 :forward_mock_temp: 37.0
 :return_mock_temp: 31.0
+:upper_buffer_mock_temp: 31.0
+:lower_buffer_mock_temp: 31.0
 :HW_mock_temp: 55.0
 :living_mock_temp: 19.0
 :upstairs_mock_temp: 23.0
 :basement_mock_temp: 26.0
 :external_mock_temp: 5.0
 #
+#
+# *********************************************************************************************
+# Buffer heating parameters 
+# *********************************************************************************************
+#
+:three_way_movement_time: 10
+:buffer_heat_control_loop_delay: 2
+:buffer_base_temp: 20.0
+:buffer_limited_log_period: 20
+:buffer_control_limited_log_period: 20
+#
+# Stability criteria
+:delta_t_stability_slope_threshold: 0.1
+:delta_t_stability_sigma_threshold: 0.5
+:forward_temp_stability_slope_threshold: 0.1
+:forward_temp_stability_sigma_threshold: 0.5
+#
+# Heat initialization constants
+:init_buffer_reqd_temp_reserve: 3.0
+:init_buffer_reqd_fill_reserve: 80.0
+:buffer_heater_state_change_relaxation_time:  60
+#
+# Heating state change related constants
+:forward_above_target: 3.7
+:min_delta_t_to_maintain: 4.0
+:buffer_passthrough_overshoot: 2.0
+:buffer_expiry_threshold: 3.0
+:buffer_passthrough_fwd_temp_limit: 40.0
+:boiler_on_detector_delta_t_threshold: 2.0
+:buffer_passtrough_heat_protection_threshold: 2.0
 #
 #
 # *********************************************************************************************
