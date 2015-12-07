@@ -796,7 +796,7 @@ module BoilerBase
         # then it needs re-filling. This will ensure an operation of filling the buffer with
         # target+@config[:buffer_passthrough_overshoot] and consuming until target-@config[:buffer_expiry_threshold]
         # The effective hysteresis is therefore @config[:buffer_passthrough_overshoot]+@config[:buffer_expiry_threshold]
-        if forward_temp < @target_temp - @config[:buffer_expiry_threshold]  and !@relax_timer.expired?
+        if forward_temp < @target_temp - @config[:buffer_expiry_threshold]  and @relax_timer.expired?
           $app_logger.debug("Buffer empty - state will change from buffer feed")
 
           # If we are below the exit limit then go for filling the buffer
