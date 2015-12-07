@@ -669,24 +669,27 @@ module BoilerBase
 
           # Too much heat with direct heat - let's either feed from buffer or fill the buffer
           # based on how much heat is stored in the buffer
-          $app_logger.debug("State will change")
+          $app_logger.debug("Boiler overheating state will change from direct boiler")
           $app_logger.debug("Heat in buffer: "+@heat_in_buffer[:temp].to_s+" Percentage: "+@heat_in_buffer[:percentage].to_s)
 
           if @heat_in_buffer[:temp] > @target_temp + @config[:init_buffer_reqd_temp_reserve] and @heat_in_buffer[:percentage] > @config[:init_buffer_reqd_fill_reserve]
-            if @heater_relay.state !=:off
+            $app_logger.debug("Decision: Buffer contains enough heat - feed from buffer")
+            if @heater_relay.state != :off
               $app_logger.debug("Turning off heater relay")
               @heater_relay.off
             end
             @heat_wiper.set_water_temp(7.0)
-            set_relays(:feed_from_buffer)
-            @relax_timer.reset
-          else
-            set_relays(:buffer_passthrough)
-            @relax_timer.reset
 
+            # Wait for boiler to stop before cutting it off from circulation
+            sleep @config[:circulation_maintenance_delay]
+            set_relays(:feed_from_buffer)
+          else
+            $app_logger.debug("Decision: Buffer contains not much heat - fill buffer in passthrough mode")
+            set_relays(:buffer_passthrough)
             # If feed heat into buffer raise the boiler temperature to be able to move heat out of the buffer later
             @heat_wiper.set_water_temp(@target_temp + @config[:buffer_passthrough_overshoot])
           end
+          @relax_timer.reset
 
           # Direct Boiler - State maintenance operations
           # Just set the required water temperature
@@ -696,7 +699,7 @@ module BoilerBase
             @do_limited_rate_logging = false
           end
           @heat_wiper.set_water_temp(@target_temp)
-          if @heater_relay.state !=:on
+          if @heater_relay.state != :on
             $app_logger.debug("Turning on heater relay")
             @heater_relay.on
           end
@@ -716,7 +719,8 @@ module BoilerBase
         # the heat generated can be dissipated. This a safety escrow
         # to try avoiding unnecessary buffer filling
         if @target_temp > @config[:buffer_passthrough_fwd_temp_limit] and @relax_timer.expired?
-          $app_logger.debug("State will change")
+          $app_logger.debug("Target set above buffer_passthrough_fwd_temp_limit. State will change from buffer passthrough")
+          $app_logger.debug("Decision: direct heat")
 
           set_relays(:direct_boiler)
           @heat_wiper.set_water_temp(@target_temp)
@@ -727,14 +731,18 @@ module BoilerBase
           # too hot then start feeding from the buffer.
           # As of now we assume that the boiler is able to generate the output temp requred
           # therefore it is enough to monitor the deltaT to find out if the above condition is met
-        elsif forward_temp > @target_temp + @config[:forward_above_target] and @relax_timer.expired?
-          $app_logger.debug("State will change")
+        elsif forward_temp > @target_temp + @config[:buffer_passthrough_overshoot] + @config[:forward_above_target] and @relax_timer.expired?
+          $app_logger.debug("Overheating - buffer full. State will change from buffer passthrough")
+          $app_logger.debug("Decision: Feed from buffer")
 
-          if @heater_relay.state !=:off
+          if @heater_relay.state != :off
             $app_logger.debug("Turning off heater relay")
             @heater_relay.off
           end
           @heat_wiper.set_water_temp(7.0)
+          # Wait for boiler to stop before cutting it off from circulation
+          sleep @config[:circulation_maintenance_delay]
+
           set_relays(:feed_from_buffer)
           @relax_timer.reset
 
@@ -757,7 +765,6 @@ module BoilerBase
       elsif @relay_state == :feed_from_buffer
         $app_logger.debug("Forward temp: "+forward_temp.to_s)
         $app_logger.debug("Target temp: "+@target_temp.to_s)
-        $app_logger.debug("buffer_passthrough_fwd_temp_limit :"+@config[:buffer_passthrough_fwd_temp_limit].to_s)
 
         # Feeed from Buffer - - State change evaluation conditions
 
@@ -766,31 +773,40 @@ module BoilerBase
         # target+@config[:buffer_passthrough_overshoot] and consuming until target-@config[:buffer_expiry_threshold]
         # The effective hysteresis is therefore @config[:buffer_passthrough_overshoot]+@config[:buffer_expiry_threshold]
         if forward_temp < @target_temp - @config[:buffer_expiry_threshold]  and !@relax_timer.expired?
-          $app_logger.debug("State will change")
+          $app_logger.debug("Buffer empty - state will change from buffer feed")
 
           # If we are below the exit limit then go for filling the buffer
           # This starts off from zero (0), so for the first time it will need a limit set in
           # direct_boiler operation mode
           if @target_temp < @config[:buffer_passthrough_fwd_temp_limit]
+            $app_logger.debug("Decision: fill buffer in buffer passthrough")
+
+            @heat_wiper.set_water_temp(@target_temp + @config[:buffer_passthrough_overshoot])
+            # Wait for boiler to pick up circulation before turning it on
+            sleep @config[:circulation_maintenance_delay]
 
             set_relays(:buffer_passthrough)
             if @heater_relay.state !=:on
               $app_logger.debug("Turning on heater relay")
               @heater_relay.on
             end
-            @heat_wiper.set_water_temp(@target_temp + @config[:buffer_passthrough_overshoot])
+
             @relax_timer.reset
 
             # If the target is above the exit limit then go for the direct feed
             # which in turn may set a viable exit limit
           else
-
+            $app_logger.debug("Decision: target temp higher than passthrough limit - direct heat")
             set_relays(:direct_boiler)
+
+            @heat_wiper.set_water_temp(@target_temp)
+            # Wait for boiler to pick up circulation before turning it on
+            sleep @config[:circulation_maintenance_delay]
+
             if @heater_relay.state !=:on
               $app_logger.debug("Turning on heater relay")
               @heater_relay.on
             end
-            @heat_wiper.set_water_temp(@target_temp)
             @relax_timer.reset
           end
         end
