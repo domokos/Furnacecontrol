@@ -83,7 +83,7 @@
 :forward_above_target: 3.7
 :min_delta_t_to_maintain: 4.0
 :buffer_passthrough_overshoot: 2.0
-:buffer_expiry_threshold: 3.0
+:buffer_expiry_threshold: 2.0
 :buffer_passthrough_fwd_temp_limit: 40.0
 #
 #
