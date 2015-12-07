@@ -697,6 +697,7 @@ module BoilerBase
         else
           if @do_limited_rate_logging
             $app_logger.debug("Direct boiler. Target: "+@target_temp.to_s)
+            $app_logger.debug("Forward temp: "+forward_temp.to_s)
             $app_logger.debug("Delta_t: "+delta_t.to_s)
             @do_limited_rate_logging = false
           end
@@ -754,6 +755,7 @@ module BoilerBase
         else
           if @do_limited_rate_logging
             $app_logger.debug("Buffer Passthrough. Target: "+(@target_temp + @config[:buffer_passthrough_overshoot]).to_s)
+            $app_logger.debug("Forward temp: "+forward_temp.to_s)
             $app_logger.debug("Delta_t: "+delta_t.to_s)
             @do_limited_rate_logging = false
           end
@@ -875,7 +877,7 @@ module BoilerBase
         @mode_changed = false
       else
         if @do_limited_rate_control_logging
-          $app_logger.debug("Rate limited control logging\nHeater control mode not changed, mode is: "+@mode.to_s)
+          $app_logger.trace("Rate limited control logging\nHeater control mode not changed, mode is: "+@mode.to_s)
           @do_limited_rate_control_logging = false
         end
         case @mode
