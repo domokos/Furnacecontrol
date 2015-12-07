@@ -531,6 +531,7 @@ module BoilerBase
 
       # Set the initial state
       @mode = @prev_mode = :off
+      @buffer_passhtrough_safeguard_active = false
       @control_thread = nil
       @relay_state = nil
       set_relays(:direct_boiler)
@@ -652,13 +653,33 @@ module BoilerBase
 
       forward_temp = @forward_sensor.temp
       delta_t = @forward_sensor.temp - @return_sensor.temp
+      boiler_on = delta_t < @config[:boiler_on_detector_delta_t_threshold]
 
       $app_logger.debug("--------------------------------")
       $app_logger.debug("Relax timer active: "+@relax_timer.sec_left.to_s) if !@relax_timer.expired?
-      $app_logger.debug("Relay state: "+@relay_state.to_s)
+      $app_logger.debug("Real relay state: "+@relay_state.to_s)
+
+      # Safeguard heat in buffer when boiler heater is not turned on
+      if @buffer_passhtrough_safeguard_active or
+      (!boiler_on and @relay_state == :buffer_passthrough and
+      forward_temp < (heat_in_buffer[:temp] - @config[:buffer_passtrough_heat_protection_threshold]))
+        $app_logger.debug("Heater is not on in buffer passthrough. Activating safeguarding heat in buffer") unless @buffer_passhtrough_safeguard_active
+        @buffer_passhtrough_safeguard_active = true
+        set_relays(:direct_boiler)
+        logical_relay_state = :buffer_passthrough
+        if boiler_on
+          @buffer_passhtrough_safeguard_active = false
+          $app_logger.debug("Boiler turn on detected exiting safeguarding state")
+          set_relays(:buffer_passthrough)
+        end
+      else
+        logical_relay_state = @relay_state
+      end
+
+      $app_logger.debug("Logical relay state: "+logical_relay_state.to_s)
 
       # Evaluate Direct Boiler state
-      if @relay_state == :direct_boiler
+      if logical_relay_state == :direct_boiler
         $app_logger.debug("Forward temp: "+forward_temp.to_s)
         $app_logger.debug("Target temp: "+@target_temp.to_s)
         $app_logger.debug("Threshold forward_above_target: "+@config[:forward_above_target].to_s)
@@ -706,11 +727,12 @@ module BoilerBase
         end
 
         # Evaluate Buffer Passthrough state
-      elsif @relay_state == :buffer_passthrough
+      elsif logical_relay_state == :buffer_passthrough
         $app_logger.debug("Forward temp: "+forward_temp.to_s)
         $app_logger.debug("Reqd./effective target temps: "+@target_temp.to_s+"/"+@heat_wiper.get_target.to_s)
         $app_logger.debug("buffer_passthrough_fwd_temp_limit: "+@config[:buffer_passthrough_fwd_temp_limit].to_s)
         $app_logger.debug("Delta_t: "+delta_t.to_s)
+        $app_logger.debug("Passthrough buffer safeguard active") if @buffer_passhtrough_safeguard_active
 
         # Buffer Passthrough - State change evaluation conditions
 
@@ -718,7 +740,8 @@ module BoilerBase
         # This logic is here to try forcing the heating back to direct heating in cases where
         # the heat generated can be dissipated. This a safety escrow
         # to try avoiding unnecessary buffer filling
-        if @target_temp > @config[:buffer_passthrough_fwd_temp_limit] and @relax_timer.expired?
+        if @target_temp > @config[:buffer_passthrough_fwd_temp_limit] and
+        @relax_timer.expired? and !@buffer_passhtrough_safeguard_active
           $app_logger.debug("Target set above buffer_passthrough_fwd_temp_limit. State will change from buffer passthrough")
           $app_logger.debug("Decision: direct heat")
 
@@ -731,7 +754,8 @@ module BoilerBase
           # too hot then start feeding from the buffer.
           # As of now we assume that the boiler is able to generate the output temp requred
           # therefore it is enough to monitor the deltaT to find out if the above condition is met
-        elsif forward_temp > (@target_temp + @config[:buffer_passthrough_overshoot] + @config[:forward_above_target]) and @relax_timer.expired?
+        elsif forward_temp > (@target_temp + @config[:buffer_passthrough_overshoot] + @config[:forward_above_target]) and
+        @relax_timer.expired? and !@buffer_passhtrough_safeguard_active
           $app_logger.debug("Overheating - buffer full. State will change from buffer passthrough")
           $app_logger.debug("Decision: Feed from buffer")
 
@@ -762,7 +786,7 @@ module BoilerBase
         end
 
         # Evaluate feed from Buffer state
-      elsif @relay_state == :feed_from_buffer
+      elsif logical_relay_state == :feed_from_buffer
         $app_logger.debug("Forward temp: "+forward_temp.to_s)
         $app_logger.debug("Target temp: "+@target_temp.to_s)
 
@@ -821,7 +845,7 @@ module BoilerBase
         end
         # Raise an exception - no matching source state
       else
-        raise "Unexpected relay state in set_heating_feed: "+@relay_state.to_s
+        raise "Unexpected logical relay state in set_heating_feed: "+logical_relay_state.to_s
       end
     end # of set_heating_feed
 
@@ -851,6 +875,7 @@ module BoilerBase
           # Make sure HW mode of the boiler is off
           @hw_wiper.set_water_temp(65.0)
           @hydr_shift_pump.on
+          sleep @config[:circulation_maintenance_delay]
 
           # Set back relays as they were when we left it off last time
           if @prev_mode != :off
@@ -861,7 +886,6 @@ module BoilerBase
           end
 
           # Finalize state change
-          sleep @config[:circulation_maintenance_delay]
           @hw_pump.off
           $app_logger.debug("Resetting relax timer")
           @relax_timer.reset
