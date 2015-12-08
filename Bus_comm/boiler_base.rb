@@ -817,6 +817,7 @@ module BoilerBase
         end
         if @do_limited_rate_logging
           $app_logger.debug("Feed from buffer. Forward temp: "+forward_temp.to_s)
+          $app_logger.debug("Delta_t: "+delta_t.to_s)
           @do_limited_rate_logging = false
         end
         @heat_wiper.set_water_temp(7.0)
