@@ -450,7 +450,7 @@ module BoilerBase
           # Move CCW
           if error > 0 and @integrated_ccw_movement_time < UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT
             $app_logger.debug("Mixer controller adjusting ccw")
-            @ccw_switch.pulse_block(adjustment_time*10)
+            @ccw_switch.pulse_block((adjustment_time*10).to_i)
 
             # Keep track of movement time for limiting movement
             @integrated_ccw_movement_time += adjustment_time
@@ -462,7 +462,7 @@ module BoilerBase
             # Move CW
           elsif @integrated_cw_movement_time < UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT
             $app_logger.debug("Mixer controller adjusting cw")
-            @cw_switch.pulse_block(adjustment_time*10)
+            @cw_switch.pulse_block((adjustment_time*10).to_i)
 
             # Keep track of movement time for limiting movement
             @integrated_cw_movement_time += adjustment_time
