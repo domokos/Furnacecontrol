@@ -456,7 +456,7 @@ module BoilerBase
             @integrated_ccw_movement_time += adjustment_time
 
             # Adjust available movement time for the other direction
-            @integrated_cw_movement_time = MOVEMENT_TIME_LIMIT - @integrated_ccw_movement_time - MOVEMENT_TIME_HYSTERESIS
+            @integrated_cw_movement_time = UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT - @integrated_ccw_movement_time - MOVEMENT_TIME_HYSTERESIS
             @integrated_cw_movement_time = 0 if @integrated_cw_movement_time < 0
 
             # Move CW
@@ -468,7 +468,7 @@ module BoilerBase
             @integrated_cw_movement_time += adjustment_time
 
             # Adjust available movement time for the other direction
-            @integrated_ccw_movement_time = MOVEMENT_TIME_LIMIT - @integrated_cw_movement_time - MOVEMENT_TIME_HYSTERESIS
+            @integrated_ccw_movement_time = UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT - @integrated_cw_movement_time - MOVEMENT_TIME_HYSTERESIS
             @integrated_ccw_movement_time = 0 if @integrated_ccw_movement_time < 0
           else
             $app_logger.debug("Mixer controller not doing anything")
