@@ -494,7 +494,7 @@ module BoilerBase
     # This implements a simple P type controller with limited boundaries
     def calculate_adjustment_time(error)
       retval = MOTOR_TIME_PARAMETER * error
-      return 1 if retval < 1
+      return 0 if retval < 0.5
       return 10 if retval > 10
       return retval
     end
