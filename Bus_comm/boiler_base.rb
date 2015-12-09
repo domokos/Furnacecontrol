@@ -332,10 +332,10 @@ module BoilerBase
       Thread.new do
         if @control_mutex.try_lock
           $app_logger.debug("Control mutex locked in reset pulsing ccw for 36 secs")
-          ccw_switch.pulse(36)
+          ccw_switch.pulse(360)
           sleep 1
           $app_logger.debug("Control mutex locked in reset pulsing cw for 15 secs")
-          cw_switch.pulse(15)
+          cw_switch.pulse(150)
           sleep 1
           @control_mutex.unlock
           $app_logger.debug("Control mutex unlocked reset thread exiting")
@@ -384,6 +384,7 @@ module BoilerBase
     end
 
     def start_measurement_thread
+      $app_logger.debug("Mixer controller measurement thread start requested")
       return unless @measurement_thread_mutex.try_lock
 
       # Unlock the measurement thread exis signal
@@ -393,7 +394,7 @@ module BoilerBase
       @measurement_thread = Thread.new do
         $app_logger.debug("Mixer controller measurement thread starting")
         while !@stop_measurement_requested.locked? do
-          @measurement_mutex.synchronize {@mix_filter.input_sample(@mix_sensor.temp)}
+          @measurement_mutex.synchronize { @mix_filter.input_sample(@mix_sensor.temp) }
           sleep SAMPLING_DELAY unless @stop_measurement_requested.locked?
         end
         $app_logger.debug("Mixer controller measurement thread exiting")
@@ -430,9 +431,9 @@ module BoilerBase
         $app_logger.debug("Mixer controller do_control_thread in loop before sync target mutex")
 
         # Read target temp thread safely
-        @target_mutex.synchronize {target = @target_temp}
+        @target_mutex.synchronize { target = @target_temp }
         $app_logger.debug("Mixer controller target: "+target.to_s)
-        @measurement_mutex.synchronize {error = target - @mix_filter.value}
+        @measurement_mutex.synchronize { error = target - @mix_filter.value }
 
         $app_logger.debug("Mixer controller error: "+error.to_s)
 
