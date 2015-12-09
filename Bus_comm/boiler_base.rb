@@ -448,28 +448,30 @@ module BoilerBase
           $app_logger.debug("Mixer controller adjustment time: "+adjustment_time.to_s)
 
           # Move CCW
-          if error > 0 and @integrated_CCW_movement_time < UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT
+          if error > 0 and @integrated_ccw_movement_time < UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT
             $app_logger.debug("Mixer controller adjusting ccw")
             @ccw_switch.pulse_block(adjustment_time*10)
 
             # Keep track of movement time for limiting movement
-            @integrated_CCW_movement_time += adjustment_time
+            @integrated_ccw_movement_time += adjustment_time
 
             # Adjust available movement time for the other direction
-            @integrated_CW_movement_time = MOVEMENT_TIME_LIMIT - @integrated_CCW_movement_time - MOVEMENT_TIME_HYSTERESIS
-            @integrated_CW_movement_time = 0 if @integrated_CW_movement_time < 0
+            @integrated_cw_movement_time = MOVEMENT_TIME_LIMIT - @integrated_ccw_movement_time - MOVEMENT_TIME_HYSTERESIS
+            @integrated_cw_movement_time = 0 if @integrated_cw_movement_time < 0
 
             # Move CW
-          elsif @integrated_CW_movement_time < UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT
+          elsif @integrated_cw_movement_time < UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT
             $app_logger.debug("Mixer controller adjusting cw")
             @cw_switch.pulse_block(adjustment_time*10)
 
             # Keep track of movement time for limiting movement
-            @integrated_CW_movement_time += adjustment_time
+            @integrated_cw_movement_time += adjustment_time
 
             # Adjust available movement time for the other direction
-            @integrated_CCW_movement_time = MOVEMENT_TIME_LIMIT - @integrated_CW_movement_time - MOVEMENT_TIME_HYSTERESIS
-            @integrated_CCW_movement_time = 0 if @integrated_CCW_movement_time < 0
+            @integrated_ccw_movement_time = MOVEMENT_TIME_LIMIT - @integrated_cw_movement_time - MOVEMENT_TIME_HYSTERESIS
+            @integrated_ccw_movement_time = 0 if @integrated_ccw_movement_time < 0
+          else
+            $app_logger.debug("Mixer controller not doing anything")
           end
 
         end
