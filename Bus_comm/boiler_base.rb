@@ -319,6 +319,7 @@ module BoilerBase
       @integrated_ccw_movement_time = 0
 
       # Reset the device
+      $app_logger.debug("Mixer controller initialized - calling reset")
       reset
     end
 
@@ -330,12 +331,14 @@ module BoilerBase
     def reset
       Thread.new do
         if @control_mutex.try_lock
-          sleep 2
+          $app_logger.debug("Control mutex locked in reset pulsing ccw for 36 secs")
           ccw_switch.pulse(36)
           sleep 2
+          $app_logger.debug("Control mutex locked in reset pulsing cw for 15 secs")
           cw_switch.pulse(15)
-          sleep 2
+          sleep 1
           @control_mutex.unlock
+          $app_logger.debug("Control mutex unlocked reset thread exiting")
         end
       end
     end
@@ -343,6 +346,8 @@ module BoilerBase
     def start_control(delay=0)
       # Only start control thread if not yet started
       return unless @control_thread_mutex.try_lock
+
+      $app_logger.debug("Mixer controller staring control")
 
       # Clear control thread stop sugnaling mutex
       @stop_control_requested.unlock if @stop_control_requested.locked?
@@ -386,6 +391,7 @@ module BoilerBase
 
       #Create a temperature measurement thread
       @measurement_thread = Thread.new do
+        $app_logger.debug("Mixer controller measurement thread starting")
         while !@stop_measurement_requested.locked? do
           @measurement_mutex.synchronize {@mix_filter.input_sample(@mix_sensor.temp)}
           sleep SAMPLING_DELAY unless @stop_measurement_requested.locked?
@@ -425,13 +431,19 @@ module BoilerBase
         @target_mutex.synchronize {target = @target_temp}
         @measurement_mutex.synchronize {error = target - @mix_filter}
 
+        $app_logger.debug("Mixer controller target: "+target.to_s)
+        $app_logger.debug("Mixer controller error: "+error.to_s)
+
         # Adjust mixing motor if error is out of bounds
         if error.abs > ERROR_THRESHOLD
 
           adjustment_time = calculate_adjustment_time(error.abs)
 
+          $app_logger.debug("Mixer controller adjustment time: "+adjustment_time.to_s)
+
           # Move CCW
           if error > 0 and @integrated_CCW_movement_time < UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT
+            $app_logger.debug("Mixer controller adjusting ccw")
             ccw_switch.pulse(adjustment_time)
 
             # Keep track of movement time for limiting movement
@@ -443,6 +455,7 @@ module BoilerBase
 
             # Move CW
           elsif @integrated_CW_movement_time < UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT
+            $app_logger.debug("Mixer controller adjusting cw")
             cw_switch.pulse(adjustment_time)
 
             # Keep track of movement time for limiting movement
