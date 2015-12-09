@@ -193,7 +193,10 @@ class Heating_State_Machine
     @HW_watertemp, @heating_watertemp)
 
     #Create the Mixer controller
+    $app_logger.debug("Creating Mixer controller")
+
     @mixer_controller = BoilerBase::Mixer_control.new(@mixer_sensor,@cw_switch,@ccw_switch)
+    $app_logger.debug("Mixer controller created")
 
     # Define the states of the heating
     @state_Off = BoilerBase::State.new(:Off,"Boiler switched off")

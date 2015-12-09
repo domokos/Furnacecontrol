@@ -429,9 +429,9 @@ module BoilerBase
 
         # Read target temp thread safely
         @target_mutex.synchronize {target = @target_temp}
+        $app_logger.debug("Mixer controller target: "+target.to_s)
         @measurement_mutex.synchronize {error = target - @mix_filter}
 
-        $app_logger.debug("Mixer controller target: "+target.to_s)
         $app_logger.debug("Mixer controller error: "+error.to_s)
 
         # Adjust mixing motor if error is out of bounds
