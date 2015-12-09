@@ -288,7 +288,7 @@ module BoilerBase
 
     FILTER_SAMPLE_SIZE = 3
     SAMPLING_DELAY = 2.1
-    ERROR_THRESHOLD = 1.1
+    ERROR_THRESHOLD = 0.5
     MIXER_CONTROL_LOOP_DELAY = 6
     MOTOR_TIME_PARAMETER = 1
     UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT = 60
@@ -476,9 +476,11 @@ module BoilerBase
             @integrated_ccw_movement_time = UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT - @integrated_cw_movement_time - MOVEMENT_TIME_HYSTERESIS
             @integrated_ccw_movement_time = 0 if @integrated_ccw_movement_time < 0
           else
-            $app_logger.debug("Mixer controller not doing anything")
+            $app_logger.debug("Time limit exceeded - mixer at exteme position")
           end
 
+        else
+          $app_logger.debug("Mixer error below threshold - not adjusting")
         end
 
         # Stop the measurement thread before exiting
