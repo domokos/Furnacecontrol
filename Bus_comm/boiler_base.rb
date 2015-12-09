@@ -333,7 +333,7 @@ module BoilerBase
         if @control_mutex.try_lock
           $app_logger.debug("Control mutex locked in reset pulsing ccw for 36 secs")
           ccw_switch.pulse(36)
-          sleep 2
+          sleep 1
           $app_logger.debug("Control mutex locked in reset pulsing cw for 15 secs")
           cw_switch.pulse(15)
           sleep 1

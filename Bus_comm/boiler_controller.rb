@@ -175,10 +175,10 @@ class Heating_State_Machine
     @heater_relay = BusDevice::Switch.new("Heater relay","Heater contact on main panel",
     $config[:main_controller_dev_addr], $config[:heater_relay_reg_addr], DRY_RUN)
 
-    #Create mixer switches
-    @cw_switch = BusDevice::Switch.new("CW mixer switch","In the mixer controller box",
+    #Create mixer pulsing switches
+    @cw_switch = BusDevice::PulseSwitch.new("CW mixer switch","In the mixer controller box",
     $config[:mixer_controller_dev_addr], $config[:mixer_cw_reg_addr], DRY_RUN)
-    @ccw_switch = BusDevice::Switch.new("CCW mixer switch","In the mixer controller box",
+    @ccw_switch = BusDevice::PulseSwitch.new("CCW mixer switch","In the mixer controller box",
     $config[:mixer_controller_dev_addr], $config[:mixer_ccw_reg_addr], DRY_RUN)
 
     # Create water temp wipers
