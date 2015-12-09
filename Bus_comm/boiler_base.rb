@@ -436,21 +436,21 @@ module BoilerBase
 
         # Read target temp thread safely
         @target_mutex.synchronize { target = @target_temp }
-        $app_logger.debug("Mixer controller target: "+target.to_s)
+        $app_logger.debug("Mixer controller target: "+target.round(2).to_s)
         @measurement_mutex.synchronize do
           value = @mix_filter.value
           error = target - value
         end
 
-        $app_logger.debug("Mixer controller error: "+error.to_s)
-        $app_logger.debug("Mixer controller value: "+value.to_s)
+        $app_logger.debug("Mixer controller error: "+error.round(2).to_s)
+        $app_logger.debug("Mixer controller value: "+value.round(2).to_s)
 
         # Adjust mixing motor if error is out of bounds
         if error.abs > ERROR_THRESHOLD
 
           adjustment_time = calculate_adjustment_time(error.abs)
 
-          $app_logger.debug("Mixer controller adjustment time: "+adjustment_time.to_s)
+          $app_logger.debug("Mixer controller adjustment time: "+adjustment_time.round(2).to_s)
 
           # Move CCW
           if error > 0 and @integrated_ccw_movement_time < UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT
