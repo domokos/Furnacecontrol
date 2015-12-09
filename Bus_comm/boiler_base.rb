@@ -420,17 +420,19 @@ module BoilerBase
     def do_control_thread
 
       start_measurement_thread
+      $app_logger.debug("Mixer controller do_control_thread before loop")
 
       # Control until if stop is requested
       while !@stop_control_requested.locked? do
 
         # Minimum delay between motor actuations
         sleep MIXER_CONTROL_LOOP_DELAY
+        $app_logger.debug("Mixer controller do_control_thread in loop before sync target mutex")
 
         # Read target temp thread safely
         @target_mutex.synchronize {target = @target_temp}
         $app_logger.debug("Mixer controller target: "+target.to_s)
-        @measurement_mutex.synchronize {error = target - @mix_filter}
+        @measurement_mutex.synchronize {error = target - @mix_filter.value}
 
         $app_logger.debug("Mixer controller error: "+error.to_s)
 
