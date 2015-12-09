@@ -332,10 +332,10 @@ module BoilerBase
       Thread.new do
         if @control_mutex.try_lock
           $app_logger.debug("Control mutex locked in reset pulsing ccw for 36 secs")
-          ccw_switch.pulse(360)
+          @ccw_switch.pulse_block(360)
           sleep 1
           $app_logger.debug("Control mutex locked in reset pulsing cw for 15 secs")
-          cw_switch.pulse(150)
+          @cw_switch.pulse_block(150)
           sleep 1
           @control_mutex.unlock
           $app_logger.debug("Control mutex unlocked reset thread exiting")
@@ -430,6 +430,9 @@ module BoilerBase
         sleep MIXER_CONTROL_LOOP_DELAY
         $app_logger.debug("Mixer controller do_control_thread in loop before sync target mutex")
 
+        target = 0
+        error = 0
+        
         # Read target temp thread safely
         @target_mutex.synchronize { target = @target_temp }
         $app_logger.debug("Mixer controller target: "+target.to_s)
@@ -447,7 +450,7 @@ module BoilerBase
           # Move CCW
           if error > 0 and @integrated_CCW_movement_time < UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT
             $app_logger.debug("Mixer controller adjusting ccw")
-            ccw_switch.pulse(adjustment_time)
+            @ccw_switch.pulse_block(adjustment_time*10)
 
             # Keep track of movement time for limiting movement
             @integrated_CCW_movement_time += adjustment_time
@@ -459,7 +462,7 @@ module BoilerBase
             # Move CW
           elsif @integrated_CW_movement_time < UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT
             $app_logger.debug("Mixer controller adjusting cw")
-            cw_switch.pulse(adjustment_time)
+            @cw_switch.pulse_block(adjustment_time*10)
 
             # Keep track of movement time for limiting movement
             @integrated_CW_movement_time += adjustment_time
