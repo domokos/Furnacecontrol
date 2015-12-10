@@ -396,10 +396,7 @@ module BoilerBase
       @measurement_thread = Thread.new do
         $app_logger.debug("Mixer controller measurement thread starting")
         while !@stop_measurement_requested.locked?
-          @measurement_mutex.synchronize do
-            @mix_filter.input_sample(@mix_sensor.temp)
-            $app_logger.debug("Mixer controller measurement measuring: "+@mix_sensor.temp.to_s)
-          end
+          @measurement_mutex.synchronize {@mix_filter.input_sample(@mix_sensor.temp) }
           sleep SAMPLING_DELAY unless @stop_measurement_requested.locked?
         end
         $app_logger.debug("Mixer controller measurement thread exiting")
@@ -435,6 +432,7 @@ module BoilerBase
         sleep MIXER_CONTROL_LOOP_DELAY
         $app_logger.debug("Mixer controller do_control_thread in loop before sync target mutex")
 
+        # Init local variables
         target = 0
         error = 0
         value = 0
@@ -494,6 +492,7 @@ module BoilerBase
 
       @integrated_cw_movement_time = 0
       @integrated_ccw_movement_time = 0
+
     end
 
     # Calculate mixer motor actuation time based on error
