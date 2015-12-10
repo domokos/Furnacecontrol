@@ -969,6 +969,8 @@ pid = fork do
       $pidpath = Globals::PIDFILE
     end
 
+    $app_logger.level = Globals::BoilerLogger::DEBUG if ARGV.find_index("--debug") != nil
+
     pidfile=File.new($pidpath,"w")
     pidfile.write(Process.pid.to_s)
     pidfile.close

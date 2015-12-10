@@ -359,7 +359,9 @@ module BoilerBase
           sleep delay
 
           # Prefill sample buffer to get rid of false values
-          FILTER_SAMPLE_SIZE.times {@mix_filter.input_sample(@mix_sensor.temp)}
+          FILTER_SAMPLE_SIZE.times do
+            @mix_filter.input_sample(@mix_sensor.temp)
+          end
 
           # Do the actual control, which will return ending the thread if done
           do_control_thread
@@ -394,7 +396,9 @@ module BoilerBase
       @measurement_thread = Thread.new do
         $app_logger.debug("Mixer controller measurement thread starting")
         while !@stop_measurement_requested.locked? do
-          @measurement_mutex.synchronize { @mix_filter.input_sample(@mix_sensor.temp) }
+          @measurement_mutex.synchronize do
+            @mix_filter.input_sample(@mix_sensor.temp)
+          end
           sleep SAMPLING_DELAY unless @stop_measurement_requested.locked?
         end
         $app_logger.debug("Mixer controller measurement thread exiting")
