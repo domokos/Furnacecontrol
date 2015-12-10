@@ -395,9 +395,10 @@ module BoilerBase
       #Create a temperature measurement thread
       @measurement_thread = Thread.new do
         $app_logger.debug("Mixer controller measurement thread starting")
-        while !@stop_measurement_requested.locked? do
+        while !@stop_measurement_requested.locked?
           @measurement_mutex.synchronize do
             @mix_filter.input_sample(@mix_sensor.temp)
+            $app_logger.debug("Mixer controller measurement measuring: "+@mix_sensor.temp.to_s)
           end
           sleep SAMPLING_DELAY unless @stop_measurement_requested.locked?
         end
@@ -428,7 +429,7 @@ module BoilerBase
       $app_logger.debug("Mixer controller do_control_thread before loop")
 
       # Control until if stop is requested
-      while !@stop_control_requested.locked? do
+      while !@stop_control_requested.locked?
 
         # Minimum delay between motor actuations
         sleep MIXER_CONTROL_LOOP_DELAY
@@ -480,7 +481,7 @@ module BoilerBase
             @integrated_ccw_movement_time = UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT - @integrated_cw_movement_time - MOVEMENT_TIME_HYSTERESIS
             @integrated_ccw_movement_time = 0 if @integrated_ccw_movement_time < 0
           else
-            $app_logger.debug("Time limit exceeded - mixer at exteme position")
+            $app_logger.debug("Time limit exceeded - mixer at extreme position")
           end
 
         else
