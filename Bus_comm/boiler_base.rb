@@ -487,14 +487,13 @@ module BoilerBase
         else
           $app_logger.debug("Mixer error below threshold - not adjusting")
         end
-
-        # Stop the measurement thread before exiting
-        stop_measurement_thread
       end
+
+      # Stop the measurement thread before exiting
+      stop_measurement_thread
 
       @integrated_cw_movement_time = 0
       @integrated_ccw_movement_time = 0
-
     end
 
     # Calculate mixer motor actuation time based on error
