@@ -288,7 +288,7 @@ module BoilerBase
 
     FILTER_SAMPLE_SIZE = 3
     SAMPLING_DELAY = 2.1
-    ERROR_THRESHOLD = 0.3
+    ERROR_THRESHOLD = 0.35
     MIXER_CONTROL_LOOP_DELAY = 15
     MOTOR_TIME_PARAMETER = 1
     UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT = 60
@@ -439,20 +439,19 @@ module BoilerBase
 
         # Read target temp thread safely
         @target_mutex.synchronize { target = @target_temp }
-        $app_logger.debug("Mixer controller target: "+target.round(2).to_s)
         @measurement_mutex.synchronize do
           value = @mix_filter.value
           error = target - value
         end
-
-        $app_logger.debug("Mixer controller error: "+error.round(2).to_s)
-        $app_logger.debug("Mixer controller value: "+value.round(2).to_s)
 
         # Adjust mixing motor if error is out of bounds
         if error.abs > ERROR_THRESHOLD and calculate_adjustment_time(error.abs) > 0
 
           adjustment_time = calculate_adjustment_time(error.abs)
 
+          $app_logger.debug("Mixer controller target: "+target.round(2).to_s)
+          $app_logger.debug("Mixer controller value: "+value.round(2).to_s)
+          $app_logger.debug("Mixer controller error: "+error.round(2).to_s)
           $app_logger.debug("Mixer controller adjustment time: "+adjustment_time.round(2).to_s)
 
           # Move CCW
@@ -478,12 +477,7 @@ module BoilerBase
             # Adjust available movement time for the other direction
             @integrated_ccw_movement_time = UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT - @integrated_cw_movement_time - MOVEMENT_TIME_HYSTERESIS
             @integrated_ccw_movement_time = 0 if @integrated_ccw_movement_time < 0
-          else
-            $app_logger.debug("Time limit exceeded - mixer at extreme position")
           end
-
-        else
-          $app_logger.debug("Mixer error below threshold - not adjusting")
         end
       end
 
@@ -499,7 +493,7 @@ module BoilerBase
     # This implements a simple P type controller with limited boundaries
     def calculate_adjustment_time(error)
       retval = MOTOR_TIME_PARAMETER * error
-      return 0 if retval < 0.5
+      return 0 if retval < 0
       return 10 if retval > 10
       return retval
     end
