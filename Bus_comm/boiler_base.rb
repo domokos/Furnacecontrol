@@ -449,7 +449,7 @@ module BoilerBase
         $app_logger.debug("Mixer controller value: "+value.round(2).to_s)
 
         # Adjust mixing motor if error is out of bounds
-        if error.abs > ERROR_THRESHOLD
+        if error.abs > ERROR_THRESHOLD and calculate_adjustment_time(error.abs) > 0
 
           adjustment_time = calculate_adjustment_time(error.abs)
 
