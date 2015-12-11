@@ -362,7 +362,7 @@ module BoilerBase
           sleep delay
 
           # Prefill sample buffer to get rid of false values
-          @config[:mixer_filer_size].times do
+          @config[:mixer_filter_size].times do
             @mix_filter.input_sample(@mix_sensor.temp)
           end
 
