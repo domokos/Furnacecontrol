@@ -91,6 +91,19 @@
 #
 #
 # *********************************************************************************************
+# Mixer parameters 
+# *********************************************************************************************
+#
+:mixer_limited_log_period: 20
+:mixer_filer_size: 3
+:mixer_sampling_delay: 2.1
+:mixer_error_threshold: 0.35
+:mixer_control_loop_delay: 15
+:mixer_motor_time_parameter: 1
+:mixer_unidirectional_movement_time_limit: 60
+:mixer_movement_time_hysteresis: 5
+#
+# *********************************************************************************************
 # Controller network addresses 
 # *********************************************************************************************
 # 
