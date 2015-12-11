@@ -285,7 +285,6 @@ module BoilerBase
   end
 
   class Mixer_control
-
     def initialize(mix_sensor,cw_switch,ccw_switch,initial_target_temp=34.0)
 
       # Initialize class variables
@@ -294,8 +293,11 @@ module BoilerBase
       @cw_switch = cw_switch
       @ccw_switch = ccw_switch
 
+      # Copy the configuration
+      @config = $config.dup
+
       # Create Filters
-      @mix_filter = Filter.new(@config[:mixer_filer_size])
+      @mix_filter = Filter.new(@config[:mixer_filter_size])
 
       @target_mutex = Mutex.new
       @control_mutex = Mutex.new
@@ -314,9 +316,6 @@ module BoilerBase
       # Create the log rate limiter
       @mixer_log_rate_limiter = 0
 
-      # Copy the configuration
-      @config = $config.dup
-      
       # Reset the device
       $app_logger.debug("Mixer controller initialized - calling reset")
       reset
