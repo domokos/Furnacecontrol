@@ -447,19 +447,19 @@ module BoilerBase
           error = target - value
         end
 
+        if @mixer_log_rate_limiter > @config[:mixer_limited_log_period]
+          @mixer_log_rate_limiter = 1
+          # Copy the config for updates
+          $config_mutex.synchronize {@config = $config.dup}
+          $app_logger.debug("Mixer forward temp: "+value.round(2).to_s)
+        else
+          @mixer_log_rate_limiter += 1
+        end
+        
         # Adjust mixing motor if error is out of bounds
         if error.abs > @config[:mixer_error_threshold] and calculate_adjustment_time(error.abs) > 0
 
           adjustment_time = calculate_adjustment_time(error.abs)
-
-          if @mixer_log_rate_limiter > @config[:mixer_limited_log_period]
-            @mixer_log_rate_limiter = 1
-            # Copy the config for updates
-            $config_mutex.synchronize {@config = $config.dup}
-            $app_logger.debug("Mixer forward temp: "+value.round(2).to_s)
-          else
-            @mixer_log_rate_limiter += 1
-          end
 
           $app_logger.trace("Mixer controller target: "+target.round(2).to_s)
           $app_logger.trace("Mixer controller value: "+value.round(2).to_s)
