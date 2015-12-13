@@ -696,7 +696,7 @@ module BoilerBase
 
       forward_temp = @forward_sensor.temp
       delta_t = @forward_sensor.temp - @return_sensor.temp
-      boiler_on = delta_t < @config[:boiler_on_dhetector_delta_t_threshold]
+      boiler_on = delta_t < @config[:boiler_on_detector_delta_t_threshold]
 
       $app_logger.trace("--------------------------------")
       $app_logger.trace("Relax timer active: "+@relax_timer.sec_left.to_s) if !@relax_timer.expired?
