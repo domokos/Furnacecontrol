@@ -56,6 +56,7 @@
 :upstairs_mock_temp: 23.0
 :basement_mock_temp: 26.0
 :external_mock_temp: 5.0
+:mixer_forward_mock_temp: 35.0
 #
 #
 # *********************************************************************************************
@@ -88,6 +89,19 @@
 :boiler_on_detector_delta_t_threshold: 2.0
 :buffer_passtrough_heat_protection_threshold: 2.0
 #
+#
+# *********************************************************************************************
+# Mixer parameters 
+# *********************************************************************************************
+#
+:mixer_limited_log_period: 20
+:mixer_filter_size: 3
+:mixer_sampling_delay: 2.1
+:mixer_error_threshold: 0.35
+:mixer_control_loop_delay: 15
+:mixer_motor_time_parameter: 1
+:mixer_unidirectional_movement_time_limit: 60
+:mixer_movement_time_hysteresis: 5
 #
 # *********************************************************************************************
 # Controller network addresses 

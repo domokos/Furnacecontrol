@@ -254,7 +254,7 @@ module BusDevice
 
     # Turn the device on
     def pulse_block(duration)
-      write_device(duration) == :Success and $app_logger.debug("Succesfully started pulsing Switch '"+@name+"'")
+      write_device(duration) == :Success and $app_logger.trace("Succesfully started pulsing Switch '"+@name+"'")
       sleep STATE_READ_PERIOD
       wait_until_inactive
     end
@@ -277,7 +277,7 @@ module BusDevice
       if !@dry_run
         begin
           retval = @@comm_interface.send_message(@slave_address,Buscomm::READ_REGISTER,@register_address.chr)
-          $app_logger.debug("Sucessfully read device '"+@name+"' address "+@register_address.to_s)
+          $app_logger.trace("Sucessfully read device '"+@name+"' address "+@register_address.to_s)
         rescue MessagingError => e
           retval = e.return_message
           $app_logger.fatal("Unrecoverable communication error on bus, reading '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])

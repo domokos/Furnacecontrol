@@ -285,14 +285,6 @@ module BoilerBase
   end
 
   class Mixer_control
-
-    FILTER_SAMPLE_SIZE = 3
-    SAMPLING_DELAY = 2.1
-    ERROR_THRESHOLD = 1.1
-    MIXER_CONTROL_LOOP_DELAY = 6
-    MOTOR_TIME_PARAMETER = 1
-    UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT = 60
-    MOVEMENT_TIME_HYSTERESIS = 5
     def initialize(mix_sensor,cw_switch,ccw_switch,initial_target_temp=34.0)
 
       # Initialize class variables
@@ -301,8 +293,11 @@ module BoilerBase
       @cw_switch = cw_switch
       @ccw_switch = ccw_switch
 
+      # Copy the configuration
+      @config = $config.dup
+
       # Create Filters
-      @mix_filter = Filter.new(FILTER_SAMPLE_SIZE)
+      @mix_filter = Filter.new(@config[:mixer_filter_size])
 
       @target_mutex = Mutex.new
       @control_mutex = Mutex.new
@@ -318,8 +313,17 @@ module BoilerBase
       @integrated_cw_movement_time = 0
       @integrated_ccw_movement_time = 0
 
+      # Create the log rate limiter
+      @mixer_log_rate_limiter = 0
+
       # Reset the device
+      $app_logger.debug("Mixer controller initialized - calling reset")
       reset
+    end
+
+    def temp
+      @measurement_mutex.synchronize {value = @mix_filter.value}
+      return value
     end
 
     def set_target_temp(new_target_temp)
@@ -330,12 +334,14 @@ module BoilerBase
     def reset
       Thread.new do
         if @control_mutex.try_lock
-          sleep 2
-          ccw_switch.pulse(36)
-          sleep 2
-          cw_switch.pulse(15)
-          sleep 2
+          $app_logger.debug("Control mutex locked in reset pulsing ccw for 36 secs")
+          @ccw_switch.pulse_block(360)
+          sleep 1
+          $app_logger.debug("Control mutex locked in reset pulsing cw for 15 secs")
+          @cw_switch.pulse_block(150)
+          sleep 1
           @control_mutex.unlock
+          $app_logger.debug("Control mutex unlocked reset thread exiting")
         end
       end
     end
@@ -343,6 +349,8 @@ module BoilerBase
     def start_control(delay=0)
       # Only start control thread if not yet started
       return unless @control_thread_mutex.try_lock
+
+      $app_logger.debug("Mixer controller staring control")
 
       # Clear control thread stop sugnaling mutex
       @stop_control_requested.unlock if @stop_control_requested.locked?
@@ -354,7 +362,9 @@ module BoilerBase
           sleep delay
 
           # Prefill sample buffer to get rid of false values
-          FILTER_SAMPLE_SIZE.times {@mix_filter.input_sample(@mix_sensor.temp)}
+          @config[:mixer_filter_size].times do
+            @mix_filter.input_sample(@mix_sensor.temp)
+          end
 
           # Do the actual control, which will return ending the thread if done
           do_control_thread
@@ -379,6 +389,7 @@ module BoilerBase
     end
 
     def start_measurement_thread
+      $app_logger.debug("Mixer controller - measurement thread start requested")
       return unless @measurement_thread_mutex.try_lock
 
       # Unlock the measurement thread exis signal
@@ -386,11 +397,12 @@ module BoilerBase
 
       #Create a temperature measurement thread
       @measurement_thread = Thread.new do
-        while !@stop_measurement_requested.locked? do
-          @measurement_mutex.synchronize {@mix_filter.input_sample(@mix_sensor.temp)}
-          sleep SAMPLING_DELAY unless @stop_measurement_requested.locked?
+        $app_logger.debug("Mixer controller - measurement thread starting")
+        while !@stop_measurement_requested.locked?
+          @measurement_mutex.synchronize {@mix_filter.input_sample(@mix_sensor.temp) }
+          sleep @config[:mixer_sampling_delay] unless @stop_measurement_requested.locked?
         end
-        $app_logger.debug("Mixer controller measurement thread exiting")
+        $app_logger.debug("Mixer controller - measurement thread exiting")
       end
     end
 
@@ -402,7 +414,7 @@ module BoilerBase
       @stop_measurement_requested.lock
 
       # Wait for the measurement thread to exit
-      $app_logger.debug("Mixer controller waiting for measurement thread to exit")
+      $app_logger.debug("Mixer controller - waiting for measurement thread to exit")
       @measurement_thread.join
 
       # Allow a next call to start_measurement thread to create
@@ -414,50 +426,75 @@ module BoilerBase
     def do_control_thread
 
       start_measurement_thread
+      $app_logger.trace("Mixer controller do_control_thread before starting control loop")
 
       # Control until if stop is requested
-      while !@stop_control_requested.locked? do
+      while !@stop_control_requested.locked?
 
         # Minimum delay between motor actuations
-        sleep MIXER_CONTROL_LOOP_DELAY
+        sleep @config[:mixer_control_loop_delay]
+        $app_logger.trace("Mixer controller do_control_thread in loop before sync target mutex")
+
+        # Init local variables
+        target = 0
+        error = 0
+        value = 0
 
         # Read target temp thread safely
-        @target_mutex.synchronize {target = @target_temp}
-        @measurement_mutex.synchronize {error = target - @mix_filter}
+        @target_mutex.synchronize { target = @target_temp }
+        @measurement_mutex.synchronize do
+          value = @mix_filter.value
+          error = target - value
+        end
 
+        if @mixer_log_rate_limiter > @config[:mixer_limited_log_period]
+          @mixer_log_rate_limiter = 1
+          # Copy the config for updates
+          $config_mutex.synchronize {@config = $config.dup}
+          $app_logger.debug("Mixer forward temp: "+value.round(2).to_s)
+        else
+          @mixer_log_rate_limiter += 1
+        end
+        
         # Adjust mixing motor if error is out of bounds
-        if error.abs > ERROR_THRESHOLD
+        if error.abs > @config[:mixer_error_threshold] and calculate_adjustment_time(error.abs) > 0
 
           adjustment_time = calculate_adjustment_time(error.abs)
 
+          $app_logger.trace("Mixer controller target: "+target.round(2).to_s)
+          $app_logger.trace("Mixer controller value: "+value.round(2).to_s)
+          $app_logger.trace("Mixer controller error: "+error.round(2).to_s)
+          $app_logger.trace("Mixer controller adjustment time: "+adjustment_time.round(2).to_s)
+
           # Move CCW
-          if error > 0 and @integrated_CCW_movement_time < UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT
-            ccw_switch.pulse(adjustment_time)
+          if error > 0 and @integrated_ccw_movement_time < @config[:mixer_unidirectional_movement_time_limit]
+            $app_logger.trace("Mixer controller adjusting ccw")
+            @ccw_switch.pulse_block((adjustment_time*10).to_i)
 
             # Keep track of movement time for limiting movement
-            @integrated_CCW_movement_time += adjustment_time
+            @integrated_ccw_movement_time += adjustment_time
 
             # Adjust available movement time for the other direction
-            @integrated_CW_movement_time = MOVEMENT_TIME_LIMIT - @integrated_CCW_movement_time - MOVEMENT_TIME_HYSTERESIS
-            @integrated_CW_movement_time = 0 if @integrated_CW_movement_time < 0
+            @integrated_cw_movement_time = @config[:mixer_unidirectional_movement_time_limit] - @integrated_ccw_movement_time - @config[:mixer_movement_time_hysteresis]
+            @integrated_cw_movement_time = 0 if @integrated_cw_movement_time < 0
 
             # Move CW
-          elsif @integrated_CW_movement_time < UNIDIRECTIONAL_MOVEMENT_TIME_LIMIT
-            cw_switch.pulse(adjustment_time)
+          elsif error < 0 and @integrated_cw_movement_time < @config[:mixer_unidirectional_movement_time_limit]
+            $app_logger.trace("Mixer controller adjusting cw")
+            @cw_switch.pulse_block((adjustment_time*10).to_i)
 
             # Keep track of movement time for limiting movement
-            @integrated_CW_movement_time += adjustment_time
+            @integrated_cw_movement_time += adjustment_time
 
             # Adjust available movement time for the other direction
-            @integrated_CCW_movement_time = MOVEMENT_TIME_LIMIT - @integrated_CW_movement_time - MOVEMENT_TIME_HYSTERESIS
-            @integrated_CCW_movement_time = 0 if @integrated_CCW_movement_time < 0
+            @integrated_ccw_movement_time = @config[:mixer_unidirectional_movement_time_limit] - @integrated_cw_movement_time - @config[:mixer_movement_time_hysteresis]
+            @integrated_ccw_movement_time = 0 if @integrated_ccw_movement_time < 0
           end
-
         end
-
-        # Stop the measurement thread before exiting
-        stop_measurement_thread
       end
+
+      # Stop the measurement thread before exiting
+      stop_measurement_thread
 
       @integrated_cw_movement_time = 0
       @integrated_ccw_movement_time = 0
@@ -467,8 +504,8 @@ module BoilerBase
     # Calculate mixer motor actuation time based on error
     # This implements a simple P type controller with limited boundaries
     def calculate_adjustment_time(error)
-      retval = MOTOR_TIME_PARAMETER * error
-      return 1 if retval < 1
+      retval = @config[:mixer_motor_time_parameter] * error
+      return 0 if retval < 0
       return 10 if retval > 10
       return retval
     end
