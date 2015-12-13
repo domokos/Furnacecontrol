@@ -866,20 +866,21 @@ module BoilerBase
             end
             @relax_timer.reset
           end
-        end
-        if @do_limited_rate_logging
-          $app_logger.debug("Feed from buffer. Forward temp: "+forward_temp.to_s)
-          $app_logger.debug("Delta_t: "+delta_t.to_s)
-          @do_limited_rate_logging = false
-        end
-        @heat_wiper.set_water_temp(7.0)
-        if @heater_relay.state != :off
-          $app_logger.debug("Turning off heater relay")
-          @heater_relay.off
-        end
-        if @hydr_shift_pump.state != :off
-          $app_logger.debug("Turning off hydr shift pump")
-          @hydr_shift_pump.off
+        else
+          if @do_limited_rate_logging
+            $app_logger.debug("Feed from buffer. Forward temp: "+forward_temp.to_s)
+            $app_logger.debug("Delta_t: "+delta_t.to_s)
+            @do_limited_rate_logging = false
+          end
+          @heat_wiper.set_water_temp(7.0)
+          if @heater_relay.state != :off
+            $app_logger.debug("Turning off heater relay")
+            @heater_relay.off
+          end
+          if @hydr_shift_pump.state != :off
+            $app_logger.debug("Turning off hydr shift pump")
+            @hydr_shift_pump.off
+          end
         end
         # Raise an exception - no matching source state
       else
