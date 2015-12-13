@@ -455,7 +455,7 @@ module BoilerBase
         else
           @mixer_log_rate_limiter += 1
         end
-        
+
         # Adjust mixing motor if error is out of bounds
         if error.abs > @config[:mixer_error_threshold] and calculate_adjustment_time(error.abs) > 0
 
@@ -696,7 +696,7 @@ module BoilerBase
 
       forward_temp = @forward_sensor.temp
       delta_t = @forward_sensor.temp - @return_sensor.temp
-      boiler_on = delta_t < @config[:boiler_on_detector_delta_t_threshold]
+      boiler_on = delta_t < @config[:boiler_on_dhetector_delta_t_threshold]
 
       $app_logger.trace("--------------------------------")
       $app_logger.trace("Relax timer active: "+@relax_timer.sec_left.to_s) if !@relax_timer.expired?
@@ -749,6 +749,10 @@ module BoilerBase
           if @heater_relay.state != :on
             $app_logger.debug("Turning on heater relay")
             @heater_relay.on
+          end
+          if @hydr_shift_pump.state != :on
+            $app_logger.debug("Turning on hydr shift pump")
+            @hydr_shift_pump.on
           end
         end
 
@@ -807,6 +811,10 @@ module BoilerBase
           if @heater_relay.state != :on
             $app_logger.debug("Turning on heater relay")
             @heater_relay.on
+          end
+          if @hydr_shift_pump.state != :on
+            $app_logger.debug("Turning on hydr shift pump")
+            @hydr_shift_pump.on
           end
         end
 
@@ -869,9 +877,13 @@ module BoilerBase
           $app_logger.debug("Turning off heater relay")
           @heater_relay.off
         end
+        if @hydr_shift_pump.state != :off
+          $app_logger.debug("Turning off hydr shift pump")
+          @hydr_shift_pump.off
+        end
         # Raise an exception - no matching source state
       else
-        raise "Unexpected logical relay state in set_heating_feed: "+@relay_state.to_s
+        raise "Unexpected relay state in set_heating_feed: "+@relay_state.to_s
       end
     end # of set_heating_feed
 
