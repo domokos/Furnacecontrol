@@ -166,11 +166,13 @@ class Heating_State_Machine
     $config[:six_owbus_dev_addr], $config[:upstairs_floor_valve_reg_addr], DRY_RUN)
 
     # Create buffer direction shift valves
-    @forward_valve = BusDevice::Switch.new("Buffertop valve","At the top of the buffer - Contact 2 on main board",
+    @forward_valve = BusDevice::Switch.new("Forward three-way valve","After the boiler+buffer joint - Contact 2 on main board",
     $config[:main_controller_dev_addr], $config[:forward_valve_reg_addr], DRY_RUN)
     @return_valve = BusDevice::Switch.new("Return valve","Before the buffer cold entry point - Contact 3 on main board",
     $config[:main_controller_dev_addr], $config[:return_valve_reg_addr], DRY_RUN)
-
+    @bypass_valve = BusDevice::Switch.new("Hydraulic shifter bypass valve","After the hydraulic shift - Contact 4 on mixer controller",
+    $config[:mixer_controller_dev_addr], $config[:mixer_hydr_shift_bypass_valve_reg_addr], DRY_RUN)
+      
     # Create heater relay switch
     @heater_relay = BusDevice::Switch.new("Heater relay","Heater contact on main panel",
     $config[:main_controller_dev_addr], $config[:heater_relay_reg_addr], DRY_RUN)
@@ -189,7 +191,7 @@ class Heating_State_Machine
 
     #Create the BufferHeat controller
     @buffer_heater = BoilerBase::BufferHeat.new(@forward_sensor, @upper_buffer_sensor, @lower_buffer_sensor, @return_sensor,
-    @HW_sensor, @forward_valve, @return_valve, @heater_relay, @hydr_shift_pump, @hot_water_pump,
+    @HW_sensor, @forward_valve, @return_valve, @bypass_valve, @heater_relay, @hydr_shift_pump, @hot_water_pump,
     @HW_watertemp, @heating_watertemp)
 
     #Create the Mixer controller

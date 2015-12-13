@@ -517,7 +517,7 @@ module BoilerBase
     # Initialize the buffer taking its sensors and control valves
     def initialize(forward_sensor, upper_sensor, lower_sensor, return_sensor,
       hw_thermostat,
-      forward_valve, return_valve,
+      forward_valve, return_valve, bypass_valve,
       heater_relay, hydr_shift_pump, hw_pump,
       hw_wiper, heat_wiper)
 
@@ -533,6 +533,7 @@ module BoilerBase
       # Valves
       @forward_valve = forward_valve
       @return_valve = return_valve
+      @bypass_valve = bypass_valve
 
       # Pump, heat relay
       @heater_relay = heater_relay
@@ -639,6 +640,8 @@ module BoilerBase
         @forward_valve.off
         moved |= @return_valve.state != :off
         @return_valve.off
+        moved |= @bypass_valve.state != :off
+        @bypass_valve.off
         @relay_state = :direct_boiler
       when :buffer_passthrough
         $app_logger.debug("Setting relays to ':buffer_passthrough'")
@@ -646,6 +649,8 @@ module BoilerBase
         @forward_valve.off
         moved |= @return_valve.state != :on
         @return_valve.on
+        moved |= @bypass_valve.state != :off
+        @bypass_valve.off
         @relay_state = :buffer_passthrough
       when :feed_from_buffer
         $app_logger.debug("Setting relays to ':feed_from_buffer'")
@@ -653,6 +658,8 @@ module BoilerBase
         @forward_valve.on
         moved |= @return_valve.state != :off
         @return_valve.off
+        moved |= @bypass_valve.state != :on
+        @bypass_valve.on
         @relay_state = :feed_from_buffer
       end
 
