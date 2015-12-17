@@ -196,7 +196,7 @@ class Heating_controller
     $app_logger.debug("Mixer controller created")
 
     # Create the heating state machine
-    @heating_sm = BoilerBase::Heating_SM.new
+    @heating_sm = BoilerBase::HeatingSM.new
     @heating_sm.target self
 
     # Define the activating actions of each state

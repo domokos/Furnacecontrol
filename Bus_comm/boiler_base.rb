@@ -7,7 +7,7 @@ require "finite_machine"
 
 module BoilerBase
   # The definition of the heating state machine
-  class Heating_SM < FiniteMachine::Definition
+  class HeatingSM < FiniteMachine::Definition
 
     alias_target :controller
 
