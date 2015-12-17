@@ -35,7 +35,7 @@ end
 
 class Heating_controller
   
-  attr_reader :mixer_controller
+  attr_reader :mixer_controller, :buffer_heater
    
   def initialize(initial_state,initial_mode)
 
@@ -211,7 +211,7 @@ class Heating_controller
       controller.mixer_controller.stop_control
 
       # Make sure the heater is stopped
-      @buffer_heater.set_mode(:off)
+      controller.buffer_heater.set_mode(:off)
 
       # Set the buffer for direct connection
       @buffer_heater.set_relays(:direct_boiler)
