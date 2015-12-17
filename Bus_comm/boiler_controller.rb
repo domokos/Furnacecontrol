@@ -839,7 +839,7 @@ class Heating_controller
 
     $heating_logger.debug("\nExternal temperature: "+@living_floor_thermostat.temp.round(2).to_s)
     $heating_logger.debug("Mode thermostat status: "+@mode_thermostat.state.to_s)
-    $heating_logger.debug("Operating mode: "+@mode.description)
+    $heating_logger.debug("Operating mode: "+@mode.to_s)
     $heating_logger.debug("Need power: "+power_needed[:power].to_s)
 
     $heating_logger.debug("\nHW pump: "+@hot_water_pump.state.to_s)
