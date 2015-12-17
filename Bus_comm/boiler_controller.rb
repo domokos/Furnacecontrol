@@ -196,7 +196,7 @@ class Heating_controller
     $app_logger.debug("Mixer controller created")
 
     # Create the heating state machine
-    @heating_sm = Heating_SM.new
+    @heating_sm = BoilerBase::Heating_SM.new
     @heating_sm.target self
 
     # Define the activating actions of each state
@@ -946,7 +946,7 @@ pid = fork do
     pidfile.close
 
     # Set the initial state
-    boiler_control = Heating_controller(:Off,:Heat)
+    boiler_control = Heating_controller.new(:Off,:Heat)
     $app_logger.info("Controller initialized - starting operation")
 
     begin
