@@ -34,6 +34,9 @@ Signal.trap("URG") do
 end
 
 class Heating_controller
+  
+  attr_reader :mixer_controller
+   
   def initialize(initial_state,initial_mode)
 
     # Init instance variables
@@ -205,7 +208,7 @@ class Heating_controller
       $app_logger.debug("Turning off heating")
 
       # Stop the mixer controller
-      @mixer_controller.stop_control
+      controller.mixer_controller.stop_control
 
       # Make sure the heater is stopped
       @buffer_heater.set_mode(:off)
