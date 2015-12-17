@@ -348,7 +348,7 @@ class Heating_controller
     for i in 1..6 do
       $app_logger.debug("Prefilling sensors. Round: "+i.to_s+" of 6")
       read_sensors
-      temp_power_needed = {:state=>@state.name(),:power=>determine_power_needed}
+      temp_power_needed = {:state=>@heating_sm.current,:power=>determine_power_needed}
       determine_targets(temp_power_needed,temp_power_needed)
       sleep 2
       break if $shutdown_reason != Globals::NO_SHUTDOWN
@@ -443,10 +443,10 @@ class Heating_controller
 
   # The main loop of the controller
   def operate
-    @state_history = Array.new(4,{:state=>@state.name,:power=>determine_power_needed,:timestamp=>Time.now.getlocal(0)})
+    @state_history = Array.new(4,{:state=>@heating_sm.current,:power=>determine_power_needed,:timestamp=>Time.now.getlocal(0)})
 
     prev_power_needed = {:state=>:Off,:power=>:NONE,:timestamp=>Time.now.getlocal(0)}
-    power_needed = {:state=>@state.name(),:power=>determine_power_needed,:timestamp=>Time.now.getlocal(0)}
+    power_needed = {:state=>@heating_sm.current,:power=>determine_power_needed,:timestamp=>Time.now.getlocal(0)}
 
     # Do the main loop until shutdown is requested
     while($shutdown_reason == Globals::NO_SHUTDOWN) do
@@ -463,7 +463,7 @@ class Heating_controller
       # and real heating tartgets if not in dry run
       if !DRY_RUN
         read_sensors
-        temp_power_needed = {:state=>@state.name(),:power=>determine_power_needed,:timestamp=>Time.now.getlocal(0)}
+        temp_power_needed = {:state=>@heating_sm.current,:power=>determine_power_needed,:timestamp=>Time.now.getlocal(0)}
         if temp_power_needed[:state] != power_needed[:state] or temp_power_needed[:power] != power_needed[:power]
           prev_power_needed = power_needed
           power_needed = temp_power_needed
@@ -481,7 +481,7 @@ class Heating_controller
       evaluate_state_change(prev_power_needed,power_needed)
 
       # Conrtol heating when in heating state
-      if @state.name == :Heat
+      if @heating_sm.current == :heating
         # Control heat
         control_heat(prev_power_needed,power_needed)
 
@@ -499,7 +499,7 @@ class Heating_controller
 
       # If magnetic valve movement is required then carry out moving process
       # and reset movement required flag
-      if @moving_valves_required and @state.name == :Off
+      if @moving_valves_required and @heating_sm.current == :off
         do_magnetic_valve_movement
         @moving_valves_required = false
       end
@@ -519,9 +519,9 @@ class Heating_controller
     @HW_thermostat.set_threshold($config[:target_HW_temp])
 
     if @mode_thermostat.is_on?
-      @state.name != :Heat and @mode = :mode_Heat_HW
+      @heating_sm.current != :heating and @mode = :mode_Heat_HW
     else
-      @state.name != :Heat and @mode = :mode_HW
+      @heating_sm.current != :heating and @mode = :mode_HW
     end
 
     case power_needed[:power]
@@ -825,7 +825,7 @@ class Heating_controller
     @logger_timer.reset
 
     $heating_logger.debug("LOGITEM BEGIN @"+Time.now.asctime)
-    $heating_logger.debug("Active state: "+@state.name.to_s)
+    $heating_logger.debug("Active state: "+@heating_sm.current.to_s)
 
     sth=""
     @state_history.each {|e| sth+= ") => ("+e[:state].to_s+","+e[:power].to_s+","+(Time.now.getlocal(0)-e[:timestamp].to_i).strftime("%T")+" ago"}
@@ -912,8 +912,7 @@ class Heating_controller
   end
 
   def shutdown
-    @state = @state_Off
-    @state.activate
+    @heating_sm.turnoff
     $app_logger.info("Shutting down. Shutdown reason: "+$shutdown_reason)
     command="rm -f "+$pidpath
     system(command)

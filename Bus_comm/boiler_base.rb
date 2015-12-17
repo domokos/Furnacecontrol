@@ -15,7 +15,7 @@ module BoilerBase
       event :turnon, :off  => :heating
       event :postheat, :heating => :postheating
       event :posthw,  :heating => :posthwing
-      event :turnoff, [:postheating, :posthwing] => :off
+      event :turnoff, [:postheating, :posthwing, :heating] => :off
       event :init, :none => :off
     }
 
