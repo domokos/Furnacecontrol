@@ -3,38 +3,26 @@ require "/usr/local/lib/boiler_controller/Globals"
 require "/usr/local/lib/boiler_controller/bus_device"
 require "rubygems"
 require "robustthread"
+require "finite_machine"
 
 module BoilerBase
-  # Define the modes of the heating
-  class Mode
-    def initialize(name,description)
-      @name = name
-      @description = description
-    end
-    attr_accessor :description
-  end
+  # The definition of the heating state machine
+  class Heating_SM < FiniteMachine::Definition
 
-  # The class of the heating states
-  class State
-    attr_accessor :description, :name
-    def initialize(name,description)
-      @name = name
-      @description = description
-    end
+    alias_target :controller
 
-    def set_activate(procblock)
-      @procblock = procblock
-    end
+    events {
+      event :turnon, :off  => :heating
+      event :postheat, :heating => :postheating
+      event :posthw,  :heating => :posthwing
+      event :turnoff, [:postheating, :posthwing] => :off
+      event :init, :none => :off
+    }
 
-    def activate
-      if @procblock.nil?
-        $logger.error("No activation action set for state "+@name)
-        return nil
-      else
-        @procblock.call
-        return self
-      end
-    end
+    callbacks {
+      on_before {|event| $app_logger.debug"Heating state change from #{event.from} to #{event.to}"}
+    }
+
   end
 
   # A low pass filter to filter out jitter from sensor data

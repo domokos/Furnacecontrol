@@ -33,7 +33,7 @@ Signal.trap("URG") do
   $heating_logger.level = Logger::DEBUG
 end
 
-class Heating_State_Machine
+class Heating_controller
   def initialize(initial_state,initial_mode)
 
     # Init instance variables
@@ -47,11 +47,6 @@ class Heating_State_Machine
     read_config
 
     @logger_timer = Globals::TimerSec.new($config[:logger_delay_whole_sec],"Logging Delay Timer")
-
-    # Define the operation modes of the boiler
-    @mode_Off = BoilerBase::Mode.new("Switched off","Switched off state, frost and anti-legionella protection")
-    @mode_HW = BoilerBase::Mode.new("HW","Hot water only")
-    @mode_Heat_HW = BoilerBase::Mode.new("Heat","Heating and hot water")
 
     # Create pumps
     @radiator_pump = BusDevice::Switch.new("Radiator pump", "In the basement boiler room - Contact 4 on Main Panel",
@@ -172,7 +167,7 @@ class Heating_State_Machine
     $config[:main_controller_dev_addr], $config[:return_valve_reg_addr], DRY_RUN)
     @bypass_valve = BusDevice::Switch.new("Hydraulic shifter bypass valve","After the hydraulic shift - Contact 4 on mixer controller",
     $config[:mixer_controller_dev_addr], $config[:mixer_hydr_shift_bypass_valve_reg_addr], DRY_RUN)
-      
+
     # Create heater relay switch
     @heater_relay = BusDevice::Switch.new("Heater relay","Heater contact on main panel",
     $config[:main_controller_dev_addr], $config[:heater_relay_reg_addr], DRY_RUN)
@@ -200,17 +195,14 @@ class Heating_State_Machine
     @mixer_controller = BoilerBase::Mixer_control.new(@mixer_sensor,@cw_switch,@ccw_switch)
     $app_logger.debug("Mixer controller created")
 
-    # Define the states of the heating
-    @state_Off = BoilerBase::State.new(:Off,"Boiler switched off")
-    @state_Heat = BoilerBase::State.new(:Heat,"Heating to the target temperature with external sensor based heating power control")
-    @state_Postheat = BoilerBase::State.new(:Postheat,"Post ciculation with heating")
-    @state_PostHW = BoilerBase::State.new(:PostHW,"Post circulation w/o heating")
+    # Create the heating state machine
+    @heating_sm = Heating_SM.new
+    @heating_sm.target self
 
     # Define the activating actions of each state
     # Activation actions for Off satate
-    @state_Off.set_activate(
-    proc {
-      $app_logger.debug("Activating \"Off\" state")
+    @heating_sm.on_enter_off do |event|
+      $app_logger.debug("Turning off heating")
 
       # Stop the mixer controller
       @mixer_controller.stop_control
@@ -247,18 +239,16 @@ class Heating_State_Machine
 
       # Wait for the delayed closure to happen
       sleep 3
-    })
+    end
 
     # Activation actions for Heating
-    @state_Heat.set_activate(
-    proc {
+    @heating_sm.on_enter_heating do |event|
       $app_logger.debug("Activating \"Heat\" state")
       # Do not control pumps or valves
-    })
+    end
 
     # Activation actions for Post circulation heating
-    @state_Postheat.set_activate(
-    proc {
+    @heating_sm.on_enter_postheating do |event|
       $app_logger.debug("Activating \"Postheat\" state")
       # Make sure the heater is stopped
       @buffer_heater.set_mode(:off)
@@ -295,12 +285,10 @@ class Heating_State_Machine
       @basement_floor_valve.delayed_close
       @living_floor_valve.delayed_close
       @upstairs_floor_valve.delayed_close
+    end
 
-    })
-
-    # Activation actions for Post circulation HW only
-    @state_PostHW.set_activate(
-    proc {
+    # Activation actions for Post circulation heating
+    @heating_sm.on_enter_posthwing do |event|
       $app_logger.debug("Activating \"PostHW\" state")
 
       # Make sure the heater is stopped
@@ -335,27 +323,18 @@ class Heating_State_Machine
       @basement_radiator_valve.delayed_close
       @living_floor_valve.delayed_close
       @upstairs_floor_valve.delayed_close
-
-    })
+    end
 
     # Set the initial state
-    if (initial_state == :Off)
-      @state = @state_Off
-      @state.activate
-
-      @hist_state1 = @hist_state2 = @hist_state3 = @hist_state4 = @state
-    else
-      $app_logger.fatal("Illegal initial state. Aborting.")
-      exit
-    end
+    @heating_sm.init
 
     # Set the initial mode
     if initial_mode == :Off
-      @mode = @mode_Off
+      @mode = :mode_Off
     elsif initial_mode == :HW
-      @mode = @mode_HW
+      @mode = :mode_HW
     elsif initial_mode == :Heat
-      @mode = @mode_Heat_HW
+      @mode = :mode_Heat_HW
     else
       $app_logger.fatal("Illegal initial mode. Aborting.")
       exit
@@ -371,67 +350,59 @@ class Heating_State_Machine
       break if $shutdown_reason != Globals::NO_SHUTDOWN
     end
 
-    $app_logger.debug("Boiler controller initialized initial state set to: "+@state.description+", Initial mode set to: "+@mode.description)
+    $app_logger.debug("Boiler controller initialized initial state set to: "+@heating_sm.current+", Initial mode set to: "+@mode.to_s)
 
   end
 
   # The function evaluating states and performing necessary
   # transitions basd on the current value of sensors
   def evaluate_state_change(prev_power_needed,power_needed)
-    case @state.name
-    # The evaluation of the Off state
-    when :Off
+    case @heating_sm.current
+    # The evaluation of the off state
+    when :off
       # Evaluating Off state:
-      # If need power then -> Heat
-      # If forward temp increases and forward temp above HW temp + 7 C in HW mode then -> PostHW
-      # If forward temp increases and forward temp above HW temp + 7 C not in HW mode then -> PostHeat
-      # Else: Stay in Off state
+      # If need power then -> heating
+      # If forward temp increases and forward temp above HW temp + 7 C in HW mode then -> posthwing
+      # If forward temp increases and forward temp above HW temp + 7 C not in HW mode then -> postheating
+      # Else: Stay in off state
 
       if power_needed[:power] != :NONE
-        $app_logger.debug("Decision: Need power changing state Off => Heat")
-        $app_logger.debug("power_needed: "+power_needed[:power].to_s)
-        @state = @state_Heat
-        @state.activate()
+        $app_logger.debug("Need power is : "+power_needed[:power].to_s)
+        @heating_sm.turnon
       else
         $app_logger.trace("Decision: No power requirement - not changing state")
       end
 
-    when :Heat
+    when :heating
       # Evaluating Heat state:
       # Control valves and pumps based on measured temperatures
       # Control boiler wipers to maintain target boiler temperature
-      # If not need power anymore then -> Postheat or PostHW based on operating mode
+      # If not need power anymore then -> postheating or posthw based on operating mode
 
-      if power_needed[:power] == :NONE and @mode == @mode_HW
-        $app_logger.debug("Decision: No more power needed in HW mode - changing state Heat => PostHW")
-        $app_logger.debug("power_needed: NONE")
-        @state = @state_PostHW
-        @state.activate()
+      if power_needed[:power] == :NONE and @mode == :mode_HW
+        $app_logger.debug("Need power is: NONE")
+        @heating_sm.posthw
       elsif power_needed[:power] == :NONE
-        $app_logger.debug("Decision: No more power needed not in HW mode - changing state Heat => Postheat")
-        $app_logger.debug("power_needed: NONE")
-        @state = @state_Postheat
-        @state.activate()
+        $app_logger.debug("Need power is: NONE")
+        @heating_sm.postheat
       end
 
-    when :Postheat
-      # Evaluating Postheat state:
-      # If Delta T on the Furnace drops below 5 C then -> Off
-      # If need power is not false then -> Heat
-      # If Delta T on the Furnace drops below 5 C then -> Off
+    when :postheating
+      # Evaluating postheating state:
+      # If Delta T on the Furnace drops below 5 C then -> off
+      # If need power is not false then -> heat
+      # If Delta T on the Furnace drops below 5 C then -> off
 
       if @forward_temp - @return_temp < 5.0
-        $app_logger.debug("Decision: Delta T on the Furnace dropped below 5 C - changing state Postheat => Off")
-        @state = @state_Off
-        @state.activate()
+        $app_logger.debug("Delta T on the Furnace dropped below 5 C")
+        @heating_sm.turnoff
         # If need power then -> Heat
       elsif power_needed[:power] != :NONE
-        $app_logger.debug("Decision: Need power is "+power_needed[:power].to_s+" - changing state Postheat => Heat")
-        @state = @state_Heat
-        @state.activate()
+        $app_logger.debug("Need power is "+power_needed[:power].to_s)
+        @heating_sm.turnon
       end
 
-    when :PostHW
+    when :posthwing
       # Evaluating PostHW state:
       # If Delta T on the Furnace drops below 5 C then -> Off
       # If Furnace temp below HW temp + 4 C then -> Off
@@ -439,19 +410,16 @@ class Heating_State_Machine
       # If Delta T on the Furnace drops below 5 C then -> Off
 
       if @forward_temp - @return_temp < 5.0
-        $app_logger.debug("Decision: Delta T on the Furnace dropped below 5 C - changing state PostHW => Off")
-        @state = @state_Off
-        @state.activate()
+        $app_logger.debug("Delta T on the Furnace dropped below 5 C")
+        @heating_sm.turnoff
         # If Furnace temp below HW temp + 4 C then -> Off
       elsif @forward_temp < @HW_thermostat.temp + 4
-        $app_logger.debug("Decision: Furnace temp below HW temp + 4 C  - changing state PostHW => Off")
-        @state = @state_Off
-        @state.activate()
+        $app_logger.debug("Furnace temp below HW temp + 4 C")
+        @heating_sm.turnoff
         # If need power then -> Heat
       elsif power_needed[:power] != :NONE
-        $app_logger.debug("Decision: Need power is "+power_needed[:power].to_s+" - changing state PostHW => Heat")
-        @state = @state_Heat
-        @state.activate()
+        $app_logger.debug("Need power is "+power_needed[:power].to_s)
+        @heating_sm.turnoff
       end
     end
   end
@@ -547,9 +515,9 @@ class Heating_State_Machine
     @HW_thermostat.set_threshold($config[:target_HW_temp])
 
     if @mode_thermostat.is_on?
-      @state.name != :Heat and @mode = @mode_Heat_HW
+      @state.name != :Heat and @mode = :mode_Heat_HW
     else
-      @state.name != :Heat and @mode = @mode_HW
+      @state.name != :Heat and @mode = :mode_HW
     end
 
     case power_needed[:power]
@@ -702,17 +670,17 @@ class Heating_State_Machine
   def determine_power_needed
     if @moving_valves_required
       return :NONE
-    elsif @mode != @mode_Off and @HW_thermostat.is_on?
+    elsif @mode != :mode_Off and @HW_thermostat.is_on?
       # Power needed for hot water - overrides Heat power need
       return :HW
-    elsif @mode == @mode_Heat_HW and (@upstairs_thermostat.is_on? or \
+    elsif @mode == :mode_Heat_HW and (@upstairs_thermostat.is_on? or \
     @living_thermostat.is_on? ) and \
     @living_floor_thermostat.is_off? and \
     @upstairs_floor_thermostat.is_off? and \
     @basement_thermostat.is_off?
       # Power needed for heating
       return :RAD
-    elsif @mode == @mode_Heat_HW and (@upstairs_thermostat.is_on? or \
+    elsif @mode == :mode_Heat_HW and (@upstairs_thermostat.is_on? or \
     @living_thermostat.is_on? ) and \
     (@living_floor_thermostat.is_on? or \
     @upstairs_floor_thermostat.is_on? or \
@@ -978,7 +946,7 @@ pid = fork do
     pidfile.close
 
     # Set the initial state
-    boiler_control = Heating_State_Machine.new(:Off,:Heat)
+    boiler_control = Heating_controller(:Off,:Heat)
     $app_logger.info("Controller initialized - starting operation")
 
     begin
