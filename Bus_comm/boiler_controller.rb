@@ -34,9 +34,10 @@ Signal.trap("URG") do
 end
 
 class Heating_controller
-  
-  attr_reader :mixer_controller, :buffer_heater
-   
+
+  attr_reader :mixer_controller, :buffer_heater, :heating_watertemp, :HW_watertemp, :heater_relay
+  attr_reader :radiator_pump, :floor_pump,  :hydr_shift_pump, :hot_water_pump
+  attr_reader :basement_floor_valve, :basement_radiator_valve, :living_floor_valve, :upstairs_floor_valve
   def initialize(initial_state,initial_mode)
 
     # Init instance variables
@@ -214,31 +215,31 @@ class Heating_controller
       controller.buffer_heater.set_mode(:off)
 
       # Set the buffer for direct connection
-      @buffer_heater.set_relays(:direct_boiler)
+      controller.buffer_heater.set_relays(:direct_boiler)
 
       # Set water temperature of the boiler low
-      @heating_watertemp.set_water_temp(5.0)
+      controller.heating_watertemp.set_water_temp(5.0)
 
       # Set the water temp in the HW tank high
-      @HW_watertemp.set_water_temp(65.0)
+      controller.HW_watertemp.set_water_temp(65.0)
 
       # Turn off heater relay
-      @heater_relay.off
+      controller.heater_relay.off
 
       # Wait before turning pumps off to make sure we do not lose circulation
       sleep $config[:shutdown_delay]
 
       # Turn off all pumps
-      @radiator_pump.off
-      @floor_pump.off
-      @hydr_shift_pump.off
-      @hot_water_pump.off
+      controller.radiator_pump.off
+      controller.floor_pump.off
+      controller.hydr_shift_pump.off
+      controller.hot_water_pump.off
 
       # Close all valves
-      @basement_floor_valve.delayed_close
-      @basement_radiator_valve.delayed_close
-      @living_floor_valve.delayed_close
-      @upstairs_floor_valve.delayed_close
+      controller.basement_floor_valve.delayed_close
+      controller.basement_radiator_valve.delayed_close
+      controller.living_floor_valve.delayed_close
+      controller.upstairs_floor_valve.delayed_close
 
       # Wait for the delayed closure to happen
       sleep 3
@@ -254,40 +255,40 @@ class Heating_controller
     @heating_sm.on_enter_postheating do |event|
       $app_logger.debug("Activating \"Postheat\" state")
       # Make sure the heater is stopped
-      @buffer_heater.set_mode(:off)
+      controller.buffer_heater.set_mode(:off)
 
       # Set the buffer for direct connection
-      @buffer_heater.set_relays(:direct_boiler)
+      controller.buffer_heater.set_relays(:direct_boiler)
 
       # Stop the mixer controller
-      @mixer_controller.stop_control
+      controller.mixer_controller.stop_control
 
       # Set water temperature of the boiler low
-      @heating_watertemp.set_water_temp(5.0)
+      controller.heating_watertemp.set_water_temp(5.0)
 
       # Set the water temp in the HW tank high
-      @HW_watertemp.set_water_temp(65.0)
+      controller.HW_watertemp.set_water_temp(65.0)
 
       # Turn off heater relay
-      @heater_relay.off
+      controller.heater_relay.off
 
       # All radiator valves open
-      @basement_radiator_valve.open
+      controller.basement_radiator_valve.open
 
       # Radiator pumps on
-      @hydr_shift_pump.on
-      @radiator_pump.on
+      controller.hydr_shift_pump.on
+      controller.radiator_pump.on
 
       # Wait before turning pumps off to make sure we do not lose circulation
       sleep $config[:circulation_maintenance_delay]
 
-      @floor_pump.off
-      @hot_water_pump.off
+      controller.floor_pump.off
+      controller.hot_water_pump.off
 
       # All floor valves closed
-      @basement_floor_valve.delayed_close
-      @living_floor_valve.delayed_close
-      @upstairs_floor_valve.delayed_close
+      controller.basement_floor_valve.delayed_close
+      controller.living_floor_valve.delayed_close
+      controller.upstairs_floor_valve.delayed_close
     end
 
     # Activation actions for Post circulation heating
@@ -295,37 +296,37 @@ class Heating_controller
       $app_logger.debug("Activating \"PostHW\" state")
 
       # Make sure the heater is stopped
-      @buffer_heater.set_mode(:off)
+      controller.buffer_heater.set_mode(:off)
 
       # Set the buffer for direct connection
-      @buffer_heater.set_relays(:direct_boiler)
+      controller.buffer_heater.set_relays(:direct_boiler)
 
       # Stop the mixer controller
-      @mixer_controller.stop_control
+      controller.mixer_controller.stop_control
 
       # Set water temperature of the boiler low
-      @heating_watertemp.set_water_temp(5.0)
+      controller.heating_watertemp.set_water_temp(5.0)
 
       # Set the water temp in the HW tank high
-      @HW_watertemp.set_water_temp(65.0)
+      controller.HW_watertemp.set_water_temp(65.0)
 
       # Turn off heater relay
-      @heater_relay.off
+      controller.heater_relay.off
 
-      @hot_water_pump.on
+      controller.hot_water_pump.on
       # Wait before turning pumps off to make sure we do not lose circulation
       sleep $config[:circulation_maintenance_delay]
 
       # Only HW pump on
-      @radiator_pump.off
-      @floor_pump.off
-      @hydr_shift_pump.off
+      controller.radiator_pump.off
+      controller.floor_pump.off
+      controller.hydr_shift_pump.off
 
       # All valves are closed
-      @basement_floor_valve.delayed_close
-      @basement_radiator_valve.delayed_close
-      @living_floor_valve.delayed_close
-      @upstairs_floor_valve.delayed_close
+      controller.basement_floor_valve.delayed_close
+      controller.basement_radiator_valve.delayed_close
+      controller.living_floor_valve.delayed_close
+      controller.upstairs_floor_valve.delayed_close
     end
 
     # Set the initial state
