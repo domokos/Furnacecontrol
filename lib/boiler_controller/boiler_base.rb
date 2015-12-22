@@ -780,7 +780,7 @@ module BoilerBase
       # - move relays to boiler direct
       # - start the boiler
       # - Start the hydr shift pump
-      @buffer_sm.on_enter_direct do |event|
+      @buffer_sm.on_enter_directheat do |event|
         buffer.hw_wiper.set_water_temp(65.0)
         buffer.set_relays(:direct)
         if buffer.heater_relay.state != :on

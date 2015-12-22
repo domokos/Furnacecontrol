@@ -215,7 +215,7 @@ class Heating_controller
       controller.buffer_heater.set_mode(:off)
 
       # Set the buffer for direct connection
-      controller.buffer_heater.set_relays(:direct_boiler)
+      controller.buffer_heater.set_relays(:direct)
 
       # Set water temperature of the boiler low
       controller.heating_watertemp.set_water_temp(5.0)
@@ -258,7 +258,7 @@ class Heating_controller
       controller.buffer_heater.set_mode(:off)
 
       # Set the buffer for direct connection
-      controller.buffer_heater.set_relays(:direct_boiler)
+      controller.buffer_heater.set_relays(:direct)
 
       # Stop the mixer controller
       controller.mixer_controller.stop_control
@@ -299,7 +299,7 @@ class Heating_controller
       controller.buffer_heater.set_mode(:off)
 
       # Set the buffer for direct connection
-      controller.buffer_heater.set_relays(:direct_boiler)
+      controller.buffer_heater.set_relays(:direct)
 
       # Stop the mixer controller
       controller.mixer_controller.stop_control
