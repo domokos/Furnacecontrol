@@ -333,7 +333,22 @@ module BoilerBase
       end
     end
 
+    # Move it to the left
+    def open
+      Thread.new do
+        if @control_mutex.try_lock
+          $app_logger.debug("Control mutex locked in open pulsing cw for 31 secs")
+          @cw_switch.pulse_block(310)
+          @control_mutex.unlock
+          $app_logger.debug("Control mutex unlocked opening thread exiting")
+        end
+      end
+    end
+
     def start_control(delay=0)
+      # Delay starting the controller process if requested
+      sleep delay
+
       # Only start control thread if not yet started
       return unless @control_thread_mutex.try_lock
 
@@ -345,8 +360,6 @@ module BoilerBase
       @control_thread = Thread.new do
         # Acquire lock for controlling switches
         @control_mutex.synchronize do
-          # Delay starting the controller process if requested
-          sleep delay
 
           # Prefill sample buffer to get rid of false values
           @config[:mixer_filter_size].times do

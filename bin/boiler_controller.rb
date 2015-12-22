@@ -559,11 +559,21 @@ class Heating_controller
       @mixer_controller.stop_control
     when :RAD, :RADFLOOR, :FLOOR
       # Set mode and required water temperature of the boiler
-      $app_logger.trace("Setting heater mode to heat")
-      @buffer_heater.set_mode(:heat)
+      if power_needed[:power] == :FLOOR
+        $app_logger.trace("Setting heater mode to :floorheat")
+        @buffer_heater.set_mode(:floorheat)
+      else
+        $app_logger.trace("Setting heater mode to :radheat")
+        @buffer_heater.set_mode(:radheat)
+      end
       $app_logger.trace("Setting heater target temp to: "+@target_boiler_temp.to_s)
       @buffer_heater.set_target(@target_boiler_temp)
-      @mixer_controller.start_control
+      if prev_power_needed[:power] == :HW
+        @mixer_controller.open
+        @mixer_controller.start_control($config[:mixer_start_delay_after_HW])
+      else
+        @mixer_controller.start_control
+      end
     else
       raise "Unexpected power_needed encountered in heating state: "+power_needed[:power].to_s
     end
