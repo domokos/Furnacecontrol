@@ -882,8 +882,6 @@ module BoilerBase
     #
     def evaluate_heater_state_change
 
-      $app_logger.level = Globals::BoilerLogger::TRACE
-
       @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>((@upper_sensor.temp - @config[:buffer_base_temp])*100)/(@lower_sensor.temp - @config[:buffer_base_temp])}
 
       forward_temp = @forward_sensor.temp
