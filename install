@@ -1,6 +1,6 @@
 #!/bin/bash
 
-install -m 755 -o boiler -g root -p bin/boiler_controller.rb /usr/local/bin/
+install -m 644 -o boiler -g root -p bin/boiler_controller.rb /usr/local/bin/
 install -m 644 -o boiler -g root -p etc/boiler_controller/boiler_controller.yml /etc/boiler_controller/ 
-install -m 644 -o boiler -g root -p lib/boiler_controller/* /usr/local/lib/boiler_controller/
+install -m 644 -o boiler -g root -p -d lib/boiler_controller/ /usr/local/lib/boiler_controller/
 
