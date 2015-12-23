@@ -610,9 +610,9 @@ module BoilerBase
 
     # Update classes upon config_change
     def update_config_items
-      @relax_timer.set_sleep_time(@config[:buffer_heater_state_change_relaxation_time])
-      @control_log_rate_limiter.set_sleep_time(@config[:buffer_control_log_period])
-      @heater_log_rate_limiter.set_sleep_time(@config[:buffer_heater_log_period])
+      @relax_timer.set_timer(@config[:buffer_heater_state_change_relaxation_time])
+      @control_log_rate_limiter.set_timer(@config[:buffer_control_log_period])
+      @heater_log_rate_limiter.set_timer(@config[:buffer_heater_log_period])
     end
 
     # Set the operation mode of the buffer. This can take the below values as a parameter:
