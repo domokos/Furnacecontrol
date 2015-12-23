@@ -425,6 +425,9 @@ module BoilerBase
     # The actual control thread
     def do_control_thread
 
+      $app_logger.level = Globals::BoilerLogger::TRACE
+
+      
       start_measurement_thread
       $app_logger.trace("Mixer controller do_control_thread before starting control loop")
 
@@ -1105,7 +1108,7 @@ module BoilerBase
       $app_logger.trace("Boiler state: "+(boiler_on ? "on" : "off"))
 
       case @buffer_sm.current
-      when :directheat
+      when :hydrshift, :directheat
         $app_logger.trace("Forward temp: "+forward_temp.to_s)
         $app_logger.trace("Target temp: "+@target_temp.to_s)
         $app_logger.trace("Threshold forward_above_target: "+@config[:forward_above_target].to_s)
