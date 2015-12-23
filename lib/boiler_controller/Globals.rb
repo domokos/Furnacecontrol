@@ -105,7 +105,7 @@ module Globals
       @sec_left = @sec_to_sleep
       @timer_thread = Thread.new do
         Thread.current["thread_name"] = @name
-        @mod_mutex.synchronize{my_sec = @sec_left}
+        @mod_mutex.synchronize{ my_sec = @sec_left }
         while my_sec > 0
           sleep(1)
           @mod_mutex.synchronize do
@@ -117,12 +117,12 @@ module Globals
     end
 
     def sec_left()
-      @mod_mutex.synchronize{my_sec = @sec_left}
+      @mod_mutex.synchronize{ my_sec = @sec_left }
       return my_sec
     end
 
     def expired?
-      @mod_mutex.synchronize{my_sec = @sec_left}
+      @mod_mutex.synchronize{ my_sec = @sec_left }
       return my_sec == 0
     end
 
