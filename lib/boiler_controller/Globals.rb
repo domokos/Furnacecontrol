@@ -94,6 +94,7 @@ module Globals
       @sec_to_sleep = sec_to_sleep
       @timer_thread = nil
       @sec_left = 0
+      @mod_mutex = Mutex.new
     end
 
     def set_sleep_time(sec_to_sleep)
@@ -104,19 +105,25 @@ module Globals
       @sec_left = @sec_to_sleep
       @timer_thread = Thread.new do
         Thread.current["thread_name"] = @name
-        while @sec_left > 0
+        @mod_mutex.synchronize{my_sec = @sec_left}
+        while my_sec > 0
           sleep(1)
-          @sec_left = @sec_left - 1
+          @mod_mutex.synchronize do
+            @sec_left = @sec_left - 1
+            my_sec = @sec_left
+          end
         end
       end
     end
 
     def sec_left()
-      return @sec_left
+      @mod_mutex.synchronize{my_sec = @sec_left}
+      return my_sec
     end
 
     def expired?
-      return @sec_left == 0
+      @mod_mutex.synchronize{my_sec = @sec_left}
+      return my_sec == 0
     end
 
     def reset
@@ -166,7 +173,6 @@ module Globals
         @timer_thread.kill
         @timer_thread = nil
       end
-      @sec_left=0
     end
   end
 

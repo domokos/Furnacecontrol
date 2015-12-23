@@ -1076,7 +1076,6 @@ module BoilerBase
     end # of stop_control_thread
 
     def controller_log
-      $app_logger.debug("Heater mode: "+@mode.to_s)
       if @control_log_rate_limiter.expired?
         do_limited_logging = true
         @control_log_rate_limiter.reset
