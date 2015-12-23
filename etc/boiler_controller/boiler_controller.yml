@@ -66,8 +66,8 @@
 :three_way_movement_time: 10
 :buffer_heat_control_loop_delay: 2
 :buffer_base_temp: 20.0
-:buffer_heater_log_period: 20
-:buffer_control_log_period: 20
+:buffer_heater_log_period: 30
+:buffer_control_log_period: 30
 #
 # Heat initialization constants
 :init_buffer_reqd_temp_reserve: 3.0

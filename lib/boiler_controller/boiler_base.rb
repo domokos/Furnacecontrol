@@ -888,7 +888,7 @@ module BoilerBase
       delta_t = @forward_sensor.temp - @return_sensor.temp
       boiler_on = delta_t < @config[:boiler_on_detector_delta_t_threshold] and
 
-      feed_log(forward_temp, delta_t,boiler_on)
+      feed_log(forward_temp, delta_t, boiler_on)
 
       # Evaluate Direct Boiler states
       case @buffer_sm.current
@@ -1076,6 +1076,7 @@ module BoilerBase
     end # of stop_control_thread
 
     def controller_log
+      $app_logger.debug("Heater mode: "+@mode.to_s)
       if @control_log_rate_limiter.expired?
         do_limited_logging = true
         @control_log_rate_limiter.reset
@@ -1084,7 +1085,7 @@ module BoilerBase
       end
 
       if do_limited_logging
-        $app_logger.trace("Rate limited control logging\nHeater control mode not changed, mode is: "+@mode.to_s)
+        $app_logger.debug("Heater mode: "+@mode.to_s)
       end
     end
 
@@ -1111,7 +1112,11 @@ module BoilerBase
         $app_logger.trace("Threshold forward_above_target: "+@config[:forward_above_target].to_s)
         $app_logger.trace("Delta_t: "+delta_t.to_s)
         if do_limited_logging
-          $app_logger.debug("Direct boiler. Target: "+@target_temp.to_s)
+          if @buffer_sm.current == :directheat
+            $app_logger.debug("Direct boiler heating. Target: "+@target_temp.to_s)
+          else
+            $app_logger.debug("HydrShift heating. Target: "+@target_temp.to_s)
+          end
           $app_logger.debug("Forward temp: "+forward_temp.to_s)
           $app_logger.debug("Delta_t: "+delta_t.to_s)
         end
