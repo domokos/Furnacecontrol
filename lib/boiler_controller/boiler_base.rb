@@ -1076,6 +1076,7 @@ module BoilerBase
     end # of stop_control_thread
 
     def controller_log
+      do_limited_logging = false
       if @control_log_rate_limiter.expired?
         do_limited_logging = true
         @control_log_rate_limiter.reset
@@ -1090,7 +1091,7 @@ module BoilerBase
 
     # Feed logging
     def feed_log(forward_temp, delta_t,boiler_on)
-
+      do_limited_logging = false
       if @heater_log_rate_limiter.expired?
         do_limited_logging = true
         @heater_log_rate_limiter.reset
