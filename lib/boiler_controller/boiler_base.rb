@@ -425,9 +425,6 @@ module BoilerBase
     # The actual control thread
     def do_control_thread
 
-      $app_logger.level = Globals::BoilerLogger::TRACE
-
-      
       start_measurement_thread
       $app_logger.trace("Mixer controller do_control_thread before starting control loop")
 
