@@ -570,9 +570,6 @@ module BoilerBase
       @hw_wiper = hw_wiper
       @heat_wiper = heat_wiper
 
-      # The control thread
-      @control_thread = nil
-
       # This one ensures that there is only one control thread running
       @control_mutex = Mutex.new
 
@@ -741,7 +738,6 @@ module BoilerBase
       # - Turn off HW production of boiler
       # - Turn off the heater relay
       @buffer_sm.on_enter_off do |event|
-        buffer.hw_wiper.set_water_temp(65.0)
         buffer.set_relays(:direct)
         if  buffer.heater_relay.state == :on
           $app_logger.debug("Turning off heater relay")
@@ -758,7 +754,7 @@ module BoilerBase
       # - start the boiler
       # - Start the hydr shift pump
       @buffer_sm.on_enter_hydrshift do |event|
-        buffer.hw_wiper.set_water_temp(65.0)
+        buffer.heat_wiper.set_water_temp(buffer.target_temp)
         buffer.set_relays(:hydr_shifted)
         if buffer.hydr_shift_pump.state != :on
           $app_logger.debug("Turning on hydr shift pump")
@@ -781,7 +777,7 @@ module BoilerBase
       # - start the boiler
       # - Start the hydr shift pump
       @buffer_sm.on_enter_directheat do |event|
-        buffer.hw_wiper.set_water_temp(65.0)
+        buffer.heat_wiper.set_water_temp(buffer.target_temp)
         buffer.set_relays(:direct)
         if buffer.heater_relay.state != :on
           $app_logger.debug("Turning on heater relay")
@@ -800,7 +796,6 @@ module BoilerBase
       # On entering heating from buffer set relays and turn off heating
       # - Turn off HW production of boiler
       @buffer_sm.on_enter_frombuffer do |event|
-        buffer.hw_wiper.set_water_temp(65.0)
         if buffer.heater_relay.state != :off
           $app_logger.debug("Turning off heater relay")
           buffer.heater_relay.off
@@ -827,7 +822,7 @@ module BoilerBase
       # - turn on heating
       # - turn on hydr shift pump
       @buffer_sm.on_enter_bufferfill do |event|
-        buffer.hw_wiper.set_water_temp(65.0)
+        buffer.heat_wiper.set_water_temp(buffer.target_temp+buffer.config[:buffer_passthrough_overshoot])
         buffer.set_relays(:buffer_passthrough)
         if buffer.hydr_shift_pump.state != :on
           $app_logger.debug("Turning on hydr shift pump")
@@ -886,8 +881,8 @@ module BoilerBase
 
       forward_temp = @forward_sensor.temp
       delta_t = @forward_sensor.temp - @return_sensor.temp
-      boiler_on = delta_t > @config[:boiler_on_detector_delta_t_threshold] and 
-        forward_temp < @target_temp +  @config[:boiler_on_detector_max_target_overshoot]
+      boiler_on = delta_t > @config[:boiler_on_detector_delta_t_threshold] and
+      forward_temp < @target_temp +  @config[:boiler_on_detector_max_target_overshoot]
 
       feed_log(forward_temp, delta_t, boiler_on)
 
@@ -1063,12 +1058,19 @@ module BoilerBase
 
     # Signal the control thread to stop
     def stop_control_thread
+
+      $app_logger.debug("Heater stop_control_thread called")
+
       # Only stop the control therad if it is alive
       return if !@control_mutex.locked? or @control_thread == nil
 
+      $app_logger.debug("Control thread running signalling it to stop")
+
       # Signal control thread to exit
       @stop_control.lock
+
       # Wait for the thread to exit
+      $app_logger.debug("Waiting control thread to exit")
       @control_thread.join
 
       # Unlock the thread lock so a new call to start_control_thread

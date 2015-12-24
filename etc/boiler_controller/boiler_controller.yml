@@ -27,7 +27,7 @@
 # Operation delays
 :logger_delay_whole_sec: 1
 :main_loop_delay: 1
-:circulation_maintenance_delay: 5
+:circulation_maintenance_delay: 8
 :shutdown_delay: 10
 #
 # HW temp shift.
