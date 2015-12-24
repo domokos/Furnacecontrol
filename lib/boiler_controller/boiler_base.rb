@@ -880,7 +880,9 @@ module BoilerBase
 
       forward_temp = @forward_sensor.temp
       delta_t = @forward_sensor.temp - @return_sensor.temp
-      boiler_on = (delta_t > @config[:boiler_on_detector_delta_t_threshold]) and (forward_temp < (@target_temp +  @config[:boiler_on_detector_max_target_overshoot]))
+      boiler_on = true
+      boiler_on = (delta_t > @config[:boiler_on_detector_delta_t_threshold]) and
+      (forward_temp < (@target_temp+@config[:boiler_on_detector_max_target_overshoot]))
 
       feed_log(forward_temp, delta_t, boiler_on)
 
