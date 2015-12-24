@@ -880,7 +880,6 @@ module BoilerBase
 
       forward_temp = @forward_sensor.temp
       delta_t = @forward_sensor.temp - @return_sensor.temp
-      boiler_on = true
       boiler_on = (delta_t > @config[:boiler_on_detector_delta_t_threshold]) and
       (forward_temp < (@target_temp+@config[:boiler_on_detector_max_target_overshoot]))
 
@@ -1126,7 +1125,7 @@ module BoilerBase
           end
           $app_logger.debug("Forward temp: "+forward_temp.to_s)
           $app_logger.debug("Delta_t: "+delta_t.to_s)
-          bolier_on ? $app_logger.debug("Boiler detected : on") : $app_logger.debug("Boiler detected : off")
+          boiler_on ? $app_logger.debug("Boiler detected : on") : $app_logger.debug("Boiler detected : off")
         end
       when :bufferfill
         $app_logger.trace("Forward temp: "+forward_temp.to_s)
@@ -1137,7 +1136,7 @@ module BoilerBase
           $app_logger.debug("Buffer Passthrough. Target: "+(@target_temp + @config[:buffer_passthrough_overshoot]).to_s)
           $app_logger.debug("Forward temp: "+forward_temp.to_s)
           $app_logger.debug("Delta_t: "+delta_t.to_s)
-          bolier_on ? $app_logger.debug("Boiler detected : on") : $app_logger.debug("Boiler detected : off")
+          boiler_on ? $app_logger.debug("Boiler detected : on") : $app_logger.debug("Boiler detected : off")
         end
       when :frombuffer
         $app_logger.trace("Forward temp: "+forward_temp.to_s)
