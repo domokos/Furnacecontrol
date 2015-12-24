@@ -999,9 +999,9 @@ module BoilerBase
           @buffer_sm.HW
         when :floorheat, :radheat
 
-          # Resume the state if in HW at the moment
-          if @prev_mode != :off and
-          $app_logger.debug("Prev mode was not off it was: "+@prev_mode.to_s+" - resuming state to: "+@prev_sm_state.to_s)
+          # Resume the state if coming from HW and state was not off before HW
+          if @prev_mode == :HW and @prev_sm_state != :off
+            $app_logger.debug("Ending HW - resuming state to: "+@prev_sm_state.to_s)
             @fm.trigger(@prev_sm_state)
           else
             if @mode == :radheat
