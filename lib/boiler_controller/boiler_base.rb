@@ -806,14 +806,13 @@ module BoilerBase
         else
           $app_logger.debug("Heater relay already off")
         end
-
-        # Setup the relays
-        buffer.set_relays(:feed_from_buffer)
         # Turn off hydr shift pump
         if buffer.hydr_shift_pump.state != :off
           $app_logger.debug("Turning off hydr shift pump")
           buffer.hydr_shift_pump.off
         end
+        # Setup the relays
+        buffer.set_relays(:feed_from_buffer)
       end # of enter frombuffer action
 
       # On entering heating bufferfill
@@ -854,7 +853,7 @@ module BoilerBase
         else
           $app_logger.debug("Hydr shift pump already off")
         end
-        @hw_wiper.set_water_temp(@hw_thermostat.temp)
+        buffer.set_water_temp(buffer.hw_thermostat.temp)
       end # of enter HW action
 
       # On exiting HW
