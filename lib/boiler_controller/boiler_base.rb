@@ -1002,7 +1002,7 @@ module BoilerBase
           # Resume the state if coming from HW and state was not off before HW
           if @prev_mode == :HW and @prev_sm_state != :off
             $app_logger.debug("Ending HW - resuming state to: "+@prev_sm_state.to_s)
-            @fm.trigger(@prev_sm_state)
+            @buffer_sm.trigger(@prev_sm_state)
           else
             if @mode == :radheat
               $app_logger.debug("Starting heating in directheat")
