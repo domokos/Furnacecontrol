@@ -853,14 +853,14 @@ module BoilerBase
         else
           $app_logger.debug("Hydr shift pump already off")
         end
-        buffer.set_water_temp(buffer.hw_thermostat.temp)
+        buffer.hw_wiper.set_water_temp(buffer.hw_thermostat.temp)
       end # of enter HW action
 
       # On exiting HW
       # - stop HW production
       # - Turn off hw pump in a delayed manner
       @buffer_sm.on_exit_HW do
-        @hw_wiper.set_water_temp(65.0)
+        buffer.hw_wiper.set_water_temp(65.0)
         Thread.new do
           sleep buffer.config[:circulation_maintenance_delay]
           buffer.hw_pump.off
