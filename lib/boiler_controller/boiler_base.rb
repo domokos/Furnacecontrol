@@ -1139,6 +1139,11 @@ module BoilerBase
           $app_logger.debug("Feed from buffer. Forward temp: "+forward_temp.to_s)
           $app_logger.debug("Delta_t: "+delta_t.to_s)
         end
+      when :HW
+        if do_limited_logging
+          $app_logger.debug("Forward temp: "+forward_temp.to_s)
+          $app_logger.debug("Delta_t: "+delta_t.to_s)
+        end
       end
     end
 
