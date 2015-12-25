@@ -217,9 +217,6 @@ class Heating_controller
       # Set the buffer for direct connection
       controller.buffer_heater.set_relays(:direct)
 
-      # Set water temperature of the boiler low
-      controller.heating_watertemp.set_water_temp(5.0)
-
       # Set the water temp in the HW tank high
       controller.HW_watertemp.set_water_temp(65.0)
 
@@ -263,9 +260,6 @@ class Heating_controller
       # Stop the mixer controller
       controller.mixer_controller.stop_control
 
-      # Set water temperature of the boiler low
-      controller.heating_watertemp.set_water_temp(5.0)
-
       # Set the water temp in the HW tank high
       controller.HW_watertemp.set_water_temp(65.0)
 
@@ -303,9 +297,6 @@ class Heating_controller
 
       # Stop the mixer controller
       controller.mixer_controller.stop_control
-
-      # Set water temperature of the boiler low
-      controller.heating_watertemp.set_water_temp(5.0)
 
       # Set the water temp in the HW tank high
       controller.HW_watertemp.set_water_temp(65.0)
