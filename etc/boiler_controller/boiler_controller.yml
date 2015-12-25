@@ -82,6 +82,7 @@
 :buffer_passthrough_fwd_temp_limit: 39.0
 :boiler_on_detector_delta_t_threshold: 2.0
 :boiler_on_detector_max_target_overshoot: 5.0
+:boiler_on_detector_min_below_target: 6.0
 :buffer_passtrough_heat_protection_threshold: 2.0
 #
 #
