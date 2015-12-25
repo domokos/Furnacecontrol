@@ -1111,6 +1111,10 @@ module BoilerBase
       $app_logger.trace("SM state: "+@buffer_sm.current.to_s)
       $app_logger.trace("Boiler state: "+(boiler_on ? "on" : "off"))
 
+      $app_logger.debug("Forward temp: "+forward_temp.to_s)
+      $app_logger.debug("Delta_t: "+delta_t.to_s)
+      boiler_on ? $app_logger.debug("Boiler detected : on") : $app_logger.debug("Boiler detected : off")
+
       case @buffer_sm.current
       when :hydrshift, :directheat
         $app_logger.trace("Forward temp: "+forward_temp.to_s)
