@@ -596,10 +596,10 @@ module BoilerBase
       # Create the state machine of the buffer heater
       @buffer_sm = BufferSM.new
       @buffer_sm.target self
-      @buffer_sm.init
       @prev_sm_state = :off
 
       set_sm_actions
+      @buffer_sm.init
 
       @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>((@upper_sensor.temp - @config[:buffer_base_temp])*100)/(@lower_sensor.temp - @config[:buffer_base_temp])}
       @target_temp = 7.0
@@ -882,7 +882,7 @@ module BoilerBase
       delta_t = @forward_sensor.temp - @return_sensor.temp
       boiler_on = (delta_t > @config[:boiler_on_detector_delta_t_threshold]) and
       (forward_temp < (@target_temp+@config[:boiler_on_detector_max_target_overshoot])) and
-      (forward_temp > @target_temp-@config[:boiler_on_detector_min_below_target])
+      (forward_temp > (@target_temp-@config[:boiler_on_detector_min_below_target]))
 
       feed_log(forward_temp, delta_t, boiler_on)
 
