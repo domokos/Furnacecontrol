@@ -603,6 +603,9 @@ module BoilerBase
 
       @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>((@upper_sensor.temp - @config[:buffer_base_temp])*100)/(@lower_sensor.temp - @config[:buffer_base_temp])}
       @target_temp = 7.0
+      @forward_temp = 7.0
+      @delta_t = 0.0
+      @boiler_on = false
     end
 
     # Update classes upon config_change
@@ -633,16 +636,15 @@ module BoilerBase
 
       # Synchronize mode setting to the potentially running control thread
       @modesetting_mutex.synchronize do
-
-        # Start and stop control thread according to the new mode
-        new_mode == :off ? stop_control_thread : start_control_thread
-
         # Maintain a single level mode history and set the mode change flag
         @prev_mode = @mode
         @mode = new_mode
         @mode_changed = true
-
       end # of modesetting mutex sync
+
+      # Start and stop control thread according to the new mode
+      @mode == :off ? stop_control_thread : start_control_thread
+
     end #of set_mode
 
     # Set the required forward water temperature
@@ -878,21 +880,28 @@ module BoilerBase
 
       @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>((@upper_sensor.temp - @config[:buffer_base_temp])*100)/(@lower_sensor.temp - @config[:buffer_base_temp])}
 
-      forward_temp = @forward_sensor.temp
-      delta_t = @forward_sensor.temp - @return_sensor.temp
-      boiler_on = (delta_t > @config[:boiler_on_detector_delta_t_threshold]) and
-      (forward_temp < (@target_temp+@config[:boiler_on_detector_max_target_overshoot])) and
-      (forward_temp > (@target_temp-@config[:boiler_on_detector_min_below_target]))
+      @forward_temp = @forward_sensor.temp
+      @delta_t = @forward_sensor.temp - @return_sensor.temp
+      @boiler_on = ((@delta_t > @config[:boiler_on_detector_delta_t_threshold]) and
+      (@forward_temp < (@target_temp + @config[:boiler_on_detector_max_target_overshoot])) and
+      (@forward_temp > (@target_temp - @config[:boiler_on_detector_min_below_target])))
 
-      feed_log(forward_temp, delta_t, boiler_on)
+        
+      $app_logger.debug("(@delta_t > @config[:boiler_on_detector_delta_t_threshold]): "+(@delta_t > @config[:boiler_on_detector_delta_t_threshold]).to_s)
+      $app_logger.debug("(@forward_temp < (@target_temp + @config[:boiler_on_detector_max_target_overshoot])): "+(@forward_temp < (@target_temp + @config[:boiler_on_detector_max_target_overshoot])).to_s)
+      $app_logger.debug("(@forward_temp > (@target_temp - @config[:boiler_on_detector_min_below_target])): "+(@delta_t > @config[:boiler_on_detector_delta_t_threshold]).to_s)
+        
+        
+        
+      feed_log
 
       # Evaluate Direct Boiler states
       case @buffer_sm.current
       when :hydrshift, :directheat
 
         # Direct Boiler - State change condition evaluation
-        if (forward_temp > @target_temp + @config[:forward_above_target]) and
-        boiler_on and
+        if (@forward_temp > @target_temp + @config[:forward_above_target]) and
+        @boiler_on and
         @relax_timer.expired?
 
           # Too much heat with direct heat - let's either feed from buffer or fill the buffer
@@ -935,8 +944,8 @@ module BoilerBase
           # too hot then start feeding from the buffer.
           # As of now we assume that the boiler is able to generate the output temp requred
           # therefore it is enough to monitor the deltaT to find out if the above condition is met
-        elsif forward_temp > (@target_temp + @config[:buffer_passthrough_overshoot] + @config[:forward_above_target]) and
-        boiler_on and
+        elsif @forward_temp > (@target_temp + @config[:buffer_passthrough_overshoot] + @config[:forward_above_target]) and
+        @boiler_on and
         @relax_timer.expired?
           $app_logger.debug("Overheating - buffer full. State will change from buffer passthrough")
           $app_logger.debug("Decision: Feed from buffer")
@@ -947,7 +956,7 @@ module BoilerBase
           # Decide how ot set relays based on boiler state
         else
           @heat_wiper.set_water_temp(@target_temp + @config[:buffer_passthrough_overshoot])
-          boiler_on ? set_relays(:buffer_passthrough) : set_relays(:hydr_shifted)
+          @boiler_on ? set_relays(:buffer_passthrough) : set_relays(:hydr_shifted)
         end
 
         # Evaluate feed from Buffer state
@@ -958,7 +967,7 @@ module BoilerBase
         # then it needs re-filling. This will ensure an operation of filling the buffer with
         # target+@config[:buffer_passthrough_overshoot] and consuming until target-@config[:buffer_expiry_threshold]
         # The effective hysteresis is therefore @config[:buffer_passthrough_overshoot]+@config[:buffer_expiry_threshold]
-        if forward_temp < @target_temp - @config[:buffer_expiry_threshold]  and @relax_timer.expired?
+        if @forward_temp < @target_temp - @config[:buffer_expiry_threshold]  and @relax_timer.expired?
           $app_logger.debug("Buffer empty - state will change from buffer feed")
 
           # If in radheat mode then go back to direct heat
@@ -978,7 +987,7 @@ module BoilerBase
               $app_logger.debug("Decision: target temp higher than passthrough limit - direct heat")
               @buffer_sm.hydrshift
             end
-          end # of @mode evaluation
+          end # of state evaluation
         else
           # Well nothing needs to be done here at the moment but the block is
         end # of exit criterium evaluation
@@ -1097,7 +1106,7 @@ module BoilerBase
     end
 
     # Feed logging
-    def feed_log(forward_temp, delta_t,boiler_on)
+    def feed_log
       do_limited_logging = false
       if @heater_log_rate_limiter.expired?
         do_limited_logging = true
@@ -1110,50 +1119,50 @@ module BoilerBase
       $app_logger.trace("Relax timer active: "+@relax_timer.sec_left.to_s) if !@relax_timer.expired?
       $app_logger.trace("Relay state: "+@relay_state.to_s)
       $app_logger.trace("SM state: "+@buffer_sm.current.to_s)
-      $app_logger.trace("Boiler state: "+(boiler_on ? "on" : "off"))
+      $app_logger.trace("Boiler state: "+(@boiler_on ? "on" : "off"))
 
-      $app_logger.debug("Forward temp: "+forward_temp.to_s)
-      $app_logger.debug("Delta_t: "+delta_t.to_s)
-      boiler_on ? $app_logger.debug("Boiler detected : on") : $app_logger.debug("Boiler detected : off")
+      $app_logger.debug("Forward temp: "+@forward_temp.to_s)
+      $app_logger.debug("Delta_t: "+@delta_t.to_s)
+      @boiler_on ? $app_logger.debug("Boiler detected : on") : $app_logger.debug("Boiler detected : off")
 
       case @buffer_sm.current
       when :hydrshift, :directheat
-        $app_logger.trace("Forward temp: "+forward_temp.to_s)
+        $app_logger.trace("Forward temp: "+@forward_temp.to_s)
         $app_logger.trace("Target temp: "+@target_temp.to_s)
         $app_logger.trace("Threshold forward_above_target: "+@config[:forward_above_target].to_s)
-        $app_logger.trace("Delta_t: "+delta_t.to_s)
+        $app_logger.trace("Delta_t: "+@delta_t.to_s)
         if do_limited_logging
           if @buffer_sm.current == :directheat
             $app_logger.debug("Direct boiler heating. Target: "+@target_temp.to_s)
           else
             $app_logger.debug("HydrShift heating. Target: "+@target_temp.to_s)
           end
-          $app_logger.debug("Forward temp: "+forward_temp.to_s)
-          $app_logger.debug("Delta_t: "+delta_t.to_s)
-          boiler_on ? $app_logger.debug("Boiler detected : on") : $app_logger.debug("Boiler detected : off")
+          $app_logger.debug("Forward temp: "+@forward_temp.to_s)
+          $app_logger.debug("Delta_t: "+@delta_t.to_s)
+          @boiler_on ? $app_logger.debug("Boiler detected : on") : $app_logger.debug("Boiler detected : off")
         end
       when :bufferfill
-        $app_logger.trace("Forward temp: "+forward_temp.to_s)
+        $app_logger.trace("Forward temp: "+@forward_temp.to_s)
         $app_logger.trace("Reqd./effective target temps: "+@target_temp.to_s+"/"+@heat_wiper.get_target.to_s)
         $app_logger.trace("buffer_passthrough_fwd_temp_limit: "+@config[:buffer_passthrough_fwd_temp_limit].to_s)
-        $app_logger.trace("Delta_t: "+delta_t.to_s)
+        $app_logger.trace("Delta_t: "+@delta_t.to_s)
         if do_limited_logging
           $app_logger.debug("Buffer Passthrough. Target: "+(@target_temp + @config[:buffer_passthrough_overshoot]).to_s)
-          $app_logger.debug("Forward temp: "+forward_temp.to_s)
-          $app_logger.debug("Delta_t: "+delta_t.to_s)
-          boiler_on ? $app_logger.debug("Boiler detected : on") : $app_logger.debug("Boiler detected : off")
+          $app_logger.debug("Forward temp: "+@forward_temp.to_s)
+          $app_logger.debug("Delta_t: "+@delta_t.to_s)
+          @boiler_on ? $app_logger.debug("Boiler detected : on") : $app_logger.debug("Boiler detected : off")
         end
       when :frombuffer
-        $app_logger.trace("Forward temp: "+forward_temp.to_s)
+        $app_logger.trace("Forward temp: "+@forward_temp.to_s)
         $app_logger.trace("Target temp: "+@target_temp.to_s)
         if do_limited_logging
-          $app_logger.debug("Feed from buffer. Forward temp: "+forward_temp.to_s)
-          $app_logger.debug("Delta_t: "+delta_t.to_s)
+          $app_logger.debug("Feed from buffer. Forward temp: "+@forward_temp.to_s)
+          $app_logger.debug("Delta_t: "+@delta_t.to_s)
         end
       when :HW
         if do_limited_logging
-          $app_logger.debug("Forward temp: "+forward_temp.to_s)
-          $app_logger.debug("Delta_t: "+delta_t.to_s)
+          $app_logger.debug("Forward temp: "+@forward_temp.to_s)
+          $app_logger.debug("Delta_t: "+@delta_t.to_s)
         end
       end
     end
