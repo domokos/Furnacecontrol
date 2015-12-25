@@ -207,7 +207,8 @@ class Heating_controller
     # Activation actions for Off satate
     @heating_sm.on_enter_off do |event|
       $app_logger.debug("Turning off heating")
-
+      controller.hw_wiper.set_water_temp(65.0)
+      
       # Stop the mixer controller
       controller.mixer_controller.stop_control
 

@@ -740,6 +740,7 @@ module BoilerBase
       # - Turn off HW production of boiler
       # - Turn off the heater relay
       @buffer_sm.on_enter_off do |event|
+        buffer.hw_wiper.set_water_temp(65.0)
         buffer.set_relays(:direct)
         if  buffer.heater_relay.state == :on
           $app_logger.debug("Turning off heater relay")
