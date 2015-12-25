@@ -35,7 +35,7 @@
 :hw_temp_shift: 6
 #
 # Target water temperature when floor heating only is specified
-:FLOOR_watertemp: 35.0
+:FLOOR_watertemp: 37.5
 #
 # Parameters of target water temperature calculation curve
 # Target water temperature is calculated by the following linear equation:
