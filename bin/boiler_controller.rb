@@ -214,15 +214,8 @@ class Heating_controller
       # Make sure the heater is stopped
       controller.buffer_heater.set_mode(:off)
 
-      # Set the water temp in the HW tank high
-      controller.HW_watertemp.set_water_temp(65.0)
-
-      # Turn off heater relay
-      controller.heater_relay.off
-
       # Set the buffer for direct connection
       controller.buffer_heater.set_relays(:direct)
-
       
       # Wait before turning pumps off to make sure we do not lose circulation
       sleep $config[:shutdown_delay]
@@ -261,12 +254,6 @@ class Heating_controller
       # Stop the mixer controller
       controller.mixer_controller.stop_control
 
-      # Set the water temp in the HW tank high
-      controller.HW_watertemp.set_water_temp(65.0)
-
-      # Turn off heater relay
-      controller.heater_relay.off
-
       # All radiator valves open
       controller.basement_radiator_valve.open
 
@@ -298,12 +285,6 @@ class Heating_controller
 
       # Stop the mixer controller
       controller.mixer_controller.stop_control
-
-      # Set the water temp in the HW tank high
-      controller.HW_watertemp.set_water_temp(65.0)
-
-      # Turn off heater relay
-      controller.heater_relay.off
 
       controller.hot_water_pump.on
       # Wait before turning pumps off to make sure we do not lose circulation
