@@ -35,7 +35,7 @@
 :hw_temp_shift: 6
 #
 # Target water temperature when floor heating only is specified
-:FLOOR_watertemp: 35.0
+:FLOOR_watertemp: 37.5
 #
 # Parameters of target water temperature calculation curve
 # Target water temperature is calculated by the following linear equation:
@@ -83,8 +83,8 @@
 # Heating state change related constants
 :forward_above_target: 3.7
 :min_delta_t_to_maintain: 4.0
-:buffer_passthrough_overshoot: 2.0
-:buffer_expiry_threshold: 3.0
+:buffer_passthrough_overshoot: 3.0
+:buffer_expiry_threshold: 2.0
 :buffer_passthrough_fwd_temp_limit: 40.0
 :boiler_on_detector_delta_t_threshold: 2.0
 :buffer_passtrough_heat_protection_threshold: 2.0
