@@ -636,13 +636,17 @@ module BoilerBase
 
       # Synchronize mode setting to the potentially running control thread
       @modesetting_mutex.synchronize do
+$app_logger.debug("Heater set_mode. Got mutex lock")
         # Maintain a single level mode history and set the mode change flag
         @prev_mode = @mode
         @mode = new_mode
         @mode_changed = true
       end # of modesetting mutex sync
 
+$app_logger.debug("Heater set_mode. Mutex unlocked mode: "+@mode.to_s+" Mode == :off : "+(@mode == :off).to_s)
+
       # Start and stop control thread according to the new mode
+                      
       @mode == :off ? stop_control_thread : start_control_thread
 
     end #of set_mode
@@ -1051,13 +1055,18 @@ module BoilerBase
         while !@stop_control.locked?
           $config_mutex.synchronize {@config = $config.dup}
           @modesetting_mutex.synchronize do
+$app_logger.debug("Mode mutex locked")
             # Update any objects that may use parameters from the newly copied config
             update_config_items
 
             # Perform the actual periodic control loop actions
             do_control
+$app_logger.debug("Mode mutex about to free")
           end
+$app_logger.debug("Before sleeping - mode mutex free")
+          
           sleep @config[:buffer_heat_control_loop_delay] unless @stop_control.locked?
+$app_logger.debug("After sleeping - mode mutex free")
         end
         # Stop heat production of the boiler
         @buffer_sm.off
