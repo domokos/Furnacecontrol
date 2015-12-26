@@ -883,17 +883,13 @@ module BoilerBase
 
       @forward_temp = @forward_sensor.temp
       @delta_t = @forward_sensor.temp - @return_sensor.temp
-      @boiler_on = ((@delta_t > @config[:boiler_on_detector_delta_t_threshold]) and
-      (@forward_temp < (@target_temp + @config[:boiler_on_detector_max_target_overshoot])) and
-      (@forward_temp > (@target_temp - @config[:boiler_on_detector_min_below_target])))
 
-        
-      $app_logger.debug("(@delta_t > @config[:boiler_on_detector_delta_t_threshold]): "+(@delta_t > @config[:boiler_on_detector_delta_t_threshold]).to_s)
-      $app_logger.debug("(@forward_temp < (@target_temp + @config[:boiler_on_detector_max_target_overshoot])): "+(@forward_temp < (@target_temp + @config[:boiler_on_detector_max_target_overshoot])).to_s)
-      $app_logger.debug("(@forward_temp > (@target_temp - @config[:boiler_on_detector_min_below_target])): "+(@delta_t > @config[:boiler_on_detector_delta_t_threshold]).to_s)
-        
-        
-        
+      # For now just leave this logic out - introduce a boiler-on sensor later
+      @boiler_on = true
+      #      @boiler_on = ((@delta_t > @config[:boiler_on_detector_delta_t_threshold]) and
+      #      (@forward_temp < (@target_temp + @config[:boiler_on_detector_max_target_overshoot])) and
+      #      (@forward_temp > (@target_temp - @config[:boiler_on_detector_min_below_target])))
+
       feed_log
 
       # Evaluate Direct Boiler states
@@ -1122,9 +1118,9 @@ module BoilerBase
       $app_logger.trace("SM state: "+@buffer_sm.current.to_s)
       $app_logger.trace("Boiler state: "+(@boiler_on ? "on" : "off"))
 
-      $app_logger.debug("Forward temp: "+@forward_temp.to_s)
-      $app_logger.debug("Delta_t: "+@delta_t.to_s)
-      @boiler_on ? $app_logger.debug("Boiler detected : on") : $app_logger.debug("Boiler detected : off")
+      #      $app_logger.debug("Forward temp: "+@forward_temp.to_s)
+      #      $app_logger.debug("Delta_t: "+@delta_t.to_s)
+      #      @boiler_on ? $app_logger.debug("Boiler detected : on") : $app_logger.debug("Boiler detected : off")
 
       case @buffer_sm.current
       when :hydrshift, :directheat

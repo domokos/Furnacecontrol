@@ -206,35 +206,62 @@ class Heating_controller
     # Define the activating actions of each state
     # Activation actions for Off satate
     @heating_sm.on_enter_off do |event|
-      $app_logger.debug("Turning off heating")
-      controller.HW_watertemp.set_water_temp(65.0)
-      
-      # Stop the mixer controller
-      controller.mixer_controller.stop_control
 
-      # Make sure the heater is stopped
-      controller.buffer_heater.set_mode(:off)
+      # Perform initialization on startup
+      if event.from == :none
+        controller.HW_watertemp.set_water_temp(65.0)
+        controller.heater_relay.off
 
-      # Set the buffer for direct connection
-      controller.buffer_heater.set_relays(:direct)
-      
-      # Wait before turning pumps off to make sure we do not lose circulation
-      sleep $config[:shutdown_delay]
+        # Set the buffer for direct connection
+        controller.buffer_heater.set_relays(:direct)
 
-      # Turn off all pumps
-      controller.radiator_pump.off
-      controller.floor_pump.off
-      controller.hydr_shift_pump.off
-      controller.hot_water_pump.off
+        # Turn off all pumps
+        controller.radiator_pump.off
+        controller.floor_pump.off
+        controller.hydr_shift_pump.off
+        controller.hot_water_pump.off
 
-      # Close all valves
-      controller.basement_floor_valve.delayed_close
-      controller.basement_radiator_valve.delayed_close
-      controller.living_floor_valve.delayed_close
-      controller.upstairs_floor_valve.delayed_close
+        # Close all valves
+        controller.basement_floor_valve.delayed_close
+        controller.basement_radiator_valve.delayed_close
+        controller.living_floor_valve.delayed_close
+        controller.upstairs_floor_valve.delayed_close
 
-      # Wait for the delayed closure to happen
-      sleep 3
+        # Wait for the delayed closure to happen
+        sleep 3
+        
+        # Regular turn off
+      else
+
+        $app_logger.debug("Turning off heating")
+
+        # Stop the mixer controller
+        controller.mixer_controller.stop_control
+
+        # Make sure the heater is stopped
+        controller.buffer_heater.set_mode(:off)
+
+        # Set the buffer for direct connection
+        controller.buffer_heater.set_relays(:direct)
+
+        # Wait before turning pumps off to make sure we do not lose circulation
+        sleep $config[:shutdown_delay]
+
+        # Turn off all pumps
+        controller.radiator_pump.off
+        controller.floor_pump.off
+        controller.hydr_shift_pump.off
+        controller.hot_water_pump.off
+
+        # Close all valves
+        controller.basement_floor_valve.delayed_close
+        controller.basement_radiator_valve.delayed_close
+        controller.living_floor_valve.delayed_close
+        controller.upstairs_floor_valve.delayed_close
+
+        # Wait for the delayed closure to happen
+        sleep 3
+      end
     end
 
     # Activation actions for Heating
