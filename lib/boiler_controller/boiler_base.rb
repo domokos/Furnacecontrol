@@ -725,7 +725,7 @@ $app_logger.debug("Heater set_mode. Mutex unlocked mode: "+@mode.to_s+" Mode == 
       # - Turn off HW production of boiler
       # - Turn off the heater relay
       @buffer_sm.on_enter_off do |event|
-      if even.from == :none
+      if event.from == :none
         $app_logger.debug("Bufferheater initializing")
         buffer.hw_wiper.set_water_temp(65.0)
         buffer.set_relays(:direct)
