@@ -1069,7 +1069,8 @@ module BoilerBase
           $app_logger.debug("After sleeping - mode mutex free")
         end
         # Stop heat production of the boiler
-        @buffer_sm.off
+        $app_logger.debug("Heater control calling @buffer_sm.turnoff")
+        @buffer_sm.turnoff
         $app_logger.debug("Heater control thread exiting")
       end # Of control Thread
 
