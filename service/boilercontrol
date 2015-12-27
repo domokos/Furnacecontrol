@@ -36,7 +36,7 @@ case "$1" in
      ;;
    stop)
      echo -n "Stopping boilercontrol:"
-     killproc -p $PIDFILE -d 20 $BOILERCONTROL
+     killproc -p $PIDFILE -d 60 $BOILERCONTROL
      echo
      exit 0
      ;;
