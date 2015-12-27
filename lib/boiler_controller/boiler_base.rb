@@ -348,9 +348,6 @@ module BoilerBase
 
           # Do the actual control, which will return ending the thread if done
           do_control_thread
-
-          # Clear the control thread
-          @control_thread = nil
         end
       end
     end
