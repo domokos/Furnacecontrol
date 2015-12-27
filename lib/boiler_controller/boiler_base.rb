@@ -302,10 +302,6 @@ module BoilerBase
 
       # Create the log rate limiter
       @mixer_log_rate_limiter = 0
-
-      # Reset the device
-      $app_logger.debug("Mixer controller initialized - calling reset")
-      reset
     end
 
     def temp
@@ -317,32 +313,16 @@ module BoilerBase
       @target_mutex.synchronize {@target_temp = new_target_temp}
     end
 
-    # Move it to the middle
-    def reset
-      Thread.new do
-        if @control_mutex.try_lock
-          $app_logger.debug("Control mutex locked in reset pulsing ccw for 36 secs")
-          @ccw_switch.pulse_block(360)
-          sleep 1
-          $app_logger.debug("Control mutex locked in reset pulsing cw for 15 secs")
-          @cw_switch.pulse_block(150)
-          sleep 1
-          @control_mutex.unlock
-          $app_logger.debug("Control mutex unlocked reset thread exiting")
-        end
-      end
-    end
-
     # Move it to the left
     def open
-      Thread.new do
+      open_thread = Thread.new do
         if @control_mutex.try_lock
           $app_logger.debug("Control mutex locked in open pulsing cw for 31 secs")
           @cw_switch.pulse_block(310)
           @control_mutex.unlock
           $app_logger.debug("Control mutex unlocked opening thread exiting")
         end
-      end
+      end # of open thread
     end
 
     def start_control(delay=0)
@@ -352,7 +332,7 @@ module BoilerBase
       # Only start control thread if not yet started
       return unless @control_thread_mutex.try_lock
 
-      $app_logger.debug("Mixer controller staring control")
+      $app_logger.debug("Mixer controller starting control")
 
       # Clear control thread stop sugnaling mutex
       @stop_control_requested.unlock if @stop_control_requested.locked?

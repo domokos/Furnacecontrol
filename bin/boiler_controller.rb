@@ -974,6 +974,7 @@ pid = fork do
     end
   end
 end
+
 if daemonize
   Process.detach pid
 else
