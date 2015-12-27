@@ -1032,8 +1032,13 @@ $app_logger.debug("Heater set_mode. Mutex unlocked mode: "+@mode.to_s+" Mode == 
         end
         @mode_changed = false
       else
+
+$app_logger.debug("Before controller log")
+        
         controller_log
+$app_logger.debug("Before evaluate_heater_state_change")        
         evaluate_heater_state_change
+$app_logger.debug("After evaluate_heater_state_change")        
       end
     end
 
@@ -1058,6 +1063,7 @@ $app_logger.debug("Heater set_mode. Mutex unlocked mode: "+@mode.to_s+" Mode == 
 $app_logger.debug("Mode mutex locked")
             # Update any objects that may use parameters from the newly copied config
             update_config_items
+$app_logger.debug("Update Config done")
 
             # Perform the actual periodic control loop actions
             do_control
@@ -1109,6 +1115,9 @@ $app_logger.debug("After sleeping - mode mutex free")
       if do_limited_logging
         $app_logger.debug("Heater mode: "+@mode.to_s)
       end
+
+$app_logger.debug("Heater mode: "+@mode.to_s)
+      
     end
 
     # Feed logging
