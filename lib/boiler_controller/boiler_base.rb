@@ -416,10 +416,11 @@ module BoilerBase
       # Wait for the measurement thread to exit
       $app_logger.debug("Mixer controller - waiting for measurement thread to exit")
       @measurement_thread.join
-
+$app_logger.debug("Mixer controller - measurement thread joined")
       # Allow a next call to start_measurement thread to create
       # a new measurement thread
       @measurement_thread_mutex.unlock
+$app_logger.debug("Mixer controller - measurement_thread_mutex unlocked")
     end
 
     # The actual control thread
