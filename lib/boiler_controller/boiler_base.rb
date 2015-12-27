@@ -498,7 +498,7 @@ module BoilerBase
     alias_target :buffer
 
     events {
-      event :turnoff, :any => :off
+      event :off, :any => :off
       event :directheat, :any  => :directheat
       event :hydrshift, :any => :hydrshift
       event :bufferfill, [:HW, :directheat, :hydrshift, :bypassheat, :frombuffer]  => :bufferfill
@@ -736,6 +736,7 @@ module BoilerBase
             $app_logger.debug("Heater relay already off")
           end
         else
+          $app_logger.debug("Bufferheater turning off")
           buffer.set_relays(:direct)
           if  buffer.heater_relay.state == :on
             $app_logger.debug("Turning off heater relay")
@@ -1069,8 +1070,8 @@ module BoilerBase
           $app_logger.debug("After sleeping - mode mutex free")
         end
         # Stop heat production of the boiler
-        $app_logger.debug("Heater control calling @buffer_sm.turnoff")
-        @buffer_sm.turnoff
+        $app_logger.debug("Heater control calling @buffer_sm.off")
+        @buffer_sm.off
         $app_logger.debug("Heater control thread exiting")
       end # Of control Thread
 
