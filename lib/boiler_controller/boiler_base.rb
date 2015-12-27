@@ -362,7 +362,10 @@ module BoilerBase
       # Signal the control thread to exit
       @stop_control_requested.lock
       # Wait for the control thread to exit
-      @control_thread.join
+      while @control_thread.status != false do
+        @control_thread.join(1)
+        sleep 0.5
+      end
 
       # Allow the next call to start control to create a new control thread
       @control_thread_mutex.unlock
@@ -395,7 +398,11 @@ module BoilerBase
 
       # Wait for the measurement thread to exit
       $app_logger.debug("Mixer controller - waiting for measurement thread to exit")
-      @measurement_thread.join
+      while @measurement_thread.status != false do
+        @measurement_thread.join(1)
+        sleep 0.5
+      end
+
       $app_logger.debug("Mixer controller - measurement thread joined")
       # Allow a next call to start_measurement thread to create
       # a new measurement thread
@@ -580,7 +587,7 @@ module BoilerBase
 
       set_sm_actions
       @buffer_sm.init
-      
+
       @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>((@upper_sensor.temp - @config[:buffer_base_temp])*100)/(@lower_sensor.temp - @config[:buffer_base_temp])}
       @target_temp = 7.0
       @forward_temp = 7.0
@@ -613,7 +620,7 @@ module BoilerBase
       return if @mode == new_mode
 
       $app_logger.debug("Heater set_mode. Got new mode: "+new_mode.to_s)
-      
+
       # Stop control if asked to do so
       if new_mode == :off
         stop_control_thread
@@ -1049,7 +1056,7 @@ module BoilerBase
 
       $app_logger.debug("Heater control calling @buffer_sm.off")
       @buffer_sm.turnoff
-      
+
       # Set the stop thread signal inactive
       @stop_control.unlock if @stop_control.locked?
 
@@ -1098,7 +1105,10 @@ module BoilerBase
 
       # Wait for the thread to exit
       $app_logger.debug("Waiting control thread to exit")
-      @control_thread.join
+      while @control_thread.status != false do
+        @control_thread.join(1)
+        sleep 0.5
+      end
 
       # Unlock the thread lock so a new call to start_control_thread
       # can create the control thread
