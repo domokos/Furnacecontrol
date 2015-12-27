@@ -1019,6 +1019,8 @@ module BoilerBase
               @buffer_sm.hydrshift
             end
           end
+        when :off
+          # Do nothing. The thread will stop
         else
           raise "Invalid mode in do_control after mode change. Expecting either ':HW', ':radheat' or ':floorheat' got: '"+@mode.to_s+"'"
         end
@@ -1029,7 +1031,7 @@ module BoilerBase
 
         controller_log
         $app_logger.debug("Before evaluate_heater_state_change")
-        evaluate_heater_state_change
+        evaluate_heater_state_change unless @mode == :off
         $app_logger.debug("After evaluate_heater_state_change")
       end
     end
