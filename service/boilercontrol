@@ -40,6 +40,10 @@ case "$1" in
      echo
      exit 0
      ;;
+   debugstart)
+     sh $0 start
+     sh $0 applog
+     ;;
    restart)
      sh $0 stop
      sleep 2
@@ -64,7 +68,7 @@ case "$1" in
      echo
      ;;
    *)
-     echo "Usage: boilercontrol {start|stop|restart|status|logoff|applog|heatlog}"
+     echo "Usage: boilercontrol {start|stop|debugstart|restart|status|logoff|applog|heatlog}"
      exit 3
      ;;
 esac
