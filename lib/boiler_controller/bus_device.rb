@@ -391,7 +391,7 @@ module BusDevice
     CHECK_RETRY_COUNT = 5
     VOLATILE = 0x01
     NON_VOLATILE = 0x00
-    def initialize(name, location, slave_address, register_address, dry_run)
+    def initialize(name, location, slave_address, register_address, dry_run, init_temp=20.0)
       @name = name
       @slave_address = slave_address
       @location = location
@@ -401,12 +401,12 @@ module BusDevice
       super()
 
       # Set non-volatile wiper value to 0x00 to ensure that we are safe when the device wakes up ucontrolled
-      write_device(0x00,VOLATILE)
+      write_device(wiper_lookup(init_temp),NON_VOLATILE)
 
       # Initialize the volatile value to the device
-      @value = 0x00
-      @temp_required = 20.0
-      write_device(@value, NON_VOLATILE)
+      @value = wiper_lookup(init_temp)
+      @temp_required = init_temp
+      write_device(@value, VOLATILE)
       register_check_process
     end
 
@@ -515,7 +515,7 @@ module BusDevice
   end
 
   class HeatingWaterTemp < WaterTempBase
-    def initialize(name, location, slave_address, register_address, dry_run)
+    def initialize(name, location, slave_address, register_address, dry_run, init_temp=20.0)
       @lookup_curve =
       Globals::Polycurve.new([
         [33,0x00],
@@ -532,7 +532,7 @@ module BusDevice
         [80,0xf4],
         [84,0xf8],
         [85,0xff]])
-      super(name, location, slave_address, register_address, dry_run)
+      super(name, location, slave_address, register_address, dry_run, init_temp)
     end
 
     protected
@@ -544,7 +544,7 @@ module BusDevice
   end
 
   class HWWaterTemp < WaterTempBase
-    def initialize(name, location, slave_address, register_address, dry_run, shift = 0)
+    def initialize(name, location, slave_address, register_address, dry_run, shift = 0, init_temp=65.0)
       @lookup_curve =
       Globals::Polycurve.new([
         [21.5,0x00], # 11.3k
@@ -566,7 +566,7 @@ module BusDevice
         [61.5,0xfe], # 2.32k
         [62.6,0xff] # 2.28k
       ], shift)
-      super(name, location, slave_address, register_address, dry_run)
+      super(name, location, slave_address, register_address, dry_run, init_temp)
     end
 
     protected

@@ -396,11 +396,11 @@ module BoilerBase
       # Wait for the measurement thread to exit
       $app_logger.debug("Mixer controller - waiting for measurement thread to exit")
       @measurement_thread.join
-$app_logger.debug("Mixer controller - measurement thread joined")
+      $app_logger.debug("Mixer controller - measurement thread joined")
       # Allow a next call to start_measurement thread to create
       # a new measurement thread
       @measurement_thread_mutex.unlock
-$app_logger.debug("Mixer controller - measurement_thread_mutex unlocked")
+      $app_logger.debug("Mixer controller - measurement_thread_mutex unlocked")
     end
 
     # The actual control thread
@@ -577,7 +577,6 @@ $app_logger.debug("Mixer controller - measurement_thread_mutex unlocked")
       # Create the state machine of the buffer heater
       @buffer_sm = BufferSM.new
       @buffer_sm.target self
-      @prev_sm_state = :off
 
       set_sm_actions
       @buffer_sm.init
@@ -617,17 +616,17 @@ $app_logger.debug("Mixer controller - measurement_thread_mutex unlocked")
 
       # Synchronize mode setting to the potentially running control thread
       @modesetting_mutex.synchronize do
-$app_logger.debug("Heater set_mode. Got mutex lock")
+        $app_logger.debug("Heater set_mode. Got mutex lock")
         # Maintain a single level mode history and set the mode change flag
         @prev_mode = @mode
         @mode = new_mode
         @mode_changed = true
       end # of modesetting mutex sync
 
-$app_logger.debug("Heater set_mode. Mutex unlocked mode: "+@mode.to_s+" Mode == :off : "+(@mode == :off).to_s)
+      $app_logger.debug("Heater set_mode. Mutex unlocked mode: "+@mode.to_s+" Mode == :off : "+(@mode == :off).to_s)
 
       # Start and stop control thread according to the new mode
-                      
+
       @mode == :off ? stop_control_thread : start_control_thread
 
     end #of set_mode
@@ -715,7 +714,7 @@ $app_logger.debug("Heater set_mode. Mutex unlocked mode: "+@mode.to_s+" Mode == 
       # :off, :directheat, :bufferfill, :frombuffer, :bypassheat, :HW
 
       # Log state transitions and set the state change relaxation timer
-      @buffer_sm.on_before do |event| 
+      @buffer_sm.on_before do |event|
         $app_logger.debug("Bufferheater state change from #{event.from} to #{event.to}")
         buffer.prev_sm_state = event.from
         buffer.relax_timer.reset
@@ -725,27 +724,27 @@ $app_logger.debug("Heater set_mode. Mutex unlocked mode: "+@mode.to_s+" Mode == 
       # - Turn off HW production of boiler
       # - Turn off the heater relay
       @buffer_sm.on_enter_off do |event|
-      if event.from == :none
-        $app_logger.debug("Bufferheater initializing")
-        buffer.hw_wiper.set_water_temp(65.0)
-        buffer.set_relays(:direct)
-        if  buffer.heater_relay.state == :on
-          $app_logger.debug("Turning off heater relay")
-          buffer.heater_relay.off
-          sleep buffer.config[:circulation_maintenance_delay]
+        if event.from == :none
+          $app_logger.debug("Bufferheater initializing")
+          buffer.hw_wiper.set_water_temp(65.0)
+          buffer.set_relays(:direct)
+          if  buffer.heater_relay.state == :on
+            $app_logger.debug("Turning off heater relay")
+            buffer.heater_relay.off
+            sleep buffer.config[:circulation_maintenance_delay]
+          else
+            $app_logger.debug("Heater relay already off")
+          end
         else
-          $app_logger.debug("Heater relay already off")
+          buffer.set_relays(:direct)
+          if  buffer.heater_relay.state == :on
+            $app_logger.debug("Turning off heater relay")
+            buffer.heater_relay.off
+            sleep buffer.config[:circulation_maintenance_delay]
+          else
+            $app_logger.debug("Heater relay already off")
+          end
         end
-      else
-        buffer.set_relays(:direct)
-        if  buffer.heater_relay.state == :on
-          $app_logger.debug("Turning off heater relay")
-          buffer.heater_relay.off
-          sleep buffer.config[:circulation_maintenance_delay]
-        else
-          $app_logger.debug("Heater relay already off")
-        end
-      end
       end  # of enter off action
 
       # On entering heat through hydr shifter
@@ -1026,12 +1025,12 @@ $app_logger.debug("Heater set_mode. Mutex unlocked mode: "+@mode.to_s+" Mode == 
         @mode_changed = false
       else
 
-$app_logger.debug("Before controller log")
-        
+        $app_logger.debug("Before controller log")
+
         controller_log
-$app_logger.debug("Before evaluate_heater_state_change")        
+        $app_logger.debug("Before evaluate_heater_state_change")
         evaluate_heater_state_change
-$app_logger.debug("After evaluate_heater_state_change")        
+        $app_logger.debug("After evaluate_heater_state_change")
       end
     end
 
@@ -1053,19 +1052,19 @@ $app_logger.debug("After evaluate_heater_state_change")
         while !@stop_control.locked?
           $config_mutex.synchronize {@config = $config.dup}
           @modesetting_mutex.synchronize do
-$app_logger.debug("Mode mutex locked")
+            $app_logger.debug("Mode mutex locked")
             # Update any objects that may use parameters from the newly copied config
             update_config_items
-$app_logger.debug("Update Config done")
+            $app_logger.debug("Update Config done")
 
             # Perform the actual periodic control loop actions
             do_control
-$app_logger.debug("Mode mutex about to free")
+            $app_logger.debug("Mode mutex about to free")
           end
-$app_logger.debug("Before sleeping - mode mutex free")
-          
+          $app_logger.debug("Before sleeping - mode mutex free")
+
           sleep @config[:buffer_heat_control_loop_delay] unless @stop_control.locked?
-$app_logger.debug("After sleeping - mode mutex free")
+          $app_logger.debug("After sleeping - mode mutex free")
         end
         # Stop heat production of the boiler
         @buffer_sm.off
@@ -1109,8 +1108,8 @@ $app_logger.debug("After sleeping - mode mutex free")
         $app_logger.debug("Heater mode: "+@mode.to_s)
       end
 
-$app_logger.debug("Heater mode: "+@mode.to_s)
-      
+      $app_logger.debug("Heater mode: "+@mode.to_s)
+
     end
 
     # Feed logging
