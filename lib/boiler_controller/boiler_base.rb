@@ -613,6 +613,12 @@ module BoilerBase
       return if @mode == new_mode
 
       $app_logger.debug("Heater set_mode. Got new mode: "+new_mode.to_s)
+      
+      # Stop control if asked to do so
+      if new_mode == :off
+        stop_control_thread
+        return
+      end
 
       # Synchronize mode setting to the potentially running control thread
       @modesetting_mutex.synchronize do
@@ -625,9 +631,8 @@ module BoilerBase
 
       $app_logger.debug("Heater set_mode. Mutex unlocked mode: "+@mode.to_s+" Mode == :off : "+(@mode == :off).to_s)
 
-      # Start and stop control thread according to the new mode
-
-      @mode == :off ? stop_control_thread : start_control_thread
+      # Start ontrol thread according to the new mode
+      start_control_thread
 
     end #of set_mode
 
@@ -1020,8 +1025,6 @@ module BoilerBase
               @buffer_sm.hydrshift
             end
           end
-        when :off
-          # Do nothing. The thread will stop
         else
           raise "Invalid mode in do_control after mode change. Expecting either ':HW', ':radheat' or ':floorheat' got: '"+@mode.to_s+"'"
         end
@@ -1032,7 +1035,7 @@ module BoilerBase
 
         controller_log
         $app_logger.debug("Before evaluate_heater_state_change")
-        evaluate_heater_state_change unless @mode == :off
+        evaluate_heater_state_change
         $app_logger.debug("After evaluate_heater_state_change")
       end
     end
