@@ -232,7 +232,7 @@ class Heating_controller
         $app_logger.debug("Turning off heating")
 
         # Stop the mixer controller
-        controller.mixer_controller.stop_control
+#        controller.mixer_controller.stop_control
 
         # Make sure the heater is stopped
         controller.buffer_heater.set_mode(:off)

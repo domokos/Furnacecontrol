@@ -578,16 +578,8 @@ module BoilerBase
       @buffer_sm = BufferSM.new
       @buffer_sm.target self
 
-      $app_logger.debug("Bufferheater calling set_sm_actions")
-
       set_sm_actions
-
-      $app_logger.debug("Bufferheater calling buffer sm init")
-      
       @buffer_sm.init
-
-      $app_logger.debug("Bufferheater called buffer sm init")
-
       
       @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>((@upper_sensor.temp - @config[:buffer_base_temp])*100)/(@lower_sensor.temp - @config[:buffer_base_temp])}
       @target_temp = 7.0
