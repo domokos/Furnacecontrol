@@ -209,6 +209,7 @@ class Heating_controller
 
       # Perform initialization on startup
       if event.from == :none
+        $app_logger.debug("Heater SM initiaization")
         controller.HW_watertemp.set_water_temp(65.0)
         controller.heater_relay.off
 
