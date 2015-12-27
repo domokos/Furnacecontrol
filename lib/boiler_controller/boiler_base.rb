@@ -1047,6 +1047,9 @@ module BoilerBase
       # Only a single control thread may exist
       return unless @control_mutex.try_lock
 
+      $app_logger.debug("Heater control calling @buffer_sm.off")
+      @buffer_sm.off
+      
       # Set the stop thread signal inactive
       @stop_control.unlock if @stop_control.locked?
 
