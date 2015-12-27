@@ -210,11 +210,6 @@ class Heating_controller
       # Perform initialization on startup
       if event.from == :none
         $app_logger.debug("Heater SM initiaization")
-        controller.HW_watertemp.set_water_temp(65.0)
-        controller.heater_relay.off
-
-        # Set the buffer for direct connection
-        controller.buffer_heater.set_relays(:direct)
 
         # Turn off all pumps
         controller.radiator_pump.off

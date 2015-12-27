@@ -715,8 +715,8 @@ $app_logger.debug("Heater set_mode. Mutex unlocked mode: "+@mode.to_s+" Mode == 
       # :off, :directheat, :bufferfill, :frombuffer, :bypassheat, :HW
 
       # Log state transitions and set the state change relaxation timer
-      @buffer_sm.on_before do
-        |event| $app_logger.debug("Bufferheater state change from #{event.from} to #{event.to}")
+      @buffer_sm.on_before do |event| 
+        $app_logger.debug("Bufferheater state change from #{event.from} to #{event.to}")
         buffer.prev_sm_state = event.from
         buffer.relax_timer.reset
       end
@@ -725,6 +725,8 @@ $app_logger.debug("Heater set_mode. Mutex unlocked mode: "+@mode.to_s+" Mode == 
       # - Turn off HW production of boiler
       # - Turn off the heater relay
       @buffer_sm.on_enter_off do |event|
+      if even.from == :none
+        $app_logger.debug("Bufferheater initializing")
         buffer.hw_wiper.set_water_temp(65.0)
         buffer.set_relays(:direct)
         if  buffer.heater_relay.state == :on
@@ -734,6 +736,16 @@ $app_logger.debug("Heater set_mode. Mutex unlocked mode: "+@mode.to_s+" Mode == 
         else
           $app_logger.debug("Heater relay already off")
         end
+      else
+        buffer.set_relays(:direct)
+        if  buffer.heater_relay.state == :on
+          $app_logger.debug("Turning off heater relay")
+          buffer.heater_relay.off
+          sleep buffer.config[:circulation_maintenance_delay]
+        else
+          $app_logger.debug("Heater relay already off")
+        end
+      end
       end  # of enter off action
 
       # On entering heat through hydr shifter
