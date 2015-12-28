@@ -159,7 +159,7 @@ module BusDevice
 
         # Temp variable state_val holds the server side state binary value
         @state == :on ? state_val = 1 : state_val = 0
-        while retval[:Content][Buscomm::PARAMETER_START] != state_val or retry_count <= CHECK_RETRY_COUNT
+        while retval[:Content][Buscomm::PARAMETER_START] != state_val and retry_count <= CHECK_RETRY_COUNT
 
           errorstring = "Mismatch during check between expected switch with Name: '"+@name+"' Location: '"+@location+"'\n"
           errorstring += "Known state: "+state_val.to_s+" device returned state: "+retval[:Content][Buscomm::PARAMETER_START].ord.to_s+"\n"
