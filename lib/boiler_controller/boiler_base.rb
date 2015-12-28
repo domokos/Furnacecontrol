@@ -365,9 +365,13 @@ module BoilerBase
         sleep 0.5
       end
 
+      $app_logger.debug("Mixer controller control_thread joined")
+
       # Allow the next call to start control to create a new control thread
       @control_thread_mutex.unlock
-    end
+      $app_logger.debug("Mixer controller control_thread_mutex unlocked")
+
+      end
 
     def start_measurement_thread
       $app_logger.debug("Mixer controller - measurement thread start requested")
@@ -1107,7 +1111,11 @@ module BoilerBase
       while @control_thread.status != false do
         $app_logger.debug("Heater control control_thread.status: "+@control_thread.status.to_s)
         @control_thread.join(1)
+        Thread.pass
+        @control_thread.run
         sleep 0.5
+        Thread.pass
+        @control_thread.run
       end
 
       # Unlock the thread lock so a new call to start_control_thread
