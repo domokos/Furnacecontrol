@@ -360,6 +360,7 @@ module BoilerBase
       @stop_control_requested.lock
       # Wait for the control thread to exit
       while @control_thread.status != false do
+        $app_logger.debug("Mixer controller control_thread.status: "+@control_thread.status.to_s)
         @control_thread.join(1)
         sleep 0.5
       end
@@ -396,6 +397,7 @@ module BoilerBase
       # Wait for the measurement thread to exit
       $app_logger.debug("Mixer controller - waiting for measurement thread to exit")
       while @measurement_thread.status != false do
+        $app_logger.debug("Mixer controller measurement_thread.status: "+@measurement_thread.status.to_s)
         @measurement_thread.join(1)
         sleep 0.5
       end
@@ -1103,6 +1105,7 @@ module BoilerBase
       # Wait for the thread to exit
       $app_logger.debug("Waiting control thread to exit")
       while @control_thread.status != false do
+        $app_logger.debug("Heater control control_thread.status: "+@control_thread.status.to_s)
         @control_thread.join(1)
         sleep 0.5
       end
