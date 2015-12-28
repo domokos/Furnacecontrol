@@ -9,6 +9,8 @@ require "rubygems"
 require "robustthread"
 require "yaml"
 
+Thread.abort_on_exception=true 
+
 $stdout.sync = true
 
 $app_logger.level = Globals::BoilerLogger::INFO
