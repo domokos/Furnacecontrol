@@ -9,7 +9,7 @@ require "rubygems"
 require "robustthread"
 require "yaml"
 
-Thread.abort_on_exception=true 
+Thread.abort_on_exception=true
 
 $stdout.sync = true
 
@@ -205,7 +205,16 @@ class Heating_controller
     @heating_sm = BoilerBase::HeatingSM.new
     @heating_sm.target self
 
-    # Define the activating actions of each state
+    # Define the activating actions of the statemachine
+    # Execute other SM state modifying actions in a before callback and in a sepatate thread.
+    @heating_sm.on_before_turnoff do |event|
+      temp_sm_thread = Thread.new do
+        Thread.current[:name] = "Temp heating SM turnoff"
+        # Turn off the heater
+        controller.buffer_heater.set_mode(:off)
+      end
+    end
+
     # Activation actions for Off satate
     @heating_sm.on_enter_off do |event|
 
@@ -227,7 +236,7 @@ class Heating_controller
 
         # Wait for the delayed closure to happen
         sleep 3
-        
+
         # Regular turn off
       else
 
@@ -235,9 +244,6 @@ class Heating_controller
 
         # Stop the mixer controller
         controller.mixer_controller.stop_control
-
-        # Make sure the heater is stopped
-        controller.buffer_heater.set_mode(:off)
 
         # Set the buffer for direct connection
         controller.buffer_heater.set_relays(:direct)
@@ -269,16 +275,22 @@ class Heating_controller
     end
 
     # Activation actions for Post circulation heating
+    @heating_sm.on_before_postheat do |event|
+      temp_thread = Thread.new do
+        Thread.current[:name] = "Temp heating before postheat"
+        # Make sure the heater is stopped
+        controller.buffer_heater.set_mode(:off)
+      end
+    end
+
+    # Activation actions for Post circulation heating
     @heating_sm.on_enter_postheating do |event|
       $app_logger.debug("Activating \"Postheat\" state")
-      # Make sure the heater is stopped
-      controller.buffer_heater.set_mode(:off)
+      # Stop the mixer controller
+      controller.mixer_controller.stop_control
 
       # Set the buffer for direct connection
       controller.buffer_heater.set_relays(:direct)
-
-      # Stop the mixer controller
-      controller.mixer_controller.stop_control
 
       # All radiator valves open
       controller.basement_radiator_valve.open
@@ -299,13 +311,17 @@ class Heating_controller
       controller.upstairs_floor_valve.delayed_close
     end
 
+    @heating_sm.on_before_posthw do |event|
+      temp_posthw = Thread.new do
+        Thread.current[:name] = "Temp heating before posthw"
+        # Make sure the heater is stopped
+        controller.buffer_heater.set_mode(:off)
+      end
+    end
+
     # Activation actions for Post circulation heating
     @heating_sm.on_enter_posthwing do |event|
       $app_logger.debug("Activating \"PostHW\" state")
-
-      # Make sure the heater is stopped
-      controller.buffer_heater.set_mode(:off)
-
       # Set the buffer for direct connection
       controller.buffer_heater.set_relays(:direct)
 
@@ -942,6 +958,7 @@ daemonize = ARGV.find_index("--daemon") != nil
 pid = fork do
   main_rt = RobustThread.new(:label => "Main daemon thread") do
 
+    Thread.current[:name] = "Main daemon"
     Signal.trap("HUP", "IGNORE")
 
     pidfile_index = ARGV.find_index("--pidfile")

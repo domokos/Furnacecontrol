@@ -188,6 +188,7 @@ module BoilerBase
     def start_pwm_thread
       @@newly_initialized_thermostat_present = false
       @@pwm_thread = Thread.new do
+        Thread.current[:name] = "PWM thermostat"
         #Wait for the main thread to create all objects we need
         sleep(10)
         while true
@@ -316,6 +317,7 @@ module BoilerBase
     # Move it to the left
     def open
       open_thread = Thread.new do
+        Thread.current[:name] = "Mixer opener"
         if @control_mutex.try_lock
           $app_logger.debug("Control mutex locked in open pulsing cw for 31 secs")
           @cw_switch.pulse_block(310)
@@ -338,6 +340,7 @@ module BoilerBase
       @stop_control_requested.unlock if @stop_control_requested.locked?
       # Start control thread
       @control_thread = Thread.new do
+        Thread.current[:name] = "Mixer controller"
         # Acquire lock for controlling switches
         @control_mutex.synchronize do
 
@@ -359,19 +362,14 @@ module BoilerBase
       # Signal the control thread to exit
       @stop_control_requested.lock
       # Wait for the control thread to exit
-      while @control_thread.status != false do
-        $app_logger.debug("Mixer controller control_thread.status: "+@control_thread.status.to_s)
-        @control_thread.join(1)
-        sleep 0.5
-      end
-
+      @control_thread.join
       $app_logger.debug("Mixer controller control_thread joined")
 
       # Allow the next call to start control to create a new control thread
       @control_thread_mutex.unlock
       $app_logger.debug("Mixer controller control_thread_mutex unlocked")
 
-      end
+    end
 
     def start_measurement_thread
       $app_logger.debug("Mixer controller - measurement thread start requested")
@@ -382,6 +380,7 @@ module BoilerBase
 
       #Create a temperature measurement thread
       @measurement_thread = Thread.new do
+        Thread.current[:name] = "Mixer measurement"
         $app_logger.debug("Mixer controller - measurement thread starting")
         while !@stop_measurement_requested.locked?
           @measurement_mutex.synchronize {@mix_filter.input_sample(@mix_sensor.temp) }
@@ -400,13 +399,9 @@ module BoilerBase
 
       # Wait for the measurement thread to exit
       $app_logger.debug("Mixer controller - waiting for measurement thread to exit")
-      while @measurement_thread.status != false do
-        $app_logger.debug("Mixer controller measurement_thread.status: "+@measurement_thread.status.to_s)
-        @measurement_thread.join(1)
-        sleep 0.5
-      end
-
+      @measurement_thread.join
       $app_logger.debug("Mixer controller - measurement thread joined")
+
       # Allow a next call to start_measurement thread to create
       # a new measurement thread
       @measurement_thread_mutex.unlock
@@ -877,6 +872,7 @@ module BoilerBase
       @buffer_sm.on_exit_HW do
         buffer.hw_wiper.set_water_temp(65.0)
         Thread.new do
+          Thread.current[:name] = "HW exit"
           sleep buffer.config[:circulation_maintenance_delay]
           buffer.hw_pump.off
         end # of hw pump stopper delayed thread
@@ -1065,6 +1061,7 @@ module BoilerBase
 
       # The controller thread
       @control_thread = Thread.new do
+        Thread.current[:name] = "Heater control"
         $app_logger.debug("Heater control thread created")
 
         # Loop until signalled to exit
@@ -1108,15 +1105,7 @@ module BoilerBase
 
       # Wait for the thread to exit
       $app_logger.debug("Waiting control thread to exit")
-      while @control_thread.status != false do
-        $app_logger.debug("Heater control control_thread.status: "+@control_thread.status.to_s)
-        @control_thread.join(1)
-        Thread.pass
-        @control_thread.run
-        sleep 0.5
-        Thread.pass
-        @control_thread.run
-      end
+      @control_thread.join
 
       # Unlock the thread lock so a new call to start_control_thread
       # can create the control thread
