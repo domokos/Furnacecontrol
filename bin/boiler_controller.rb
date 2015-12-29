@@ -925,7 +925,7 @@ class Heating_controller
     # Turn off the heater
     @buffer_heater.set_mode(:off)
     @heating_sm.turnoff
-    $app_logger.info("Shutting down. Shutdown reason: "+$shutdown_reason)
+    $app_logger.info("Shutdown complete. Shutdown reason: "+$shutdown_reason)
     command="rm -f "+$pidpath
     system(command)
   end

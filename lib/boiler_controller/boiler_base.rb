@@ -627,14 +627,11 @@ module BoilerBase
 
       # Synchronize mode setting to the potentially running control thread
       @modesetting_mutex.synchronize do
-        $app_logger.debug("Heater set_mode. Got mutex lock")
         # Maintain a single level mode history and set the mode change flag
         @prev_mode = @mode
         @mode = new_mode
         @mode_changed = true
       end # of modesetting mutex sync
-
-      $app_logger.debug("Heater set_mode. Mutex unlocked mode: "+@mode.to_s+" Mode == :off : "+(@mode == :off).to_s)
 
       # Start ontrol thread according to the new mode
       start_control_thread
@@ -655,13 +652,12 @@ module BoilerBase
 
       return if @relay_state == config
 
-      $app_logger.debug("Relay state is: "+@relay_state.to_s)
-
+      $app_logger.debug("Relay state is: '"+@relay_state.to_s+"'")
+      $app_logger.debug("Setting relays to: '"+config.to_s+"'")
       moved = false
 
       case config
       when :direct
-        $app_logger.debug("Setting relays to ':direct'")
         moved |= @forward_valve.state != :off
         @forward_valve.off
         moved |= @return_valve.state != :off
@@ -670,7 +666,6 @@ module BoilerBase
         @bypass_valve.on
         @relay_state = :direct
       when :hydr_shifted
-        $app_logger.debug("Setting relays to ':hydr_shifted'")
         moved |= @forward_valve.state != :off
         @forward_valve.off
         moved |= @return_valve.state != :off
@@ -679,7 +674,6 @@ module BoilerBase
         @bypass_valve.off
         @relay_state = :hydr_shifted
       when :buffer_passthrough
-        $app_logger.debug("Setting relays to ':buffer_passthrough'")
         moved |= @forward_valve.state != :off
         @forward_valve.off
         moved |= @return_valve.state != :on
@@ -688,7 +682,6 @@ module BoilerBase
         @bypass_valve.off
         @relay_state = :buffer_passthrough
       when :feed_from_buffer
-        $app_logger.debug("Setting relays to ':feed_from_buffer'")
         moved |= @forward_valve.state != :on
         @forward_valve.on
         moved |= @return_valve.state != :off
@@ -697,7 +690,7 @@ module BoilerBase
         @bypass_valve.on
         @relay_state = :feed_from_buffer
       when :HW
-        $app_logger.debug("Setting relays to ':HW' - don't care bypass valve is: "+@bypass_valve.state.to_s)
+        $app_logger.debug("Don't care bypass valve is: "+@bypass_valve.state.to_s)
         moved |= @forward_valve.state != :off
         @forward_valve.off
         moved |= @return_valve.state != :off
@@ -1068,22 +1061,16 @@ module BoilerBase
         while !@stop_control.locked?
           $config_mutex.synchronize {@config = $config.dup}
           @modesetting_mutex.synchronize do
-            $app_logger.debug("Mode mutex locked")
             # Update any objects that may use parameters from the newly copied config
             update_config_items
-            $app_logger.debug("Update Config done")
 
             # Perform the actual periodic control loop actions
             do_control
-            $app_logger.debug("Mode mutex about to free")
           end
-          $app_logger.debug("Before sleeping - mode mutex free")
-
           sleep @config[:buffer_heat_control_loop_delay] unless @stop_control.locked?
-          $app_logger.debug("After sleeping - mode mutex free")
         end
         # Stop heat production of the boiler
-        $app_logger.debug("Heater control calling @buffer_sm.turnoff")
+        $app_logger.debug("Heater control turning off")
         @buffer_sm.turnoff
         $app_logger.debug("Heater control thread exiting")
       end # Of control Thread
@@ -1098,7 +1085,7 @@ module BoilerBase
       # Only stop the control therad if it is alive
       return if !@control_mutex.locked? or @control_thread == nil
 
-      $app_logger.debug("Control thread running signalling it to stop")
+      $app_logger.debug("Control thread running: signalling it to stop")
 
       # Signal control thread to exit
       @stop_control.lock
