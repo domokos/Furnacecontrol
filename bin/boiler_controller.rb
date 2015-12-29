@@ -206,15 +206,6 @@ class Heating_controller
     @heating_sm.target self
 
     # Define the activating actions of the statemachine
-    # Execute other SM state modifying actions in a before callback and in a sepatate thread.
-    @heating_sm.on_before_turnoff do |event|
-      temp_sm_thread = Thread.new do
-        Thread.current[:name] = "Temp heating SM turnoff"
-        # Turn off the heater
-        controller.buffer_heater.set_mode(:off)
-      end
-    end
-
     # Activation actions for Off satate
     @heating_sm.on_enter_off do |event|
 
@@ -239,7 +230,6 @@ class Heating_controller
 
         # Regular turn off
       else
-
         $app_logger.debug("Turning off heating")
 
         # Stop the mixer controller
@@ -275,15 +265,6 @@ class Heating_controller
     end
 
     # Activation actions for Post circulation heating
-    @heating_sm.on_before_postheat do |event|
-      temp_thread = Thread.new do
-        Thread.current[:name] = "Temp heating before postheat"
-        # Make sure the heater is stopped
-        controller.buffer_heater.set_mode(:off)
-      end
-    end
-
-    # Activation actions for Post circulation heating
     @heating_sm.on_enter_postheating do |event|
       $app_logger.debug("Activating \"Postheat\" state")
       # Stop the mixer controller
@@ -309,14 +290,6 @@ class Heating_controller
       controller.basement_floor_valve.delayed_close
       controller.living_floor_valve.delayed_close
       controller.upstairs_floor_valve.delayed_close
-    end
-
-    @heating_sm.on_before_posthw do |event|
-      temp_posthw = Thread.new do
-        Thread.current[:name] = "Temp heating before posthw"
-        # Make sure the heater is stopped
-        controller.buffer_heater.set_mode(:off)
-      end
     end
 
     # Activation actions for Post circulation heating
@@ -400,9 +373,13 @@ class Heating_controller
 
       if power_needed[:power] == :NONE and @mode == :mode_HW
         $app_logger.debug("Need power is: NONE")
+        # Turn off the heater
+        controller.buffer_heater.set_mode(:off)
         @heating_sm.posthw
       elsif power_needed[:power] == :NONE
         $app_logger.debug("Need power is: NONE")
+        # Turn off the heater
+        controller.buffer_heater.set_mode(:off)
         @heating_sm.postheat
       end
 
@@ -414,6 +391,8 @@ class Heating_controller
 
       if @forward_temp - @return_temp < 5.0
         $app_logger.debug("Delta T on the Furnace dropped below 5 C")
+        # Turn off the heater
+        controller.buffer_heater.set_mode(:off)
         @heating_sm.turnoff
         # If need power then -> Heat
       elsif power_needed[:power] != :NONE
@@ -430,14 +409,20 @@ class Heating_controller
 
       if @forward_temp - @return_temp < 5.0
         $app_logger.debug("Delta T on the Furnace dropped below 5 C")
+        # Turn off the heater
+        controller.buffer_heater.set_mode(:off)
         @heating_sm.turnoff
         # If Furnace temp below HW temp + 4 C then -> Off
       elsif @forward_temp < @HW_thermostat.temp + 4
         $app_logger.debug("Furnace temp below HW temp + 4 C")
+        # Turn off the heater
+        controller.buffer_heater.set_mode(:off)
         @heating_sm.turnoff
         # If need power then -> Heat
       elsif power_needed[:power] != :NONE
         $app_logger.debug("Need power is "+power_needed[:power].to_s)
+        # Turn off the heater
+        controller.buffer_heater.set_mode(:off)
         @heating_sm.turnoff
       end
     end
@@ -937,6 +922,8 @@ class Heating_controller
   end
 
   def shutdown
+    # Turn off the heater
+    controller.buffer_heater.set_mode(:off)
     @heating_sm.turnoff
     $app_logger.info("Shutting down. Shutdown reason: "+$shutdown_reason)
     command="rm -f "+$pidpath
