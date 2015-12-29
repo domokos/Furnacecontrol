@@ -170,6 +170,12 @@ module BusDevice
 $app_logger.debug("retval : "+retval[:Content][Buscomm::PARAMETER_START])
 $app_logger.debug("state_val : "+state_val)
 
+$app_logger.debug("retval to_s : "+retval[:Content][Buscomm::PARAMETER_START].to_s)
+$app_logger.debug("state_val to_s: "+state_val.to_s)
+
+$app_logger.debug("retval to_i : "+retval[:Content][Buscomm::PARAMETER_START].to_i)
+$app_logger.debug("state_val to_i: "+state_val.to_i)
+
                     
       $app_logger.debug("egyenlo: "+(state_val == retval[:Content][Buscomm::PARAMETER_START]).to_s)
       
