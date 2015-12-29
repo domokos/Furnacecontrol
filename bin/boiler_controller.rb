@@ -20,6 +20,16 @@ DRY_RUN = false
 $shutdown_reason = Globals::NO_SHUTDOWN
 $low_floor_temp_mode = false
 
+Signal.trap("TTIN") do
+  puts "---------\n"
+  Thread.list.each do |thread|
+    puts "Thread name: "+thread[:name].to_s+" ID: #{thread.object_id.to_s(36)}"
+    puts thread.backtrace.join("\n")
+    puts "---------\n"
+  end
+  puts "---------\n"
+end
+
 Signal.trap("USR1") do
   $app_logger.level = Globals::BoilerLogger::INFO
   $heating_logger.level = Logger::DEBUG
