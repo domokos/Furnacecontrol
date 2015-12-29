@@ -1029,13 +1029,9 @@ module BoilerBase
         end
         @mode_changed = false
       else
-
-        $app_logger.debug("Before controller log")
-
+        $app_logger.trace("Do control not changing mode")
         controller_log
-        $app_logger.debug("Before evaluate_heater_state_change")
         evaluate_heater_state_change
-        $app_logger.debug("After evaluate_heater_state_change")
       end
     end
 
@@ -1111,9 +1107,6 @@ module BoilerBase
       if do_limited_logging
         $app_logger.debug("Heater mode: "+@mode.to_s)
       end
-
-      $app_logger.debug("Heater mode: "+@mode.to_s)
-
     end
 
     # Feed logging
