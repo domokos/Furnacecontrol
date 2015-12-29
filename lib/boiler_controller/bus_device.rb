@@ -160,7 +160,19 @@ module BusDevice
         # Temp variable state_val holds the server side state binary value
         @state == :on ? state_val = "1" : state_val = "0"
         while retval[:Content][Buscomm::PARAMETER_START] != state_val and retry_count <= CHECK_RETRY_COUNT
-          
+
+        $app_logger.debug("retval class: "+retval[:Content][Buscomm::PARAMETER_START].class.to_s)
+      $app_logger.debug("state_val class: "+state_val.class.to_s)
+
+      $app_logger.debug("retval length: "+retval[:Content][Buscomm::PARAMETER_START].length.to_s)
+    $app_logger.debug("state_val length: "+state_val.length.to_s)
+
+$app_logger.debug("retval : "+retval[:Content][Buscomm::PARAMETER_START])
+$app_logger.debug("state_val : "+state_val)
+
+                    
+      $app_logger.debug("egyenlo: "+(state_val == retval[:Content][Buscomm::PARAMETER_START]).to_s)
+      
           errorstring = "Mismatch during check between expected switch with Name: '"+@name+"' Location: '"+@location+"'\n"
           errorstring += "Known state: "+state_val.to_s+" device returned state: "+retval[:Content][Buscomm::PARAMETER_START].ord.to_s+"\n"
           errorstring += "Trying to set device to the known state - attempt no: "+retry_count.to_s
