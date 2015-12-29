@@ -165,7 +165,6 @@ module BusDevice
       $app_logger.debug("state_val class: "+state_val.class.to_s)
 
       $app_logger.debug("retval length: "+retval[:Content][Buscomm::PARAMETER_START].length.to_s)
-    $app_logger.debug("state_val length: "+state_val.length.to_s)
 
 $app_logger.debug("retval : "+retval[:Content][Buscomm::PARAMETER_START])
 $app_logger.debug("state_val : "+state_val)
