@@ -158,8 +158,8 @@ module BusDevice
         retry_count = 1
 
         # Temp variable state_val holds the server side state binary value
-        @state == :on ? state_val = "1" : state_val = "0"
-        while retval[:Content][Buscomm::PARAMETER_START] != state_val and retry_count <= CHECK_RETRY_COUNT
+        @state == :on ? state_val = 1 : state_val = 0
+        while retval[:Content][Buscomm::PARAMETER_START].to_i != state_val and retry_count <= CHECK_RETRY_COUNT
 
         $app_logger.debug("retval class: "+retval[:Content][Buscomm::PARAMETER_START].class.to_s)
       $app_logger.debug("state_val class: "+state_val.class.to_s)
@@ -175,8 +175,8 @@ $app_logger.debug("state_val to_s: "+state_val.to_s)
 
 $app_logger.debug("retval to_i : "+retval[:Content][Buscomm::PARAMETER_START].to_i.to_s)
 $app_logger.debug("state_val to_i: "+state_val.to_i.to_s)
-
                     
+$app_logger.debug("egyenlo0: "+(state_val == retval[:Content][Buscomm::PARAMETER_START]).to_s)
       $app_logger.debug("egyenlo1: "+(state_val.to_s == retval[:Content][Buscomm::PARAMETER_START].to_s).to_s)
 $app_logger.debug("egyenlo2: "+(state_val.to_i == retval[:Content][Buscomm::PARAMETER_START].to_i).to_s)
       
