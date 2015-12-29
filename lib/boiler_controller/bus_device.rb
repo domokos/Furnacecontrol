@@ -177,8 +177,8 @@ $app_logger.debug("retval to_i : "+retval[:Content][Buscomm::PARAMETER_START].to
 $app_logger.debug("state_val to_i: "+state_val.to_i.to_s)
 
                     
-      $app_logger.debug("egyenlo1: "+(state_val == retval[:Content][Buscomm::PARAMETER_START]).to_s)
-$app_logger.debug("egyenlo2: "+(state_val.to_i == retval[:Content][Buscomm::PARAMETER_START]).to_i)
+      $app_logger.debug("egyenlo1: "+(state_val.to_s == retval[:Content][Buscomm::PARAMETER_START].to_s).to_s)
+$app_logger.debug("egyenlo2: "+(state_val.to_i == retval[:Content][Buscomm::PARAMETER_START].to_i).to_s)
       
           errorstring = "Mismatch during check between expected switch with Name: '"+@name+"' Location: '"+@location+"'\n"
           errorstring += "Known state: "+state_val.to_s+" device returned state: "+retval[:Content][Buscomm::PARAMETER_START].ord.to_s+"\n"
