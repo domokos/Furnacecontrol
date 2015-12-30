@@ -501,8 +501,13 @@ module BusDevice
 
       rescue Exception => e
         # Log the messaging error
-        retval = e.return_message
-        $app_logger.fatal("Unrecoverable communication error on bus communicating with '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
+        if e.class  == MessagingError
+          retval = e.return_message
+          $app_logger.fatal("Unrecoverable communication error on bus communicating with '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
+        else
+          $app_logger.fatal("Exception: "+e.inspect)
+          $app_logger.fatal("Exception: "+e.backtrace.to_s)
+        end
 
         # Signal the main thread for fatal error shutdown
         $shutdown_reason = Globals::FATAL_SHUTDOWN
