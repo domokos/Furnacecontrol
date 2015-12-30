@@ -35,7 +35,7 @@
 :hw_temp_shift: 6
 #
 # Target water temperature when floor heating only is specified
-:FLOOR_watertemp: 37.2
+:FLOOR_watertemp: 37.5
 #
 # Parameters of target water temperature calculation curve
 # Target water temperature is calculated by the following linear equation:
@@ -66,27 +66,23 @@
 :three_way_movement_time: 10
 :buffer_heat_control_loop_delay: 2
 :buffer_base_temp: 20.0
-:buffer_limited_log_period: 20
-:buffer_control_limited_log_period: 20
-#
-# Stability criteria
-:delta_t_stability_slope_threshold: 0.1
-:delta_t_stability_sigma_threshold: 0.5
-:forward_temp_stability_slope_threshold: 0.1
-:forward_temp_stability_sigma_threshold: 0.5
+:buffer_heater_log_period: 30
+:buffer_control_log_period: 30
 #
 # Heat initialization constants
 :init_buffer_reqd_temp_reserve: 3.0
 :init_buffer_reqd_fill_reserve: 80.0
-:buffer_heater_state_change_relaxation_time:  35
+:buffer_heater_state_change_relaxation_time:  60
 #
 # Heating state change related constants
-:forward_above_target: 3.7
+:forward_above_target: 3.3
 :min_delta_t_to_maintain: 4.0
-:buffer_passthrough_overshoot: 3.0
-:buffer_expiry_threshold: 2.0
-:buffer_passthrough_fwd_temp_limit: 40.0
+:buffer_passthrough_overshoot: 2.5
+:buffer_expiry_threshold: 2.5
+:buffer_passthrough_fwd_temp_limit: 39.0
 :boiler_on_detector_delta_t_threshold: 2.0
+:boiler_on_detector_max_target_overshoot: 3.0
+:boiler_on_detector_min_below_target: 5.0
 :buffer_passtrough_heat_protection_threshold: 2.0
 #
 #
@@ -97,8 +93,9 @@
 :mixer_limited_log_period: 20
 :mixer_filter_size: 3
 :mixer_sampling_delay: 2.1
-:mixer_error_threshold: 0.25
+:mixer_error_threshold: 0.35
 :mixer_control_loop_delay: 15
+:mixer_start_delay_after_HW: 50
 :mixer_motor_time_parameter: 1
 :mixer_unidirectional_movement_time_limit: 60
 :mixer_movement_time_hysteresis: 5

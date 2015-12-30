@@ -9,6 +9,8 @@ require "rubygems"
 require "robustthread"
 require "yaml"
 
+Thread.abort_on_exception=true
+
 $stdout.sync = true
 
 $app_logger.level = Globals::BoilerLogger::INFO
@@ -17,6 +19,16 @@ $heating_logger.level = Logger::INFO
 DRY_RUN = false
 $shutdown_reason = Globals::NO_SHUTDOWN
 $low_floor_temp_mode = false
+
+Signal.trap("TTIN") do
+  puts "---------\n"
+  Thread.list.each do |thread|
+    puts "Thread name: "+thread[:name].to_s+" ID: #{thread.object_id.to_s(36)}"
+    puts thread.backtrace.join("\n")
+    puts "---------\n"
+  end
+  puts "---------\n"
+end
 
 Signal.trap("USR1") do
   $app_logger.level = Globals::BoilerLogger::INFO
@@ -203,43 +215,57 @@ class Heating_controller
     @heating_sm = BoilerBase::HeatingSM.new
     @heating_sm.target self
 
-    # Define the activating actions of each state
+    # Define the activating actions of the statemachine
     # Activation actions for Off satate
     @heating_sm.on_enter_off do |event|
-      $app_logger.debug("Turning off heating")
 
-      # Stop the mixer controller
-      controller.mixer_controller.stop_control
+      # Perform initialization on startup
+      if event.from == :none
+        $app_logger.debug("Heater SM initiaization")
 
-      # Make sure the heater is stopped
-      controller.buffer_heater.set_mode(:off)
+        # Turn off all pumps
+        controller.radiator_pump.off
+        controller.floor_pump.off
+        controller.hydr_shift_pump.off
+        controller.hot_water_pump.off
 
-      # Set the buffer for direct connection
-      controller.buffer_heater.set_relays(:direct_boiler)
+        # Close all valves
+        controller.basement_floor_valve.delayed_close
+        controller.basement_radiator_valve.delayed_close
+        controller.living_floor_valve.delayed_close
+        controller.upstairs_floor_valve.delayed_close
 
-      # Set the water temp in the HW tank high
-      controller.HW_watertemp.set_water_temp(65.0)
+        # Wait for the delayed closure to happen
+        sleep 3
 
-      # Turn off heater relay
-      controller.heater_relay.off
+        # Regular turn off
+      else
+        $app_logger.debug("Turning off heating")
 
-      # Wait before turning pumps off to make sure we do not lose circulation
-      sleep $config[:shutdown_delay]
+        # Stop the mixer controller
+        controller.mixer_controller.stop_control
 
-      # Turn off all pumps
-      controller.radiator_pump.off
-      controller.floor_pump.off
-      controller.hydr_shift_pump.off
-      controller.hot_water_pump.off
+        # Set the buffer for direct connection
+        controller.buffer_heater.set_relays(:direct)
 
-      # Close all valves
-      controller.basement_floor_valve.delayed_close
-      controller.basement_radiator_valve.delayed_close
-      controller.living_floor_valve.delayed_close
-      controller.upstairs_floor_valve.delayed_close
+        # Wait before turning pumps off to make sure we do not lose circulation
+        sleep $config[:shutdown_delay]
 
-      # Wait for the delayed closure to happen
-      sleep 3
+        # Turn off all pumps
+        controller.radiator_pump.off
+        controller.floor_pump.off
+        controller.hydr_shift_pump.off
+        controller.hot_water_pump.off
+
+        # Close all valves
+        controller.basement_floor_valve.delayed_close
+        controller.basement_radiator_valve.delayed_close
+        controller.living_floor_valve.delayed_close
+        controller.upstairs_floor_valve.delayed_close
+
+        # Wait for the delayed closure to happen
+        sleep 3
+      end
     end
 
     # Activation actions for Heating
@@ -251,20 +277,11 @@ class Heating_controller
     # Activation actions for Post circulation heating
     @heating_sm.on_enter_postheating do |event|
       $app_logger.debug("Activating \"Postheat\" state")
-      # Make sure the heater is stopped
-      controller.buffer_heater.set_mode(:off)
-
-      # Set the buffer for direct connection
-      controller.buffer_heater.set_relays(:direct_boiler)
-
       # Stop the mixer controller
       controller.mixer_controller.stop_control
 
-      # Set the water temp in the HW tank high
-      controller.HW_watertemp.set_water_temp(65.0)
-
-      # Turn off heater relay
-      controller.heater_relay.off
+      # Set the buffer for direct connection
+      controller.buffer_heater.set_relays(:direct)
 
       # All radiator valves open
       controller.basement_radiator_valve.open
@@ -288,21 +305,11 @@ class Heating_controller
     # Activation actions for Post circulation heating
     @heating_sm.on_enter_posthwing do |event|
       $app_logger.debug("Activating \"PostHW\" state")
-
-      # Make sure the heater is stopped
-      controller.buffer_heater.set_mode(:off)
-
       # Set the buffer for direct connection
-      controller.buffer_heater.set_relays(:direct_boiler)
+      controller.buffer_heater.set_relays(:direct)
 
       # Stop the mixer controller
       controller.mixer_controller.stop_control
-
-      # Set the water temp in the HW tank high
-      controller.HW_watertemp.set_water_temp(65.0)
-
-      # Turn off heater relay
-      controller.heater_relay.off
 
       controller.hot_water_pump.on
       # Wait before turning pumps off to make sure we do not lose circulation
@@ -341,7 +348,7 @@ class Heating_controller
       read_sensors
       temp_power_needed = {:state=>@heating_sm.current,:power=>determine_power_needed}
       determine_targets(temp_power_needed,temp_power_needed)
-      sleep 2
+      sleep 0.5
       break if $shutdown_reason != Globals::NO_SHUTDOWN
     end
 
@@ -376,9 +383,13 @@ class Heating_controller
 
       if power_needed[:power] == :NONE and @mode == :mode_HW
         $app_logger.debug("Need power is: NONE")
+        # Turn off the heater
+        @heating_sm.buffer_heater.set_mode(:off)
         @heating_sm.posthw
       elsif power_needed[:power] == :NONE
         $app_logger.debug("Need power is: NONE")
+        # Turn off the heater
+        @buffer_heater.set_mode(:off)
         @heating_sm.postheat
       end
 
@@ -390,6 +401,8 @@ class Heating_controller
 
       if @forward_temp - @return_temp < 5.0
         $app_logger.debug("Delta T on the Furnace dropped below 5 C")
+        # Turn off the heater
+        @buffer_heater.set_mode(:off)
         @heating_sm.turnoff
         # If need power then -> Heat
       elsif power_needed[:power] != :NONE
@@ -406,14 +419,20 @@ class Heating_controller
 
       if @forward_temp - @return_temp < 5.0
         $app_logger.debug("Delta T on the Furnace dropped below 5 C")
+        # Turn off the heater
+        @buffer_heater.set_mode(:off)
         @heating_sm.turnoff
         # If Furnace temp below HW temp + 4 C then -> Off
       elsif @forward_temp < @HW_thermostat.temp + 4
         $app_logger.debug("Furnace temp below HW temp + 4 C")
+        # Turn off the heater
+        @buffer_heater.set_mode(:off)
         @heating_sm.turnoff
         # If need power then -> Heat
       elsif power_needed[:power] != :NONE
         $app_logger.debug("Need power is "+power_needed[:power].to_s)
+        # Turn off the heater
+        @buffer_heater.set_mode(:off)
         @heating_sm.turnoff
       end
     end
@@ -550,11 +569,21 @@ class Heating_controller
       @mixer_controller.stop_control
     when :RAD, :RADFLOOR, :FLOOR
       # Set mode and required water temperature of the boiler
-      $app_logger.trace("Setting heater mode to heat")
-      @buffer_heater.set_mode(:heat)
       $app_logger.trace("Setting heater target temp to: "+@target_boiler_temp.to_s)
       @buffer_heater.set_target(@target_boiler_temp)
-      @mixer_controller.start_control
+      if power_needed[:power] == :FLOOR
+        $app_logger.trace("Setting heater mode to :floorheat")
+        @buffer_heater.set_mode(:floorheat)
+      else
+        $app_logger.trace("Setting heater mode to :radheat")
+        @buffer_heater.set_mode(:radheat)
+      end
+      if prev_power_needed[:power] == :HW
+        @mixer_controller.open
+        @mixer_controller.start_control($config[:mixer_start_delay_after_HW])
+      else
+        @mixer_controller.start_control
+      end
     else
       raise "Unexpected power_needed encountered in heating state: "+power_needed[:power].to_s
     end
@@ -903,8 +932,10 @@ class Heating_controller
   end
 
   def shutdown
+    # Turn off the heater
+    @buffer_heater.set_mode(:off)
     @heating_sm.turnoff
-    $app_logger.info("Shutting down. Shutdown reason: "+$shutdown_reason)
+    $app_logger.info("Shutdown complete. Shutdown reason: "+$shutdown_reason)
     command="rm -f "+$pidpath
     system(command)
   end
@@ -924,6 +955,7 @@ daemonize = ARGV.find_index("--daemon") != nil
 pid = fork do
   main_rt = RobustThread.new(:label => "Main daemon thread") do
 
+    Thread.current[:name] = "Main daemon"
     Signal.trap("HUP", "IGNORE")
 
     pidfile_index = ARGV.find_index("--pidfile")
@@ -954,6 +986,7 @@ pid = fork do
     end
   end
 end
+
 if daemonize
   Process.detach pid
 else

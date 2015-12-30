@@ -101,7 +101,7 @@ module BusDevice
           @state = :on
           write_device(1) == :Success and $app_logger.trace("Succesfully turned Switch '"+@name+"' on.")
         end
-      end
+      end # of state semaphore sync
     end
 
     # Turn the device off
@@ -111,7 +111,7 @@ module BusDevice
           @state = :off
           write_device(0) == :Success and $app_logger.trace("Succesfully turned Switch '"+@name+"' off.")
         end
-      end
+      end # of state semaphore sync
     end
 
     private
@@ -152,32 +152,34 @@ module BusDevice
       return check_result if @dry_run
 
       begin
-        # Check what value the device knows of itself
-        retval = @@comm_interface.send_message(@slave_address,Buscomm::READ_REGISTER,@register_address.chr)
-
         retry_count = 1
 
-        # Temp variable state_val holds the server side state binary value
-        @state == :on ? state_val = 1 : state_val = 0
-        while retval[:Content][Buscomm::PARAMETER_START] != state_val or retry_count <= CHECK_RETRY_COUNT
+        @state_semaphore.synchronize do
 
-          errorstring = "Mismatch during check between expected switch with Name: '"+@name+"' Location: '"+@location+"'\n"
-          errorstring += "Known state: "+state_val.to_s+" device returned state: "+ret[:Content][Buscomm::PARAMETER_START].ord.to_s+"\n"
-          errorstring += "Trying to set device to the known state - attempt no: "+retry_count.to_s
-
-          $app_logger.error(errorstring)
-
-          # Try setting the server side known state to the device
-          retval = @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+state_val.chr)
-
-          # Re-read the device value to see if write was succesful
+          # Check what value the device knows of itself
           retval = @@comm_interface.send_message(@slave_address,Buscomm::READ_REGISTER,@register_address.chr)
 
-          # Sleep more and more - hoping that the mismatch error resolves itself
-          sleep retry_count*0.23
-          retry_count += 1
-        end
+          # Temp variable state_val holds the server side state binary value
+          @state == :on ? state_val = 1 : state_val = 0
+          while retval[:Content][Buscomm::PARAMETER_START].ord != state_val and retry_count <= CHECK_RETRY_COUNT
 
+            errorstring = "Mismatch during check between expected switch with Name: '"+@name+"' Location: '"+@location+"'\n"
+            errorstring += "Known state: "+state_val.to_s+" device returned state: "+retval[:Content][Buscomm::PARAMETER_START].ord.to_s+"\n"
+            errorstring += "Trying to set device to the known state - attempt no: "+retry_count.to_s
+
+            $app_logger.error(errorstring)
+
+            # Try setting the server side known state to the device
+            retval = @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+state_val.chr)
+
+            # Re-read the device value to see if write was succesful
+            retval = @@comm_interface.send_message(@slave_address,Buscomm::READ_REGISTER,@register_address.chr)
+
+            # Sleep more and more - hoping that the mismatch error resolves itself
+            sleep retry_count*0.23
+            retry_count += 1
+          end
+        end #of state semaphore sync
         # Bail out if comparison/resetting trial fails CHECK_RETRY_COUNT times
         if retry_count >= CHECK_RETRY_COUNT
           $app_logger.fatal("Unable to recover "+@name+" device mismatch. Potential HW failure - bailing out")
@@ -285,7 +287,7 @@ module BusDevice
           return 0
         end
 
-        return retval[:Content][Buscomm::PARAMETER_START]
+        return retval[:Content][Buscomm::PARAMETER_START].ord
 
       else
         $app_logger.debug("Dry run - reading device '"+@name+"' address "+@register_address.to_s)
@@ -391,36 +393,39 @@ module BusDevice
     CHECK_RETRY_COUNT = 5
     VOLATILE = 0x01
     NON_VOLATILE = 0x00
-    def initialize(name, location, slave_address, register_address, dry_run)
+    def initialize(name, location, slave_address, register_address, dry_run, init_temp=20.0)
       @name = name
       @slave_address = slave_address
       @location = location
       @register_address = register_address
       @dry_run = dry_run
+      @state_semaphore = Mutex.new
 
       super()
 
       # Set non-volatile wiper value to 0x00 to ensure that we are safe when the device wakes up ucontrolled
-      write_device(0x00,VOLATILE)
+      write_device(wiper_lookup(init_temp),NON_VOLATILE)
 
       # Initialize the volatile value to the device
-      @value = 0x00
-      @temp_required = 20.0
-      write_device(@value, NON_VOLATILE)
+      @value = wiper_lookup(init_temp)
+      @temp_required = init_temp
+      write_device(@value, VOLATILE)
       register_check_process
     end
 
     # Set the required water temp value
     def set_water_temp(temp_requested)
-      @temp_required = temp_requested
-      value_requested = wiper_lookup(temp_requested)
+      @state_semaphore.synchronize do
+        @temp_required = temp_requested
+        value_requested = wiper_lookup(temp_requested)
 
-      # Only write new value if it differs from the actual value to spare bus time
-      if value_requested != @value
-        @value = value_requested
-        write_device(@value, VOLATILE)
-        $app_logger.debug(@name+" set to value "+@value.to_s+" meaning water temperature "+@temp_required.to_s+" C")
-      end
+        # Only write new value if it differs from the actual value to spare bus time
+        if value_requested != @value
+          @value = value_requested
+          write_device(@value, VOLATILE)
+          $app_logger.debug(@name+" set to value "+@value.to_s+" meaning water temperature "+@temp_required.to_s+" C")
+        end
+      end # of state semaphore synchronize
     end
 
     # Get the target water temp
@@ -469,29 +474,31 @@ module BusDevice
 
       # Exception is raised inside the block for fatal errors
       begin
-        # Check what value the device knows of itself
-        retval = @@comm_interface.send_message(@slave_address,Buscomm::READ_REGISTER,@register_address.chr+0x00.chr)
-
         retry_count = 1
-        # Loop until there is no difference or retry_count is reached
-        while retval[:Content][Buscomm::PARAMETER_START].ord != @value or retry_count <= CHECK_RETRY_COUNT
 
-          errorstring = "Mismatch during check between expected water_temp: '"+@name+"' Location: '"+@location+"'\n"
-          errorstring += "Known value: "+@value.to_s+" device returned state: "+ret[:Content][Buscomm::PARAMETER_START]+"\n"
-          errorstring += "Trying to set device to the known state - attempt no: "+ retry_count.to_s
+        @state_semaphore.synchronize do
+          # Check what value the device knows of itself
+          retval = @@comm_interface.send_message(@slave_address,Buscomm::READ_REGISTER,@register_address.chr+VOLATILE.chr)
 
-          $app_logger.error(errorstring)
+          # Loop until there is no difference or retry_count is reached
+          while retval[:Content][Buscomm::PARAMETER_START].ord != @value and retry_count <= CHECK_RETRY_COUNT
 
-          # Retry setting the server side known state on the device
-          retval = @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+0x00.chr+@value.chr+0x00.chr)
-          # Re-read the result to see if the device side update was succesful
-          retval = @@comm_interface.send_message(@slave_address,Buscomm::READ_REGISTER,@register_address.chr+0x00.chr)
+            errorstring = "Mismatch during check between expected water_temp: '"+@name+"' Location: '"+@location+"'\n"
+            errorstring += "Known value: "+@value.to_s+" device returned state: "+retval[:Content][Buscomm::PARAMETER_START].ord.to_s+"\n"
+            errorstring += "Trying to set device to the known state - attempt no: "+ retry_count.to_s
 
-          # Sleep more each round hoping for a resolution
-          sleep retry_count*0.23
-          retry_count += 1
-        end
+            $app_logger.error(errorstring)
 
+            # Retry setting the server side known state on the device
+            retval = @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+0x00.chr+@value.chr+VOLATILE.chr)
+            # Re-read the result to see if the device side update was succesful
+            retval = @@comm_interface.send_message(@slave_address,Buscomm::READ_REGISTER,@register_address.chr+VOLATILE.chr)
+
+            # Sleep more each round hoping for a resolution
+            sleep retry_count*0.23
+            retry_count += 1
+          end
+        end # of state semaphore synchronize
         # Bail out if comparison/resetting trial fails CHECK_RETRY_COUNT times
         if retry_count >= CHECK_RETRY_COUNT
           $app_logger.fatal("Unable to recover "+@name+" device value mismatch. Potential HW failure - bailing out")
@@ -501,8 +508,13 @@ module BusDevice
 
       rescue Exception => e
         # Log the messaging error
-        retval = e.return_message
-        $app_logger.fatal("Unrecoverable communication error on bus communicating with '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
+        if e.class  == MessagingError
+          retval = e.return_message
+          $app_logger.fatal("Unrecoverable communication error on bus communicating with '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
+        else
+          $app_logger.fatal("Exception: "+e.inspect)
+          $app_logger.fatal("Exception: "+e.backtrace.to_s)
+        end
 
         # Signal the main thread for fatal error shutdown
         $shutdown_reason = Globals::FATAL_SHUTDOWN
@@ -515,7 +527,7 @@ module BusDevice
   end
 
   class HeatingWaterTemp < WaterTempBase
-    def initialize(name, location, slave_address, register_address, dry_run)
+    def initialize(name, location, slave_address, register_address, dry_run, init_temp=20.0)
       @lookup_curve =
       Globals::Polycurve.new([
         [33,0x00],
@@ -532,7 +544,7 @@ module BusDevice
         [80,0xf4],
         [84,0xf8],
         [85,0xff]])
-      super(name, location, slave_address, register_address, dry_run)
+      super(name, location, slave_address, register_address, dry_run, init_temp)
     end
 
     protected
@@ -544,7 +556,7 @@ module BusDevice
   end
 
   class HWWaterTemp < WaterTempBase
-    def initialize(name, location, slave_address, register_address, dry_run, shift = 0)
+    def initialize(name, location, slave_address, register_address, dry_run, shift = 0, init_temp=65.0)
       @lookup_curve =
       Globals::Polycurve.new([
         [21.5,0x00], # 11.3k
@@ -566,7 +578,7 @@ module BusDevice
         [61.5,0xfe], # 2.32k
         [62.6,0xff] # 2.28k
       ], shift)
-      super(name, location, slave_address, register_address, dry_run)
+      super(name, location, slave_address, register_address, dry_run, init_temp)
     end
 
     protected

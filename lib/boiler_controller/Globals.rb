@@ -89,84 +89,40 @@ module Globals
 
   # A Timer class for timing whole seconds
   class TimerSec
-    def initialize(sec_to_sleep,name)
+
+    attr_reader :name
+    
+    def initialize(timer,name)
       @name = name
-      @sec_to_sleep = sec_to_sleep
-      @timer_thread = nil
-      @sec_left = 0
+      @timer = timer
+      @start_ts = Time.now - @timer
     end
 
-    def set_sleep_time(sec_to_sleep)
-      @sec_to_sleep = sec_to_sleep
+    def set_timer(timer)
+      @timer = timer
     end
 
     def start
-      @sec_left = @sec_to_sleep
-      @timer_thread = Thread.new do
-        Thread.current["thread_name"] = @name
-        while @sec_left > 0
-          sleep(1)
-          @sec_left = @sec_left - 1
-        end
-      end
+      @start_ts = Time.now if expired?
     end
 
     def sec_left()
-      return @sec_left
+      return expired? ? 0 : (Time.now - @start_ts).to_i
     end
 
     def expired?
-      return @sec_left == 0
+      return (Time.now - @start_ts).to_i >= @timer 
     end
 
     def reset
-      stop
-      start
-    end
-
-    def stop
-      if @timer_thread != nil
-        @timer_thread.kill
-        @timer_thread = nil
-      end
-      @sec_left = 0
+      @start_ts = Time.now
     end
   end
 
   # A general timer
-  class TimerGeneral
-    def initialize(amount_to_sleep,name)
-      @name = name
-      @amount_to_sleep = amount_to_sleep
-      @timer_thread = nil
-    end
-
-    def start
-      @timer_thread = Thread.new do
-        Thread.current["thread_name"] = @name
-        sleep @amount_to_sleep
-      end
-    end
-
+  class TimerGeneral < TimerSec
     def expired?
-      if @timer_thread == nil
-        return true
-      else
-        return @timer_thread.alive?
-      end
-    end
-
-    def reset
-      stop
-      start
-    end
-
-    def stop
-      if @timer_thread != nil
-        @timer_thread.kill
-        @timer_thread = nil
-      end
-      @sec_left=0
+      return (Time.now - @start_ts) >= @timer 
     end
   end
 
