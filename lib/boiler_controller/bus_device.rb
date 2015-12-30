@@ -513,6 +513,8 @@ module BusDevice
         $shutdown_reason = Globals::FATAL_SHUTDOWN
         check_result = :Failure
       end
+$app_logger.debug("Check good: "+@name)
+      
       return check_result
     end
 
