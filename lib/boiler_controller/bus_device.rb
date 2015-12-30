@@ -161,24 +161,6 @@ module BusDevice
         @state == :on ? state_val = 1 : state_val = 0
         while retval[:Content][Buscomm::PARAMETER_START].ord != state_val and retry_count <= CHECK_RETRY_COUNT
 
-        $app_logger.debug("retval class: "+retval[:Content][Buscomm::PARAMETER_START].class.to_s)
-      $app_logger.debug("state_val class: "+state_val.class.to_s)
-
-      $app_logger.debug("retval length: "+retval[:Content][Buscomm::PARAMETER_START].length.to_s)
-
-$app_logger.debug("retval : "+retval[:Content][Buscomm::PARAMETER_START])
-$app_logger.debug("state_val : "+state_val.to_s)
-
-$app_logger.debug("retval to_s : "+retval[:Content][Buscomm::PARAMETER_START].to_s)
-$app_logger.debug("state_val to_s: "+state_val.to_s)
-
-$app_logger.debug("retval ord : "+retval[:Content][Buscomm::PARAMETER_START].to_i.to_s)
-$app_logger.debug("state_val to_i: "+state_val.to_i.to_s)
-                    
-$app_logger.debug("egyenlo0: "+(state_val.ord == retval[:Content][Buscomm::PARAMETER_START]).to_s)
-      $app_logger.debug("egyenlo1: "+(state_val.to_s == retval[:Content][Buscomm::PARAMETER_START].to_s).to_s)
-$app_logger.debug("egyenlo2: "+(state_val.to_i == retval[:Content][Buscomm::PARAMETER_START].to_i).to_s)
-      
           errorstring = "Mismatch during check between expected switch with Name: '"+@name+"' Location: '"+@location+"'\n"
           errorstring += "Known state: "+state_val.to_s+" device returned state: "+retval[:Content][Buscomm::PARAMETER_START].ord.to_s+"\n"
           errorstring += "Trying to set device to the known state - attempt no: "+retry_count.to_s
