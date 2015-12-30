@@ -497,8 +497,9 @@ module BusDevice
           $app_logger.fatal("Unable to recover "+@name+" device value mismatch. Potential HW failure - bailing out")
           $shutdown_reason = Globals::FATAL_SHUTDOWN
           check_result = :Failure
-        end
-
+        else
+$app_logger.debug("Check good: "+@name)
+end
       rescue Exception => e
         # Log the messaging error
         if e.class  == MessagingError
@@ -513,8 +514,6 @@ module BusDevice
         $shutdown_reason = Globals::FATAL_SHUTDOWN
         check_result = :Failure
       end
-$app_logger.debug("Check good: "+@name)
-      
       return check_result
     end
 
