@@ -320,7 +320,8 @@ module BoilerBase
         Thread.current[:name] = "Mixer opener"
         if @control_mutex.try_lock
           $app_logger.debug("Control mutex locked in open pulsing cw for 31 secs")
-          @cw_switch.pulse_block(310)
+          @cw_switch.pulse_block(254)
+          @cw_switch.pulse_block(56)
           @control_mutex.unlock
           $app_logger.debug("Control mutex unlocked opening thread exiting")
         end
