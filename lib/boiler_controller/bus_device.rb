@@ -285,7 +285,7 @@ module BusDevice
           return 0
         end
 
-        return retval[:Content][Buscomm::PARAMETER_START]
+        return retval[:Content][Buscomm::PARAMETER_START].ord
 
       else
         $app_logger.debug("Dry run - reading device '"+@name+"' address "+@register_address.to_s)
