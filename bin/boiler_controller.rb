@@ -242,6 +242,9 @@ class Heating_controller
       else
         $app_logger.debug("Turning off heating")
 
+        # Signal heater to turn off
+        controller.buffer_heater.set_mode(:off)
+
         # Stop the mixer controller
         controller.mixer_controller.stop_control
 
@@ -277,6 +280,10 @@ class Heating_controller
     # Activation actions for Post circulation heating
     @heating_sm.on_enter_postheating do |event|
       $app_logger.debug("Activating \"Postheat\" state")
+
+      # Signal heater to turn off
+      controller.buffer_heater.set_mode(:off)
+      
       # Stop the mixer controller
       controller.mixer_controller.stop_control
 
@@ -305,6 +312,10 @@ class Heating_controller
     # Activation actions for Post circulation heating
     @heating_sm.on_enter_posthwing do |event|
       $app_logger.debug("Activating \"PostHW\" state")
+
+      # Signal heater to turn off
+      controller.buffer_heater.set_mode(:off)
+      
       # Set the buffer for direct connection
       controller.buffer_heater.set_relays(:direct)
 
@@ -384,12 +395,10 @@ class Heating_controller
       if power_needed[:power] == :NONE and @mode == :mode_HW
         $app_logger.debug("Need power is: NONE")
         # Turn off the heater
-        @heating_sm.buffer_heater.set_mode(:off)
         @heating_sm.posthw
       elsif power_needed[:power] == :NONE
         $app_logger.debug("Need power is: NONE")
         # Turn off the heater
-        @buffer_heater.set_mode(:off)
         @heating_sm.postheat
       end
 
@@ -402,7 +411,6 @@ class Heating_controller
       if @forward_temp - @return_temp < 5.0
         $app_logger.debug("Delta T on the Furnace dropped below 5 C")
         # Turn off the heater
-        @buffer_heater.set_mode(:off)
         @heating_sm.turnoff
         # If need power then -> Heat
       elsif power_needed[:power] != :NONE
@@ -420,19 +428,16 @@ class Heating_controller
       if @forward_temp - @return_temp < 5.0
         $app_logger.debug("Delta T on the Furnace dropped below 5 C")
         # Turn off the heater
-        @buffer_heater.set_mode(:off)
         @heating_sm.turnoff
         # If Furnace temp below HW temp + 4 C then -> Off
       elsif @forward_temp < @HW_thermostat.temp + 4
         $app_logger.debug("Furnace temp below HW temp + 4 C")
         # Turn off the heater
-        @buffer_heater.set_mode(:off)
         @heating_sm.turnoff
         # If need power then -> Heat
       elsif power_needed[:power] != :NONE
         $app_logger.debug("Need power is "+power_needed[:power].to_s)
         # Turn off the heater
-        @buffer_heater.set_mode(:off)
         @heating_sm.turnoff
       end
     end
@@ -933,7 +938,6 @@ class Heating_controller
 
   def shutdown
     # Turn off the heater
-    @buffer_heater.set_mode(:off)
     @heating_sm.turnoff
     $app_logger.info("Shutdown complete. Shutdown reason: "+$shutdown_reason)
     command="rm -f "+$pidpath
