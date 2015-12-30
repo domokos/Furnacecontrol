@@ -152,12 +152,12 @@ module BusDevice
       return check_result if @dry_run
 
       begin
+        retry_count = 1
+
         @state_semaphore.synchronize do
 
           # Check what value the device knows of itself
           retval = @@comm_interface.send_message(@slave_address,Buscomm::READ_REGISTER,@register_address.chr)
-
-          retry_count = 1
 
           # Temp variable state_val holds the server side state binary value
           @state == :on ? state_val = 1 : state_val = 0
@@ -474,11 +474,12 @@ module BusDevice
 
       # Exception is raised inside the block for fatal errors
       begin
+        retry_count = 1
+
         @state_semaphore.synchronize do
           # Check what value the device knows of itself
           retval = @@comm_interface.send_message(@slave_address,Buscomm::READ_REGISTER,@register_address.chr+0x00.chr)
 
-          retry_count = 1
           # Loop until there is no difference or retry_count is reached
           while retval[:Content][Buscomm::PARAMETER_START].ord != @value and retry_count <= CHECK_RETRY_COUNT
 
