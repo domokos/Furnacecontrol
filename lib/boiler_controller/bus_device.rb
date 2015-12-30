@@ -477,7 +477,7 @@ module BusDevice
         while retval[:Content][Buscomm::PARAMETER_START].ord != @value and retry_count <= CHECK_RETRY_COUNT
 
           errorstring = "Mismatch during check between expected water_temp: '"+@name+"' Location: '"+@location+"'\n"
-          errorstring += "Known value: "+@value.to_s+" device returned state: "+retval[:Content][Buscomm::PARAMETER_START]+"\n"
+          errorstring += "Known value: "+@value.to_s+" device returned state: "+retval[:Content][Buscomm::PARAMETER_START].ord.to_s+"\n"
           errorstring += "Trying to set device to the known state - attempt no: "+ retry_count.to_s
 
           $app_logger.error(errorstring)
