@@ -316,16 +316,16 @@ module BoilerBase
 
     # Move it to the left
     def open
-      if @control_mutex.try_lock
-        open_thread = Thread.new do
-          Thread.current[:name] = "Mixer opener"
+      open_thread = Thread.new do
+        Thread.current[:name] = "Mixer opener"
+        if @control_mutex.try_lock
           $app_logger.debug("Control mutex locked in open pulsing ccw for 31 secs")
           @ccw_switch.pulse_block(250)
           @ccw_switch.pulse_block(60)
           @control_mutex.unlock
           $app_logger.debug("Control mutex unlocked opening thread exiting")
-        end # of open thread
-      end
+        end
+      end # of open thread
     end
 
     def start_control(delay=0)
