@@ -474,7 +474,7 @@ module BusDevice
 
         retry_count = 1
         # Loop until there is no difference or retry_count is reached
-        while retval[:Content][Buscomm::PARAMETER_START].ord != @value or retry_count <= CHECK_RETRY_COUNT
+        while retval[:Content][Buscomm::PARAMETER_START].ord != @value and retry_count <= CHECK_RETRY_COUNT
 
           errorstring = "Mismatch during check between expected water_temp: '"+@name+"' Location: '"+@location+"'\n"
           errorstring += "Known value: "+@value.to_s+" device returned state: "+retval[:Content][Buscomm::PARAMETER_START]+"\n"
