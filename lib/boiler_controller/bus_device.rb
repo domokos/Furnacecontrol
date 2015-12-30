@@ -425,7 +425,7 @@ module BusDevice
           write_device(@value, VOLATILE)
           $app_logger.debug(@name+" set to value "+@value.to_s+" meaning water temperature "+@temp_required.to_s+" C")
         end
-      end # of check mutex synchronize
+      end # of state semaphore synchronize
     end
 
     # Get the target water temp
@@ -478,7 +478,7 @@ module BusDevice
 
         @state_semaphore.synchronize do
           # Check what value the device knows of itself
-          retval = @@comm_interface.send_message(@slave_address,Buscomm::READ_REGISTER,@register_address.chr+0x00.chr)
+          retval = @@comm_interface.send_message(@slave_address,Buscomm::READ_REGISTER,@register_address.chr+VOLATILE.chr)
 
           # Loop until there is no difference or retry_count is reached
           while retval[:Content][Buscomm::PARAMETER_START].ord != @value and retry_count <= CHECK_RETRY_COUNT
@@ -490,15 +490,15 @@ module BusDevice
             $app_logger.error(errorstring)
 
             # Retry setting the server side known state on the device
-            retval = @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+0x00.chr+@value.chr+0x00.chr)
+            retval = @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+0x00.chr+@value.chr+VOLATILE.chr)
             # Re-read the result to see if the device side update was succesful
-            retval = @@comm_interface.send_message(@slave_address,Buscomm::READ_REGISTER,@register_address.chr+0x00.chr)
+            retval = @@comm_interface.send_message(@slave_address,Buscomm::READ_REGISTER,@register_address.chr+VOLATILE.chr)
 
             # Sleep more each round hoping for a resolution
             sleep retry_count*0.23
             retry_count += 1
           end
-        end # of check mutex synchronize
+        end # of state semaphore synchronize
         # Bail out if comparison/resetting trial fails CHECK_RETRY_COUNT times
         if retry_count >= CHECK_RETRY_COUNT
           $app_logger.fatal("Unable to recover "+@name+" device value mismatch. Potential HW failure - bailing out")
