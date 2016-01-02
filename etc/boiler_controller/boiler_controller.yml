@@ -35,7 +35,7 @@
 :hw_temp_shift: 6
 #
 # Target water temperature when floor heating only is specified
-:FLOOR_watertemp: 37.5
+:FLOOR_watertemp: 38.0
 #
 # Parameters of target water temperature calculation curve
 # Target water temperature is calculated by the following linear equation:
@@ -66,8 +66,8 @@
 :three_way_movement_time: 10
 :buffer_heat_control_loop_delay: 2
 :buffer_base_temp: 20.0
-:buffer_heater_log_period: 30
-:buffer_control_log_period: 30
+:buffer_heater_log_period: 60
+:buffer_control_log_period: 60
 #
 # Heat initialization constants
 :init_buffer_reqd_temp_reserve: 3.0
@@ -91,12 +91,12 @@
 # *********************************************************************************************
 #
 :mixer_limited_log_period: 20
-:mixer_filter_size: 3
-:mixer_sampling_delay: 2.1
+:mixer_filter_size: 4
+:mixer_sampling_delay: 5
 :mixer_error_threshold: 0.35
-:mixer_control_loop_delay: 15
+:mixer_control_loop_delay: 25
 :mixer_start_delay_after_HW: 50
-:mixer_motor_time_parameter: 1
+:mixer_motor_time_parameter: 0.75
 :mixer_unidirectional_movement_time_limit: 60
 :mixer_movement_time_hysteresis: 5
 #
