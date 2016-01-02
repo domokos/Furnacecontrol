@@ -248,9 +248,6 @@ class Heating_controller
         # Stop the mixer controller
         controller.mixer_controller.stop_control
 
-        # Set the buffer for direct connection
-        controller.buffer_heater.set_relays(:direct)
-
         # Wait before turning pumps off to make sure we do not lose circulation
         sleep $config[:shutdown_delay]
 

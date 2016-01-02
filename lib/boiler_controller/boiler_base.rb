@@ -731,7 +731,7 @@ module BoilerBase
         if event.from == :none
           $app_logger.debug("Bufferheater initializing")
           buffer.hw_wiper.set_water_temp(65.0)
-          buffer.set_relays(:direct)
+          buffer.set_relays(:hydr_shifted)
           if  buffer.heater_relay.state == :on
             $app_logger.debug("Turning off heater relay")
             buffer.heater_relay.off
@@ -748,7 +748,7 @@ module BoilerBase
           else
             $app_logger.debug("Heater relay already off")
           end
-          buffer.set_relays(:direct)
+          buffer.set_relays(:hydr_shifted)
         end
       end  # of enter off action
 
