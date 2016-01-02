@@ -908,8 +908,9 @@ module BoilerBase
           $app_logger.debug("Boiler overheating - state will change from "+@buffer_sm.current.to_s)
           $app_logger.debug("Heat in buffer: "+@heat_in_buffer[:temp].to_s+" Percentage: "+@heat_in_buffer[:percentage].to_s)
 
-          if @heat_in_buffer[:temp] > @target_temp and @heat_in_buffer[:percentage] > @config[:init_buffer_reqd_fill_reserve]
-            $app_logger.debug("Decision: Buffer contains enough heat - feed from buffer")
+          if @heat_in_buffer[:temp] > @target_temp - @config[:buffer_passthrough_overshoot]/2 and
+          @heat_in_buffer[:percentage] > @config[:init_buffer_reqd_fill_reserve] or
+          $app_logger.debug("Decision: Buffer contains enough heat - feed from buffer")
             @buffer_sm.frombuffer
           else
             $app_logger.debug("Decision: Buffer contains not much heat - fill buffer through the hydr shifter")
