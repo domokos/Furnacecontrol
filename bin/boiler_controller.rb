@@ -595,31 +595,26 @@ class Heating_controller
   # This function controls valves, pumps and heat during heating by evaluating the required power
   def control_pumps_valves_for_heating(prev_power_needed,power_needed)
 
-    # Only control pumps and valves if there was a change in power_needed
-    return unless prev_power_needed[:power] != power_needed[:power]
+    changed = prev_power_needed[:power] != power_needed[:power]
 
     $app_logger.trace("Setting valves and pumps")
 
     case power_needed[:power]
     when :HW # Only Hot water supplies on
-      $app_logger.info("Setting valves and pumps for HW")
+      if changed
+        $app_logger.info("Setting valves and pumps for HW")
 
-      # Turn off pumps
-      @radiator_pump.off
-      @floor_pump.off
+        # Turn off pumps
+        @radiator_pump.off
+        @floor_pump.off
 
-      # All valves are closed
-      @basement_floor_valve.delayed_close
-      @basement_radiator_valve.delayed_close
-      @living_floor_valve.delayed_close
-      @upstairs_floor_valve.delayed_close
-
+        # All valves are closed
+        @basement_floor_valve.delayed_close
+        @basement_radiator_valve.delayed_close
+        @living_floor_valve.delayed_close
+        @upstairs_floor_valve.delayed_close
+      end
     when :RAD # Only Radiator pumps on
-      $app_logger.debug("Setting valves and pumps for RAD")
-      @basement_floor_valve.delayed_close
-      @living_floor_valve.delayed_close
-      @upstairs_floor_valve.delayed_close
-
       #  decide on basement radiator valve
       if @basement_thermostat.is_on?
         @basement_radiator_valve.open
@@ -627,13 +622,19 @@ class Heating_controller
         @basement_radiator_valve.delayed_close
       end
 
-      # Radiator pump on
-      @radiator_pump.on
-      # Floor heating off
-      @floor_pump.off
+      if changed
+        $app_logger.debug("Setting valves and pumps for RAD")
+        @basement_floor_valve.delayed_close
+        @living_floor_valve.delayed_close
+        @upstairs_floor_valve.delayed_close
+
+        # Radiator pump on
+        @radiator_pump.on
+        # Floor heating off
+        @floor_pump.off
+      end
 
     when :RADFLOOR
-      $app_logger.debug("Setting valves and pumps for RADFLOOR")
       # decide on living floor valve based on external temperature
       if @living_floor_thermostat.is_on?
         @living_floor_valve.open
@@ -657,13 +658,15 @@ class Heating_controller
         @basement_floor_valve.delayed_close
       end
 
-      # Floor heating on
-      @floor_pump.on
-      # Radiator pump on
-      @radiator_pump.on
+      if changed
+        $app_logger.debug("Setting valves and pumps for RADFLOOR")
 
+        # Floor heating on
+        @floor_pump.on
+        # Radiator pump on
+        @radiator_pump.on
+      end
     when :FLOOR
-      $app_logger.debug("Setting valves and pumps for FLOOR")
       # decide on living floor valve based on external temperature
       if @living_floor_thermostat.is_on?
         @living_floor_valve.open
@@ -685,11 +688,14 @@ class Heating_controller
         @basement_floor_valve.delayed_close
       end
 
-      @basement_radiator_valve.delayed_close
+      if changed
+        $app_logger.debug("Setting valves and pumps for FLOOR")
+        @basement_radiator_valve.delayed_close
 
-      # Floor heating on
-      @floor_pump.on
-      @radiator_pump.off
+        # Floor heating on
+        @floor_pump.on
+        @radiator_pump.off
+      end
     end
   end
 
