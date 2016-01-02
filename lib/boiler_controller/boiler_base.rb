@@ -507,9 +507,8 @@ module BoilerBase
       event :turnoff, :any => :off
       event :directheat, :any  => :directheat
       event :hydrshift, :any => :hydrshift
-      event :bufferfill, [:HW, :directheat, :hydrshift, :bypassheat, :frombuffer]  => :bufferfill
-      event :frombuffer, [:off, :HW, :bufferfill]  => :frombuffer
-      event :bypassheat, :any  => :bypassheat
+      event :bufferfill, [:HW, :directheat, :hydrshift, :frombuffer]  => :bufferfill
+      event :frombuffer, [:off, :HW, :directheat, :hydrshift, :bufferfill]  => :frombuffer
       event :HW, :any => :HW
 
       event :init, :none => :off
@@ -715,7 +714,7 @@ module BoilerBase
 
     # Define  the state transition actions
     def set_sm_actions
-      # :off, :directheat, :bufferfill, :frombuffer, :bypassheat, :HW
+      # :off, :directheat, :bufferfill, :frombuffer, :HW
 
       # Log state transitions and set the state change relaxation timer
       @buffer_sm.on_before do |event|
