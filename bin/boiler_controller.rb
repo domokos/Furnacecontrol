@@ -241,12 +241,8 @@ class Heating_controller
         # Regular turn off
       else
         $app_logger.debug("Turning off heating")
-
-        mixer_controller_stopper_thread = Thread.new do
-          Thread.current[:name] = "Mixer controller stopper thread"
-          # Stop the mixer controller
-          controller.mixer_controller.stop_control
-        end
+        # Stop the mixer controller
+        controller.mixer_controller.stop_control
 
         # Signal heater to turn off
         controller.buffer_heater.set_mode(:off)
@@ -268,10 +264,8 @@ class Heating_controller
         controller.upstairs_floor_valve.delayed_close
 
         # Wait for the delayed closure to happen
+        $app_logger.debug("Waiting for delayed closure valves to close")
         sleep 3
-        $app_logger.debug("Joining mixer controller stopper thread")
-
-        mixer_controller_stopper_thread.join
       end
     end
 
