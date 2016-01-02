@@ -242,7 +242,7 @@ class Heating_controller
       else
         $app_logger.debug("Turning off heating")
 
-        mixer_controller_stoppper_thread = Thread.new do
+        mixer_controller_stopper_thread = Thread.new do
           Thread.current[:name] = "Mixer controller stopper thread"
           # Stop the mixer controller
           controller.mixer_controller.stop_control
@@ -252,6 +252,7 @@ class Heating_controller
         controller.buffer_heater.set_mode(:off)
 
         # Wait before turning pumps off to make sure we do not lose circulation
+        $app_logger.debug("Waiting shutdown delay")
         sleep $config[:shutdown_delay]
 
         # Turn off all pumps
@@ -270,7 +271,7 @@ class Heating_controller
         sleep 3
         $app_logger.debug("Joining mixer controller stopper thread")
 
-        mixer_controller_stoppper_thread.join
+        mixer_controller_stopper_thread.join
       end
     end
 
