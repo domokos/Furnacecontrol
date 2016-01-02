@@ -507,8 +507,8 @@ module BoilerBase
       event :turnoff, :any => :off
       event :directheat, :any  => :directheat
       event :hydrshift, :any => :hydrshift
-      event :bufferfill, [:HW, :directheat, :hydrshift, :frombuffer]  => :bufferfill
-      event :frombuffer, [:off, :HW, :directheat, :hydrshift, :bufferfill]  => :frombuffer
+      event :bufferfill, :any  => :bufferfill
+      event :frombuffer, :any => :frombuffer
       event :HW, :any => :HW
 
       event :init, :none => :off
