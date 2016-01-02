@@ -268,6 +268,8 @@ class Heating_controller
 
         # Wait for the delayed closure to happen
         sleep 3
+        $app_logger.debug("Joining mixer controller stopper thread")
+
         mixer_controller_stoppper_thread.join
       end
     end
