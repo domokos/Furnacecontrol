@@ -741,7 +741,6 @@ module BoilerBase
           end
         else
           $app_logger.debug("Bufferheater turning off")
-          buffer.set_relays(:direct)
           if  buffer.heater_relay.state == :on
             $app_logger.debug("Turning off heater relay")
             buffer.heater_relay.off
@@ -749,6 +748,7 @@ module BoilerBase
           else
             $app_logger.debug("Heater relay already off")
           end
+          buffer.set_relays(:direct)
         end
       end  # of enter off action
 
@@ -759,7 +759,6 @@ module BoilerBase
       # - Start the hydr shift pump
       @buffer_sm.on_enter_hydrshift do |event|
         buffer.heat_wiper.set_water_temp(buffer.target_temp)
-        buffer.set_relays(:hydr_shifted)
         if buffer.hydr_shift_pump.state != :on
           $app_logger.debug("Turning on hydr shift pump")
           buffer.hydr_shift_pump.on
@@ -767,6 +766,7 @@ module BoilerBase
         else
           $app_logger.debug("Hydr shift pump already on")
         end
+        buffer.set_relays(:hydr_shifted)
         if buffer.heater_relay.state != :on
           $app_logger.debug("Turning on heater relay")
           buffer.heater_relay.on
@@ -826,7 +826,6 @@ module BoilerBase
       # - turn on hydr shift pump
       @buffer_sm.on_enter_bufferfill do |event|
         buffer.heat_wiper.set_water_temp(buffer.target_temp+buffer.config[:buffer_passthrough_overshoot])
-        buffer.set_relays(:buffer_passthrough)
         if buffer.hydr_shift_pump.state != :on
           $app_logger.debug("Turning on hydr shift pump")
           buffer.hydr_shift_pump.on
@@ -834,6 +833,7 @@ module BoilerBase
         else
           $app_logger.debug("Hydr shift pump already on")
         end
+        buffer.set_relays(:buffer_passthrough)
         if buffer.heater_relay.state != :on
           $app_logger.debug("Turning on heater relay")
           buffer.heater_relay.on
