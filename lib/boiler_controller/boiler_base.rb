@@ -165,7 +165,7 @@ module BoilerBase
   # passed to it as an argument. The reference function should return true at times, when the PWM thermostat
   # should consider the PWM to be active.
   class PwmThermostat
-    attr_accessor :cycle_threshold, :state
+    attr_accessor :cycle_threshold, :state, :modification_mutex
     def initialize(sensor,filtersize,value_proc,is_HW_or_valve,timebase=3600)
       # Update the Class variables
       @@timebase = timebase
@@ -174,6 +174,8 @@ module BoilerBase
       @sensor = sensor
       @sample_filter = Filter.new(filtersize)
       @value_proc = value_proc
+
+      @modification_mutex = Mutex.new
 
       @state = :off
       @target = nil
@@ -196,7 +198,7 @@ module BoilerBase
           @@newly_initialized_thermostat_present = false
           # Calculate the threshold value for each instance
           @@thermostat_instances.each do |th|
-            th.cycle_threshold = @@timebase * th.value
+            th.modification_mutex.synchronize { th.cycle_threshold = @@timebase * th.value }
           end
 
           # Perform the cycle
@@ -235,36 +237,50 @@ module BoilerBase
     end
 
     def update
-      # Request thread cycle restart if newly initialized
-      @@newly_initialized_thermostat_present = (@@newly_initialized_thermostat_present or (@sample_filter.value == nil and @target != nil))
-      @sample_filter.input_sample(@sensor.temp)
+      @modification_mutex.synchronize do
+        # Request thread cycle restart if newly initialized
+        @@newly_initialized_thermostat_present = (@@newly_initialized_thermostat_present or (@sample_filter.value == nil and @target != nil))
+        @sample_filter.input_sample(@sensor.temp)
+      end
     end
 
     def test_update(next_sample)
-      @sample_filter.input_sample(next_sample)
+      @modification_mutex.synchronize { @sample_filter.input_sample(next_sample)}
     end
 
     def temp
-      @sample_filter.value
+      retval = 0
+      @modification_mutex.synchronize { retval = @sample_filter.value }
+      return retval
     end
 
     def is_on?
-      @state == :on
+      retval = false
+      @modification_mutex.synchronize { retval = (@state == :on) }
+      return retval
     end
 
     def is_off?
-      @state == :off
+      retval = false
+      @modification_mutex.synchronize { retval = (@state == :off) }
+      return retval
     end
 
     def set_target (target)
-      # Request thread cycle restart if newly initialized
-      @@newly_initialized_thermostat_present = (@@newly_initialized_thermostat_present or (@target == nil and @sample_filter.value != nil))
-      @target = target
+      @modification_mutex.synchronize do
+        # Request thread cycle restart if newly initialized
+        @@newly_initialized_thermostat_present = (@@newly_initialized_thermostat_present or (@target == nil and @sample_filter.value != nil))
+        @target = target
+      end
     end
 
     def value
-      if @sample_filter.value != nil and @target != nil
-        return @value_proc.call(@sample_filter,@target)
+      value_available = false
+      @modification_mutex.synchronize {value_available = @sample_filter.value != nil and @target != nil}
+      if value_available
+        retval = 0
+        @modification_mutex.synchronize { retval = @value_proc.call(@sample_filter,@target)}
+        return retval
       else
         return 0
       end
