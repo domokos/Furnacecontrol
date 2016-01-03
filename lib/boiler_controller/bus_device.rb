@@ -333,6 +333,8 @@ module BusDevice
       @mock_temp = mock_temp
       @debug = debug
 
+      @temp_reader_mutex = Mutex.new
+
       @delay_timer = Globals::TimerSec.new(TEMP_BUS_READ_TIMEOUT,"Temp Sensor Delay timer: "+@name)
 
       super()
@@ -348,10 +350,12 @@ module BusDevice
     end
 
     def temp
-      if @delay_timer.expired?
-        temp_tmp = read_temp
-        @lasttemp = temp_tmp unless temp_tmp == ONEWIRE_TEMP_FAIL or temp_tmp < -5 or temp_tmp > 85
-        @delay_timer.reset
+      @temp_reader_mutex. synchronize do
+        if @delay_timer.expired?
+          temp_tmp = read_temp
+          @lasttemp = temp_tmp unless temp_tmp == ONEWIRE_TEMP_FAIL or temp_tmp < -5 or temp_tmp > 85
+          @delay_timer.reset
+        end
       end
       return @lasttemp
     end
