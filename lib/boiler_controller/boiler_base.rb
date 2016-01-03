@@ -347,7 +347,7 @@ module BoilerBase
           # Delay starting the controller process if requested
           time_to_sleep = delay - (Time.now - enter_timestamp)
           sleep time_to_sleep if time_to_sleep > 0
-          
+
           # Prefill sample buffer to get rid of false values
           @config[:mixer_filter_size].times do
             @mix_filter.input_sample(@mix_sensor.temp)
@@ -508,7 +508,6 @@ module BoilerBase
 
     events {
       event :turnoff, :any => :off
-      event :directheat, :any  => :directheat
       event :hydrshift, :any => :hydrshift
       event :bufferfill, :any  => :bufferfill
       event :frombuffer, :any => :frombuffer
@@ -660,14 +659,6 @@ module BoilerBase
       moved = false
 
       case config
-      when :direct
-        moved |= @forward_valve.state != :off
-        @forward_valve.off
-        moved |= @return_valve.state != :off
-        @return_valve.off
-        moved |= @bypass_valve.state != :on
-        @bypass_valve.on
-        @relay_state = :direct
       when :hydr_shifted
         moved |= @forward_valve.state != :off
         @forward_valve.off
@@ -935,13 +926,8 @@ module BoilerBase
         # to try avoiding unnecessary buffer filling
         if @target_temp > @config[:buffer_passthrough_fwd_temp_limit] and @relax_timer.expired?
           $app_logger.debug("Target set above buffer_passthrough_fwd_temp_limit. State will change from buffer passthrough")
-          if @mode == :radheat
-            $app_logger.debug("Radheat mode - Decision: direct heat")
-            @buffer_sm.directheat
-          elsif @mode == :floorheat
-            $app_logger.debug("Floorheat mode - Decision: hydr shifted")
-            @buffer_sm.hydrshift
-          end
+          $app_logger.debug("Decision: hydr shifted")
+          @buffer_sm.hydrshift
           # If the buffer is nearly full - too low delta T or
           # too hot then start feeding from the buffer.
           # As of now we assume that the boiler is able to generate the output temp requred
@@ -972,24 +958,16 @@ module BoilerBase
         if @forward_temp < @target_temp - @config[:buffer_expiry_threshold]  and @relax_timer.expired?
           $app_logger.debug("Buffer empty - state will change from buffer feed")
 
-          # If in radheat mode then go back to direct heat
-          if @mode == :radheat
-            $app_logger.debug("Radheat mode - Decision: direct heat")
-            @buffer_sm.directheat
+          # If we are below the exit limit then go for filling the buffer
+          if @target_temp < @config[:buffer_passthrough_fwd_temp_limit]
+            $app_logger.debug("Decision: fill buffer in buffer passthrough")
+            @buffer_sm.bufferfill
 
-            # Else evaluate going back to bufferfill or hydr shift
+            # If the target is above the exit limit then go for hydrshift mode
           else
-            # If we are below the exit limit then go for filling the buffer
-            if @target_temp < @config[:buffer_passthrough_fwd_temp_limit]
-              $app_logger.debug("Decision: fill buffer in buffer passthrough")
-              @buffer_sm.bufferfill
-
-              # If the target is above the exit limit then go for hydrshift mode
-            else
-              $app_logger.debug("Decision: target temp higher than passthrough limit - direct heat")
-              @buffer_sm.hydrshift
-            end
-          end # of state evaluation
+            $app_logger.debug("Decision: target temp higher than passthrough limit - direct heat")
+            @buffer_sm.hydrshift
+          end
         else
           # Well nothing needs to be done here at the moment but the block is
         end # of exit criterium evaluation
@@ -1013,23 +991,18 @@ module BoilerBase
         case @mode
         when :HW
           @buffer_sm.HW
-        when :floorheat, :radheat
+        when :heat
 
           # Resume the state if coming from HW and state was not off before HW
           if @prev_mode == :HW and @prev_sm_state != :off
             $app_logger.debug("Ending HW - resuming state to: "+@prev_sm_state.to_s)
             @buffer_sm.trigger(@prev_sm_state)
           else
-            if @mode == :radheat
-              $app_logger.debug("Starting heating in directheat")
-              @buffer_sm.directheat
-            elsif @mode == :floorheat
-              $app_logger.debug("Starting heating in hydr shift")
-              @buffer_sm.hydrshift
-            end
+            $app_logger.debug("Starting heating in hydr shift")
+            @buffer_sm.hydrshift
           end
         else
-          raise "Invalid mode in do_control after mode change. Expecting either ':HW', ':radheat' or ':floorheat' got: '"+@mode.to_s+"'"
+          raise "Invalid mode in do_control after mode change. Expecting either ':HW' or ':heat' got: '"+@mode.to_s+"'"
         end
         @mode_changed = false
       else
