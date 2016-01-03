@@ -493,7 +493,7 @@ module BoilerBase
     def calculate_adjustment_time(error)
       retval = @config[:mixer_motor_time_parameter] * error
       return 0 if retval < 0
-      return 10 if retval > 10
+      return 5 if retval > 5
       return retval
     end
   end # of class MixerControl
