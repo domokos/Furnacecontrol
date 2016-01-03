@@ -614,7 +614,7 @@ module BoilerBase
 
     def set_mode(new_mode)
       # Check validity of the parameter
-      raise "Invalid mode parameter '"+new_mode.to_s+"' passed to set_mode(mode)" unless [:heat,:off,:HW].include? new_mode
+      raise "Invalid mode parameter '"+new_mode.to_s+"' passed to set_mode(mode)" unless [:floorheat,:radheat,:off,:HW].include? new_mode
 
       # Take action only if the mode is changing
       return if @mode == new_mode
@@ -867,7 +867,7 @@ module BoilerBase
 
       # Evaluate Direct Boiler states
       case @buffer_sm.current
-      when :hydrshift, :directheat
+      when :hydrshift
 
         # Direct Boiler - State change condition evaluation
         if (@forward_temp > @target_temp + @config[:forward_above_target]) and
@@ -906,6 +906,7 @@ module BoilerBase
           $app_logger.debug("Target set above buffer_passthrough_fwd_temp_limit. State will change from buffer passthrough")
           $app_logger.debug("Decision: hydr shifted")
           @buffer_sm.hydrshift
+
           # If the buffer is nearly full - too low delta T or
           # too hot then start feeding from the buffer.
           # As of now we assume that the boiler is able to generate the output temp requred
@@ -936,16 +937,24 @@ module BoilerBase
         if @forward_temp < @target_temp - @config[:buffer_expiry_threshold]  and @relax_timer.expired?
           $app_logger.debug("Buffer empty - state will change from buffer feed")
 
-          # If we are below the exit limit then go for filling the buffer
-          if @target_temp < @config[:buffer_passthrough_fwd_temp_limit]
-            $app_logger.debug("Decision: fill buffer in buffer passthrough")
-            @buffer_sm.bufferfill
-
-            # If the target is above the exit limit then go for hydrshift mode
-          else
-            $app_logger.debug("Decision: target temp higher than passthrough limit - direct heat")
+          # If in radheat mode then go back to hydr shift heat
+          if @mode == :radheat
+            $app_logger.debug("Radheat mode - Decision: direct heat")
             @buffer_sm.hydrshift
-          end
+
+            # Else evaluate going back to bufferfill or hydr shift
+          else
+            # If we are below the exit limit then go for filling the buffer
+            if @target_temp < @config[:buffer_passthrough_fwd_temp_limit]
+              $app_logger.debug("Decision: fill buffer in buffer passthrough")
+              @buffer_sm.bufferfill
+
+              # If the target is above the exit limit then go for hydrshift mode
+            else
+              $app_logger.debug("Decision: target temp higher than passthrough limit - direct heat")
+              @buffer_sm.hydrshift
+            end
+          end # of state evaluation
         else
           # Well nothing needs to be done here at the moment but the block is
         end # of exit criterium evaluation
@@ -969,18 +978,23 @@ module BoilerBase
         case @mode
         when :HW
           @buffer_sm.HW
-        when :heat
+        when :floorheat, :radheat
 
           # Resume the state if coming from HW and state was not off before HW
           if @prev_mode == :HW and @prev_sm_state != :off
             $app_logger.debug("Ending HW - resuming state to: "+@prev_sm_state.to_s)
             @buffer_sm.trigger(@prev_sm_state)
           else
-            $app_logger.debug("Starting heating in hydr shift")
-            @buffer_sm.hydrshift
+            if @mode == :radheat and @buffer_sm.current == :bufferfill
+              $app_logger.debug("Setting heating to hydr shifted")
+              @buffer_sm.hydrshift
+            elsif @buffer_sm.current == :off
+              $app_logger.debug("Starting heating in hydr shift")
+              @buffer_sm.hydrshift
+            end
           end
         else
-          raise "Invalid mode in do_control after mode change. Expecting either ':HW' or ':heat' got: '"+@mode.to_s+"'"
+          raise "Invalid mode in do_control after mode change. Expecting either ':HW', ':radheat' or ':floorheat' got: '"+@mode.to_s+"'"
         end
         @mode_changed = false
       else

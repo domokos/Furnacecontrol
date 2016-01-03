@@ -574,10 +574,13 @@ class Heating_controller
       # Set mode and required water temperature of the boiler
       $app_logger.trace("Setting heater target temp to: "+@target_boiler_temp.to_s)
       @buffer_heater.set_target(@target_boiler_temp)
-
-      $app_logger.trace("Setting heater mode to :heat")
-      @buffer_heater.set_mode(:heat)
-
+      if power_needed[:power] == :FLOOR
+        $app_logger.trace("Setting heater mode to :floorheat")
+        @buffer_heater.set_mode(:floorheat)
+      else
+        $app_logger.trace("Setting heater mode to :radheat")
+        @buffer_heater.set_mode(:radheat)
+      end
       if prev_power_needed[:power] == :HW
         @mixer_controller.open
         @mixer_controller.start_control($config[:mixer_start_delay_after_HW])
