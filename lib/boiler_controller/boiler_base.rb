@@ -442,6 +442,7 @@ module BoilerBase
           $config_mutex.synchronize {@config = $config.dup}
           $app_logger.debug("Mixer forward temp: "+value.round(2).to_s)
           @mixer_log_rate_limiter.set_timer(@config[:mixer_limited_log_period])
+          @mixer_log_rate_limiter.reset
         end
 
         # Adjust mixing motor if error is out of bounds
