@@ -49,19 +49,8 @@ module BoilerBase
     def value
       if @dirty
         return nil if @content.empty?
-
-        # Filter out min-max values to further minimize jitter
-        # in case of big enough filters
-        if @content.size > 7
-          content_tmp = Array.new(@content.sort)
-          content_tmp.pop if content_tmp[content_tmp.size-1] != content_tmp[content_tmp.size-2]
-          content_tmp.shift if content_tmp[0] != content_tmp[1]
-        else
-          content_tmp = @content
-        end
-
         sum = 0
-        content_tmp.each do
+        @content.each do
           |element|
           sum += element
         end
