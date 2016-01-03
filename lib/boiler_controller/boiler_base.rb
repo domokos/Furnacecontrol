@@ -31,35 +31,42 @@ module BoilerBase
       @content = []
       @dirty = true
       @value = nil
+      @filter_mutex = Mutex.new
     end
 
     def reset
-      @content = []
-      @dirty = true
-      @value = nil
+      @filter_mutex.synchronize do
+        @content = []
+        @dirty = true
+        @value = nil
+      end
     end
 
     def input_sample(the_sample)
-      @content.push(the_sample)
-      @content.shift if @content.size > @size
-      @dirty = true
+      @filter_mutex.synchronize do
+        @content.push(the_sample)
+        @content.shift if @content.size > @size
+        @dirty = true
+      end
       return value
     end
 
     def value
-      if @dirty
-        return nil if @content.empty?
-        sum = 0
-        @content.each do
-          |element|
-          sum += element
+      @filter_mutex.synchronize do
+        if @dirty
+          return nil if @content.empty?
+          sum = 0
+          @content.each do
+            |element|
+            sum += element
+          end
+          @value = sum.to_f / content_tmp.size
+          @dirty = false
         end
-        @value = sum.to_f / content_tmp.size
-        @dirty = false
       end
       return @value
     end
-  end
+  end # of class Filter
 
   # The Thermostat base class providing histeresis behavior to a sensor
   class Thermostat_base
