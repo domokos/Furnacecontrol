@@ -48,7 +48,6 @@ module BoilerBase
         @content.shift if @content.size > @size
         @dirty = true
       end
-      return value
     end
 
     def value
