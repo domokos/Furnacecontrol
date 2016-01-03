@@ -60,7 +60,7 @@ module BoilerBase
             |element|
             sum += element
           end
-          @value = sum.to_f / content_tmp.size
+          @value = sum.to_f / @content.size
           @dirty = false
         end
       end
