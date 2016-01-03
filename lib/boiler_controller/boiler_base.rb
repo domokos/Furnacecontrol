@@ -768,28 +768,6 @@ module BoilerBase
         end
       end # of enter hydrshift action
 
-      # On entering direct heat
-      # - Turn off HW production of boiler
-      # - move relays to boiler direct
-      # - start the boiler
-      # - Start the hydr shift pump
-      @buffer_sm.on_enter_directheat do |event|
-        buffer.heat_wiper.set_water_temp(buffer.target_temp)
-        buffer.set_relays(:direct)
-        if buffer.heater_relay.state != :on
-          $app_logger.debug("Turning on heater relay")
-          buffer.heater_relay.on
-        else
-          $app_logger.debug("Heater relay already on")
-        end
-        if buffer.hydr_shift_pump.state != :off
-          $app_logger.debug("Turning off hydr shift pump")
-          buffer.hydr_shift_pump.off
-        else
-          $app_logger.debug("Hydr shift pump already off")
-        end
-      end # of enter direct action
-
       # On entering heating from buffer set relays and turn off heating
       # - Turn off HW production of boiler
       @buffer_sm.on_enter_frombuffer do |event|
