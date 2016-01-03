@@ -89,7 +89,7 @@
 # Mixer parameters 
 # *********************************************************************************************
 #
-:mixer_limited_log_period: 20
+:mixer_limited_log_period: 30
 :mixer_filter_size: 3
 :mixer_sampling_delay: 5
 :mixer_error_threshold: 0.35

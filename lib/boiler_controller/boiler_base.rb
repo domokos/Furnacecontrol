@@ -302,7 +302,7 @@ module BoilerBase
       @integrated_ccw_movement_time = 0
 
       # Create the log rate limiter
-      @mixer_log_rate_limiter = 0
+      @mixer_log_rate_limiter = Globals::TimerSec.new(@config[:mixer_limited_log_period],"Mixer controller log timer")
     end
 
     def temp
@@ -437,13 +437,11 @@ module BoilerBase
           error = target - value
         end
 
-        if @mixer_log_rate_limiter > @config[:mixer_limited_log_period]
-          @mixer_log_rate_limiter = 1
+        if @mixer_log_rate_limiter.expired?
           # Copy the config for updates
           $config_mutex.synchronize {@config = $config.dup}
           $app_logger.debug("Mixer forward temp: "+value.round(2).to_s)
-        else
-          @mixer_log_rate_limiter += 1
+          @mixer_log_rate_limiter.set_timer(@config[:mixer_limited_log_period])
         end
 
         # Adjust mixing motor if error is out of bounds
