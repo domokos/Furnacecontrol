@@ -549,6 +549,7 @@ class Heating_controller
       elsif @target_boiler_temp < $config[:watertemp_lower_limit]
         @target_boiler_temp = $config[:watertemp_lower_limit]
       end
+      @mixer_controller.set_target_temp($config[:FLOOR_watertemp])
 
     when :FLOOR
       @target_boiler_temp = $config[:FLOOR_watertemp]
