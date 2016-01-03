@@ -350,7 +350,7 @@ module BusDevice
     end
 
     def temp
-      @temp_reader_mutex. synchronize do
+      @temp_reader_mutex.synchronize do
         if @delay_timer.expired?
           temp_tmp = read_temp
           @lasttemp = temp_tmp unless temp_tmp == ONEWIRE_TEMP_FAIL or temp_tmp < -5 or temp_tmp > 85
