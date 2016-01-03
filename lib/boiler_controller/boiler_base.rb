@@ -329,8 +329,7 @@ module BoilerBase
     end
 
     def start_control(delay=0)
-      # Delay starting the controller process if requested
-      sleep delay
+      enter_timestamp = Time.now
 
       # Only start control thread if not yet started
       return unless @control_thread_mutex.try_lock
@@ -345,6 +344,10 @@ module BoilerBase
         # Acquire lock for controlling switches
         @control_mutex.synchronize do
 
+          # Delay starting the controller process if requested
+          time_to_sleep = delay - (Time.now - enter_timestamp)
+          sleep time_to_sleep if time_to_sleep > 0
+          
           # Prefill sample buffer to get rid of false values
           @config[:mixer_filter_size].times do
             @mix_filter.input_sample(@mix_sensor.temp)
