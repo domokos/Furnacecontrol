@@ -656,7 +656,7 @@ module BoilerBase
     def set_relays(config)
       # Check validity of the parameter
       raise "Invalid relay config parameter '"+config.to_s+"' passed to set_relays(config)" unless
-      [:direct,:hydr_shifted,:buffer_passthrough,:feed_from_buffer,:HW].include? config
+      [:hydr_shifted,:buffer_passthrough,:feed_from_buffer,:HW].include? config
 
       return if @relay_state == config
 
@@ -714,7 +714,7 @@ module BoilerBase
 
     # Define  the state transition actions
     def set_sm_actions
-      # :off, :directheat, :bufferfill, :frombuffer, :HW
+      # :off, :hydrshift, :bufferfill, :frombuffer, :HW
 
       # Log state transitions and set the state change relaxation timer
       @buffer_sm.on_before do |event|
@@ -753,7 +753,7 @@ module BoilerBase
 
       # On entering heat through hydr shifter
       # - Turn off HW production of boiler
-      # - move relays to boiler direct shifted
+      # - move relays to boiler hydr shifted
       # - start the boiler
       # - Start the hydr shift pump
       @buffer_sm.on_enter_hydrshift do |event|
@@ -871,16 +871,16 @@ module BoilerBase
 
       feed_log
 
-      # Evaluate Direct Boiler states
+      # Evaluate Hydr shift Boiler states
       case @buffer_sm.current
       when :hydrshift
 
-        # Direct Boiler - State change condition evaluation
+        # Hydr shift Boiler - State change condition evaluation
         if (@forward_temp > @target_temp + @config[:forward_above_target]) and
         @boiler_on and
         @relax_timer.expired?
 
-          # Too much heat with direct heat - let's either feed from buffer or fill the buffer
+          # Too much heat with hydr shift heat - let's either feed from buffer or fill the buffer
           # based on how much heat is stored in the buffer
           $app_logger.debug("Boiler overheating - state will change from "+@buffer_sm.current.to_s)
           $app_logger.debug("Heat in buffer: "+@heat_in_buffer[:temp].to_s+" Percentage: "+@heat_in_buffer[:percentage].to_s)
@@ -894,7 +894,7 @@ module BoilerBase
             @buffer_sm.bufferfill
           end
 
-          # Direct Boiler/hydr_shift - State maintenance operations
+          # Hydr_shift - State maintenance operations
           # Just set the required water temperature
         else
           @heat_wiper.set_water_temp(@target_temp)
@@ -905,7 +905,7 @@ module BoilerBase
         # Buffer Fill - State change evaluation conditions
 
         # Move out of buffer fill if the required temperature rose above the limit
-        # This logic is here to try forcing the heating back to direct heating in cases where
+        # This logic is here to try forcing the heating back to hydr shift heating in cases where
         # the heat generated can be dissipated. This a safety escrow
         # to try avoiding unnecessary buffer filling
         if @target_temp > @config[:buffer_passthrough_fwd_temp_limit] and @relax_timer.expired?
@@ -945,7 +945,7 @@ module BoilerBase
 
           # If in radheat mode then go back to hydr shift heat
           if @mode == :radheat
-            $app_logger.debug("Radheat mode - Decision: direct heat")
+            $app_logger.debug("Radheat mode - Decision: Hydr shift")
             @buffer_sm.hydrshift
 
             # Else evaluate going back to bufferfill or hydr shift
@@ -957,7 +957,7 @@ module BoilerBase
 
               # If the target is above the exit limit then go for hydrshift mode
             else
-              $app_logger.debug("Decision: target temp higher than passthrough limit - direct heat")
+              $app_logger.debug("Decision: target temp higher than passthrough limit - hydr shift heat")
               @buffer_sm.hydrshift
             end
           end # of state evaluation
@@ -1102,17 +1102,13 @@ module BoilerBase
       #      @boiler_on ? $app_logger.debug("Boiler detected : on") : $app_logger.debug("Boiler detected : off")
 
       case @buffer_sm.current
-      when :hydrshift, :directheat
+      when :hydrshift
         $app_logger.trace("Forward temp: "+@forward_temp.to_s)
         $app_logger.trace("Target temp: "+@target_temp.to_s)
         $app_logger.trace("Threshold forward_above_target: "+@config[:forward_above_target].to_s)
         $app_logger.trace("Delta_t: "+@delta_t.to_s)
         if do_limited_logging
-          if @buffer_sm.current == :directheat
-            $app_logger.debug("Direct boiler heating. Target: "+@target_temp.to_s)
-          else
-            $app_logger.debug("HydrShift heating. Target: "+@target_temp.to_s)
-          end
+          $app_logger.debug("HydrShift heating. Target: "+@target_temp.to_s)
           $app_logger.debug("Forward temp: "+@forward_temp.to_s)
           $app_logger.debug("Delta_t: "+@delta_t.to_s)
           @boiler_on ? $app_logger.debug("Boiler detected : on") : $app_logger.debug("Boiler detected : off")
