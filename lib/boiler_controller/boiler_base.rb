@@ -614,7 +614,7 @@ module BoilerBase
 
     def set_mode(new_mode)
       # Check validity of the parameter
-      raise "Invalid mode parameter '"+new_mode.to_s+"' passed to set_mode(mode)" unless [:floorheat,:radheat,:off,:HW].include? new_mode
+      raise "Invalid mode parameter '"+new_mode.to_s+"' passed to set_mode(mode)" unless [:heat,:off,:HW].include? new_mode
 
       # Take action only if the mode is changing
       return if @mode == new_mode
