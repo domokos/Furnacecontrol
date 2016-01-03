@@ -207,10 +207,10 @@ module BoilerBase
             any_thermostats_on = false
             @@thermostat_instances.each do |th|
               if th.cycle_threshold > @@sec_elapsed
-                th.state = :on
+                th.modification_mutex.synchronize {th.state = :on}
                 any_thermostats_on = true
               else
-                th.state = :off
+                th.modification_mutex.synchronize {th.state = :off}
               end
             end
 
@@ -275,12 +275,8 @@ module BoilerBase
     end
 
     def value
-      value_available = false
-      @modification_mutex.synchronize {value_available = @sample_filter.value != nil and @target != nil}
-      if value_available
-        retval = 0
-        @modification_mutex.synchronize { retval = @value_proc.call(@sample_filter,@target)}
-        return retval
+      if @sample_filter.value != nil and @target != nil
+        return @value_proc.call(@sample_filter,@target)
       else
         return 0
       end
