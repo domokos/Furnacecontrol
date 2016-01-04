@@ -92,14 +92,14 @@ module Globals
 
     attr_reader :name
     
-    def initialize(timer,name)
+    def initialize(time,name)
       @name = name
-      @timer = timer
+      @time = time
       @start_ts = Time.now - @timer
     end
 
-    def set_timer(timer)
-      @timer = timer
+    def set_timer(time)
+      @time = time
     end
 
     def start
@@ -111,7 +111,7 @@ module Globals
     end
 
     def expired?
-      return (Time.now - @start_ts).to_i >= @timer 
+      return (Time.now - @start_ts).to_i >= @time
     end
 
     def reset
