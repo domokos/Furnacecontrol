@@ -161,6 +161,7 @@ module BoilerBase
   # should consider the PWM to be active.
   class PwmThermostat
     attr_accessor :cycle_threshold, :state, :modification_mutex
+    attr_reader :target
     def initialize(sensor,filtersize,value_proc,is_HW_or_valve,timebase=3600)
       # Update the Class variables
       @@timebase = timebase
@@ -176,21 +177,36 @@ module BoilerBase
       @target = nil
       @cycle_threshold = 0
 
+      update
+
       @@thermostat_instances = [] if defined?(@@thermostat_instances) == nil
-      @@thermostat_instances << self
+      @modification_mutex.synchronize { @@thermostat_instances << self }
 
       start_pwm_thread if defined?(@@pwm_thread) == nil
     end
 
     def start_pwm_thread
-      @@newly_initialized_thermostat_present = false
       @@pwm_thread = Thread.new do
         Thread.current[:name] = "PWM thermostat"
-        #Wait for the main thread to create all objects we need
+        #Wait for the main thread to create all PWM thermostat objects
+        # we may get some later but those will just skip one cycle
         sleep(10)
+
+        #Loop forever
         while true
 
-          @@newly_initialized_thermostat_present = false
+          # Wait for all instances being initialized
+          initialized = true
+          safety_loop_counter = 0
+          begin
+            @@thermostat_instances.each do |th|
+              th.modification_mutex.synchronize { initialized &= (th.target != nil) }
+            end
+            sleep 0.5
+            safety_loop_counter += 1
+            $app_logger.debug("Waited "+(safety_loop_counter/120).round(2).to_s+" seconds in vain for all PWM thermostats to receive a target.") if safety_loop_counter % 120 == 0
+          end until initialized
+
           # Calculate the threshold value for each instance
           @@thermostat_instances.each do |th|
             th.modification_mutex.synchronize { th.cycle_threshold = @@timebase * th.value }
@@ -198,7 +214,7 @@ module BoilerBase
 
           # Perform the cycle
           @@sec_elapsed = 0
-          while @@sec_elapsed < @@timebase
+          while @@sec_elapsed < @@timebase do
             any_thermostats_on = false
             @@thermostat_instances.each do |th|
               if th.cycle_threshold > @@sec_elapsed
@@ -215,28 +231,14 @@ module BoilerBase
             # than heating. This actually is only good for the active thermostats as others
             # being switched off suffer an increased off time - no easy way around this...
             (@@sec_elapsed = @@sec_elapsed + 1) unless (@@is_HW_or_valve.call and any_thermostats_on)
-
-            #Relax for 15 secs then recalculate if any of the thermostats declared new initialization
-            if @@newly_initialized_thermostat_present
-              @@thermostat_instances.each do |th|
-                th.state = :off
-              end
-              sleep(15)
-              break
-            end
           end
-
           $app_logger.debug("End of PWM thermostat cycle")
         end
       end
     end
 
     def update
-      @modification_mutex.synchronize do
-        # Request thread cycle restart if newly initialized
-        @@newly_initialized_thermostat_present = (@@newly_initialized_thermostat_present or (@sample_filter.value == nil and @target != nil))
-        @sample_filter.input_sample(@sensor.temp)
-      end
+      @modification_mutex.synchronize { @sample_filter.input_sample(@sensor.temp) }
     end
 
     def test_update(next_sample)
@@ -262,19 +264,17 @@ module BoilerBase
     end
 
     def set_target (target)
-      @modification_mutex.synchronize do
-        # Request thread cycle restart if newly initialized
-        @@newly_initialized_thermostat_present = (@@newly_initialized_thermostat_present or (@target == nil and @sample_filter.value != nil))
-        @target = target
-      end
+      @modification_mutex.synchronize { @target = target }
     end
 
     def value
-      if @sample_filter.value != nil and @target != nil
-        return @value_proc.call(@sample_filter,@target)
-      else
-        return 0
+      retval = nil
+      begin
+        retval = @value_proc.call(@sample_filter,@target)
+      rescue
+        retval = 0
       end
+      return retval
     end
     #End of class PwmThermostat
   end
