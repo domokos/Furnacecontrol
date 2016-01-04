@@ -77,7 +77,7 @@
 :forward_above_target: 3.3
 :min_delta_t_to_maintain: 4.0
 :buffer_passthrough_overshoot: 3
-:buffer_expiry_threshold: 2
+:buffer_expiry_threshold: 2.5
 :buffer_passthrough_fwd_temp_limit: 45.0
 :boiler_on_detector_delta_t_threshold: 2.0
 :boiler_on_detector_max_target_overshoot: 3.0
