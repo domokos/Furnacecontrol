@@ -20,7 +20,7 @@ module BoilerBase
     }
 
     callbacks {
-      on_before {|event| $app_logger.debug"Heating state change from #{event.from} to #{event.to}"}
+      on_before {|event| $app_logger.debug("Heating state change from #{event.from} to #{event.to}")}
     }
   end # of class Heating SM
 
@@ -48,6 +48,10 @@ module BoilerBase
         @content.shift if @content.size > @size
         @dirty = true
       end
+    end
+
+    def list_content
+      return @content
     end
 
     def value
@@ -236,6 +240,13 @@ module BoilerBase
         # Request thread cycle restart if newly initialized
         @@newly_initialized_thermostat_present = (@@newly_initialized_thermostat_present or (@sample_filter.value == nil and @target != nil))
         @sample_filter.input_sample(@sensor.temp)
+        if @sensor.name == "External temperature"
+          $app_logger.debug("Updating external temperature in a PWM thermostat")
+          $app_logger.debug("Sensor value: "+@sensor.temp.to_s)
+          $app_logger.debug("Temp: "+@sample_filter.value.to_s)
+          $app_logger.debug("Temp rounded: "+@sample_filter.value.round(2).to_s)
+          $app_logger.debug("Element list: "+@sample_filter.list_content.join(","))
+        end
       end
     end
 
