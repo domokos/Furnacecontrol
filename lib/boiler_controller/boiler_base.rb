@@ -114,8 +114,6 @@ module BoilerBase
   end
 
   class Symmetric_thermostat < Thermostat_base
-    attr_reader :state, :threshold
-    attr_accessor :histeresis
     def determine_state
       if @state == :off
         @state = :on if @sample_filter.value < @threshold - @histeresis
@@ -126,7 +124,7 @@ module BoilerBase
   end
 
   class Asymmetric_thermostat < Thermostat_base
-    attr_reader :state, :threshold
+
     attr_accessor :up_histeresis, :down_histeresis
     def initialize(sensor,down_histeresis,up_histeresis,threshold,filtersize)
       @sensor = sensor

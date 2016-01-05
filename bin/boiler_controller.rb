@@ -877,10 +877,10 @@ class Heating_controller
     $heating_logger.debug("Floor pump: "+@floor_pump.state.to_s)
     $heating_logger.debug("Hydr shift pump: "+@hydr_shift_pump.state.to_s)
 
-    $heating_logger.debug("\nLiving target/temperature: "+@living_thermostat.target.to_s+"/"++@living_thermostat.temp.round(2).to_s)
+    $heating_logger.debug("\nLiving target/temperature: "+@living_thermostat.threshold.to_s+"/"++@living_thermostat.temp.round(2).to_s)
     $heating_logger.debug("Living thermostat state: "+@living_thermostat.state.to_s)
 
-    $heating_logger.debug("\nUpstairs target/temperature: "+@upstairs_thermostat.target.to_s+"/"+@upstairs_thermostat.temp.round(2).to_s)
+    $heating_logger.debug("\nUpstairs target/temperature: "+@upstairs_thermostat.threshold.to_s+"/"+@upstairs_thermostat.temp.round(2).to_s)
     $heating_logger.debug("Upstairs thermostat state: "+@upstairs_thermostat.state.to_s)
 
     $heating_logger.debug("\nLiving floor PWM value: "+@living_floor_thermostat.value.round(2).to_s)
@@ -891,7 +891,7 @@ class Heating_controller
     $heating_logger.debug("Upstairs floor valve: "+@upstairs_floor_valve.state.to_s)
     $heating_logger.debug("Upstairs floor thermostat status: "+@upstairs_floor_thermostat.state.to_s)
 
-    $heating_logger.debug("\nBasement target/temperature: "+@basement_thermostat.target.to_s+"/"+@basement_thermostat.temp.round(2).to_s)
+    $heating_logger.debug("\nBasement target/temperature: "+@basement_thermostat.threshold.to_s+"/"+@basement_thermostat.temp.round(2).to_s)
     $heating_logger.debug("Basement PWM value: "+@basement_thermostat.value.round(2).to_s)
     $heating_logger.debug("Basement floor valve: "+@basement_floor_valve.state.to_s)
     $heating_logger.debug("Basement thermostat status: "+@basement_thermostat.state.to_s)
