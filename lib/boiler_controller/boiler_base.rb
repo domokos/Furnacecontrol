@@ -209,7 +209,7 @@ module BoilerBase
             end
             sleep 0.5
             safety_loop_counter += 1
-            $app_logger.debug("Waited "+(safety_loop_counter/120).round(2).to_s+" seconds in vain for all PWM thermostats to receive a target.") if safety_loop_counter % 120 == 0
+            $app_logger.error("Waited "+(safety_loop_counter/120).round(2).to_s+" seconds in vain for all PWM thermostats to receive a target.") if safety_loop_counter % 120 == 0
           end until initialized
 
           # Calculate the threshold value for each instance
