@@ -231,7 +231,7 @@ module BoilerBase
               end
             end
 
-            if @pwm_log_rate_limiter.expired
+            if @pwm_log_rate_limiter.expired?
               $app_logger.debug("PWM thread active")
             end
 
