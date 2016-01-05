@@ -427,7 +427,7 @@ module BusDevice
         if value_requested != @value
           @value = value_requested
           write_device(@value, VOLATILE)
-          $app_logger.debug(@name+" set to value "+@value.to_s+" meaning water temperature "+@temp_required.to_s+" C")
+          $app_logger.debug(@name+" set to value "+@value.to_s+" meaning water temperature "+@temp_required.round(2).to_s+" C")
         end
       end # of state semaphore synchronize
     end
