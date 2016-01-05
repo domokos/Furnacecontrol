@@ -203,7 +203,7 @@ module BoilerBase
             @@thermostat_instances.each do |th|
               th.modification_mutex.synchronize {
                 initialized &= (th.target != nil)
-                $app_logger.debug("Thermostat "+th.name+" initialized: "+(th.target != nil).to_s)
+                $app_logger.debug(th.name+" initialized: "+(th.target != nil).to_s)
                 $app_logger.debug("Thermostats initialized: "+initialized.to_s)
               }
             end
@@ -216,7 +216,7 @@ module BoilerBase
           @@thermostat_instances.each do |th|
             th.modification_mutex.synchronize do
               th.cycle_threshold = @@timebase * th.value
-              $app_logger.debug("Thermostat "+th.name+" pulse width set to: "+(th.cycle_threshold/@@timebase*100).round(0).to_s+"%")
+              $app_logger.debug(th.name+" pulse width set to: "+(th.cycle_threshold/@@timebase*100).round(0).to_s+"%")
             end
           end
 
@@ -229,7 +229,7 @@ module BoilerBase
                 th.modification_mutex.synchronize do
                   if th.state != :on
                     th.state = :on
-                    $app_logger.debug("Turning on thermostat "+th.name)
+                    $app_logger.debug("Turning on "+th.name)
                   end
                 end
                 any_thermostats_on = true
@@ -237,7 +237,7 @@ module BoilerBase
                 th.modification_mutex.synchronize do
                   if th.state != :off
                     th.state = :off
-                    $app_logger.debug("Turning off thermostat "+th.name)
+                    $app_logger.debug("Turning off "+th.name)
                   end
                 end
               end
