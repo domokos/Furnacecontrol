@@ -216,7 +216,7 @@ module BoilerBase
           @@thermostat_instances.each do |th|
             th.modification_mutex.synchronize do
               th.cycle_threshold = @@timebase * th.value
-              $app_logger.debug("Thermostat "+th.name+" pulse width set to: "+th.cycle_threshold/@@timebase.round(0).to_s+"%")
+              $app_logger.debug("Thermostat "+th.name+" pulse width set to: "+(th.cycle_threshold/@@timebase).round(0).to_s+"%")
             end
           end
 
