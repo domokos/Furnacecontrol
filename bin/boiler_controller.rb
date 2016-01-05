@@ -877,7 +877,7 @@ class Heating_controller
     $heating_logger.debug("Floor pump: "+@floor_pump.state.to_s)
     $heating_logger.debug("Hydr shift pump: "+@hydr_shift_pump.state.to_s)
 
-    $heating_logger.debug("\nLiving target/temperature: "+@living_thermostat.threshold.to_s+"/"++@living_thermostat.temp.round(2).to_s)
+    $heating_logger.debug("\nLiving target/temperature: "+@living_thermostat.threshold.to_s+"/"+@living_thermostat.temp.round(2).to_s)
     $heating_logger.debug("Living thermostat state: "+@living_thermostat.state.to_s)
 
     $heating_logger.debug("\nUpstairs target/temperature: "+@upstairs_thermostat.threshold.to_s+"/"+@upstairs_thermostat.temp.round(2).to_s)
