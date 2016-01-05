@@ -192,6 +192,8 @@ module BoilerBase
         # we may get some later but those will just skip one cycle
         sleep(10)
 
+        @pwm_log_rate_limiter = Globals::TimerSec.new(50,"PWM log timer")
+
         #Loop forever
         while true
 
@@ -200,10 +202,10 @@ module BoilerBase
           safety_loop_counter = 0
           begin
             @@thermostat_instances.each do |th|
-              th.modification_mutex.synchronize { 
+              th.modification_mutex.synchronize {
                 initialized &= (th.target != nil)
                 $app_logger.debug("Thermostat initialized: "+th.target.to_s)
-                $app_logger.debug("Thermostats initialized: "+initialized.to_s) 
+                $app_logger.debug("Thermostats initialized: "+initialized.to_s)
               }
             end
             sleep 0.5
@@ -227,6 +229,10 @@ module BoilerBase
               else
                 th.modification_mutex.synchronize {th.state = :off}
               end
+            end
+
+            if @pwm_log_rate_limiter.expired
+              $app_logger.debug("PWM thread active")
             end
 
             sleep(1)
