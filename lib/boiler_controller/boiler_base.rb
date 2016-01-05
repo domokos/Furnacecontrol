@@ -1122,29 +1122,29 @@ module BoilerBase
       case @buffer_sm.current
       when :hydrshift
         $app_logger.trace("Forward temp: "+@forward_temp.to_s)
-        $app_logger.trace("Target temp: "+@target_temp.to_s)
+        $app_logger.trace("Target temp: "+@target_temp.round(2).to_s)
         $app_logger.trace("Threshold forward_above_target: "+@config[:forward_above_target].to_s)
         $app_logger.trace("Delta_t: "+@delta_t.to_s)
         if do_limited_logging
-          $app_logger.debug("HydrShift heating. Target: "+@target_temp.to_s)
+          $app_logger.debug("HydrShift heating. Target: "+@target_temp.round(2).to_s)
           $app_logger.debug("Forward temp: "+@forward_temp.to_s)
           $app_logger.debug("Delta_t: "+@delta_t.to_s)
           @boiler_on ? $app_logger.debug("Boiler detected : on") : $app_logger.debug("Boiler detected : off")
         end
       when :bufferfill
         $app_logger.trace("Forward temp: "+@forward_temp.to_s)
-        $app_logger.trace("Reqd./effective target temps: "+@target_temp.to_s+"/"+@heat_wiper.get_target.to_s)
+        $app_logger.trace("Reqd./effective target temps: "+@target_temp.round(2).to_s+"/"+@heat_wiper.get_target.to_s)
         $app_logger.trace("buffer_passthrough_fwd_temp_limit: "+@config[:buffer_passthrough_fwd_temp_limit].to_s)
         $app_logger.trace("Delta_t: "+@delta_t.to_s)
         if do_limited_logging
-          $app_logger.debug("Buffer Passthrough. Target: "+(@target_temp + @config[:buffer_passthrough_overshoot]).to_s)
+          $app_logger.debug("Buffer Passthrough. Target: "+(@target_temp + @config[:buffer_passthrough_overshoot]).round(2).to_s)
           $app_logger.debug("Forward temp: "+@forward_temp.to_s)
           $app_logger.debug("Delta_t: "+@delta_t.to_s)
           @boiler_on ? $app_logger.debug("Boiler detected : on") : $app_logger.debug("Boiler detected : off")
         end
       when :frombuffer
         $app_logger.trace("Forward temp: "+@forward_temp.to_s)
-        $app_logger.trace("Target temp: "+@target_temp.to_s)
+        $app_logger.trace("Target temp: "+@target_temp.round(2).to_s)
         if do_limited_logging
           $app_logger.debug("Feed from buffer. Forward temp: "+@forward_temp.to_s)
           $app_logger.debug("Delta_t: "+@delta_t.to_s)
