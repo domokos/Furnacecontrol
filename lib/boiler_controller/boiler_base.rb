@@ -200,7 +200,11 @@ module BoilerBase
           safety_loop_counter = 0
           begin
             @@thermostat_instances.each do |th|
-              th.modification_mutex.synchronize { initialized &= (th.target != nil) }
+              th.modification_mutex.synchronize { 
+                initialized &= (th.target != nil)
+                $app_logger.debug("Thermostat initialized: "+th.target.to_s)
+                $app_logger.debug("Thermostats initialized: "+initialized.to_s) 
+              }
             end
             sleep 0.5
             safety_loop_counter += 1

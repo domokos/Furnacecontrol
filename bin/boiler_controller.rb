@@ -286,7 +286,7 @@ class Heating_controller
       controller.mixer_controller.stop_control
 
       # Set the buffer for direct connection
-      controller.buffer_heater.set_relays(:direct)
+      controller.buffer_heater.set_relays(:hydr_shifted)
 
       # All radiator valves open
       controller.basement_radiator_valve.open
@@ -315,7 +315,7 @@ class Heating_controller
       controller.buffer_heater.set_mode(:off)
 
       # Set the buffer for direct connection
-      controller.buffer_heater.set_relays(:direct)
+      controller.buffer_heater.set_relays(:hydr_shifted)
 
       # Stop the mixer controller
       controller.mixer_controller.stop_control
