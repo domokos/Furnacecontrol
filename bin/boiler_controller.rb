@@ -156,11 +156,11 @@ class Heating_controller
     # Create thermostats, with default threshold values and hysteresis values
     @living_thermostat = BoilerBase::Symmetric_thermostat.new(@living_sensor,0.3,0.0,15)
     @HW_thermostat = BoilerBase::Asymmetric_thermostat.new(@HW_sensor,2,0,0.0,8)
-    @living_floor_thermostat = BoilerBase::PwmThermostat.new(@external_sensor,30,@living_floor_thermostat_valueproc,@is_HW_or_valve_proc)
+    @living_floor_thermostat = BoilerBase::PwmThermostat.new(@external_sensor,30,@living_floor_thermostat_valueproc,@is_HW_or_valve_proc,"Living floor thermostat")
     @mode_thermostat = BoilerBase::Symmetric_thermostat.new(@external_sensor,0.9,5.0,50)
-    @upstairs_floor_thermostat = BoilerBase::PwmThermostat.new(@external_sensor,30,@upstairs_floor_thermostat_valueproc,@is_HW_or_valve_proc)
+    @upstairs_floor_thermostat = BoilerBase::PwmThermostat.new(@external_sensor,30,@upstairs_floor_thermostat_valueproc,@is_HW_or_valve_proc,"Upstairs floor thermostat")
     @upstairs_thermostat = BoilerBase::Symmetric_thermostat.new(@upstairs_sensor,0.3,5.0,15)
-    @basement_thermostat = BoilerBase::PwmThermostat.new(@basement_sensor,30,@basement_thermostat_valueproc,@is_HW_or_valve_proc)
+    @basement_thermostat = BoilerBase::PwmThermostat.new(@basement_sensor,30,@basement_thermostat_valueproc,@is_HW_or_valve_proc,"Basement thermostat")
 
     #Technical targets must be set to allow PWM proc to detect changes
     @upstairs_floor_thermostat.set_target(0)

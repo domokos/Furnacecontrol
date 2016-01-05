@@ -160,9 +160,9 @@ module BoilerBase
   # passed to it as an argument. The reference function should return true at times, when the PWM thermostat
   # should consider the PWM to be active.
   class PwmThermostat
-    attr_accessor :cycle_threshold, :state, :modification_mutex
-    attr_reader :target
-    def initialize(sensor,filtersize,value_proc,is_HW_or_valve,timebase=3600)
+    attr_accessor :cycle_threshold, :state
+    attr_reader :target, :name, :modification_mutex
+    def initialize(sensor,filtersize,value_proc,is_HW_or_valve,name,timebase=3600)
       # Update the Class variables
       @@timebase = timebase
       @@is_HW_or_valve = is_HW_or_valve
@@ -170,6 +170,7 @@ module BoilerBase
       @sensor = sensor
       @sample_filter = Filter.new(filtersize)
       @value_proc = value_proc
+      @name = name
 
       @modification_mutex = Mutex.new
 
@@ -192,8 +193,6 @@ module BoilerBase
         # we may get some later but those will just skip one cycle
         sleep(10)
 
-        @pwm_log_rate_limiter = Globals::TimerSec.new(50,"PWM log timer")
-
         #Loop forever
         while true
 
@@ -204,7 +203,7 @@ module BoilerBase
             @@thermostat_instances.each do |th|
               th.modification_mutex.synchronize {
                 initialized &= (th.target != nil)
-                $app_logger.debug("Thermostat initialized: "+th.target.to_s)
+                $app_logger.debug("Thermostat "+th.name+" initialized: "+(th.target != nil).to_s)
                 $app_logger.debug("Thermostats initialized: "+initialized.to_s)
               }
             end
@@ -215,7 +214,10 @@ module BoilerBase
 
           # Calculate the threshold value for each instance
           @@thermostat_instances.each do |th|
-            th.modification_mutex.synchronize { th.cycle_threshold = @@timebase * th.value }
+            th.modification_mutex.synchronize do
+              th.cycle_threshold = @@timebase * th.value
+              $app_logger.debug("Thermostat "+th.name+" pulse width set to: "+th.cycle_threshold/@@timebase.round(0).to_s+"%")
+            end
           end
 
           # Perform the cycle
@@ -224,16 +226,21 @@ module BoilerBase
             any_thermostats_on = false
             @@thermostat_instances.each do |th|
               if th.cycle_threshold > @@sec_elapsed
-                th.modification_mutex.synchronize {th.state = :on}
+                th.modification_mutex.synchronize do
+                  if th.state != :on
+                    th.state = :on
+                    $app_logger.debug("Turning on thermostat "+th.name)
+                  end
+                end
                 any_thermostats_on = true
               else
-                th.modification_mutex.synchronize {th.state = :off}
+                th.modification_mutex.synchronize do
+                  if th.state != :off
+                    th.state = :off
+                    $app_logger.debug("Turning off thermostat "+th.name)
+                  end
+                end
               end
-            end
-
-            if @pwm_log_rate_limiter.expired?
-              $app_logger.debug("PWM thread active")
-              @pwm_log_rate_limiter.reset
             end
 
             sleep(1)
