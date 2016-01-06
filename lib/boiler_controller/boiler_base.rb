@@ -640,6 +640,8 @@ module BoilerBase
       # Check validity of the parameter
       raise "Invalid mode parameter '"+new_mode.to_s+"' passed to set_mode(mode)" unless [:floorheat,:radheat,:off,:HW].include? new_mode
 
+      $app_logger.debug("Heater set_mode. Got new mode: "+new_mode.to_s)
+        
       # Take action only if the mode is changing
       return if @mode == new_mode
 
@@ -1036,8 +1038,13 @@ module BoilerBase
     def start_control_thread
       # This section is synchronized to the control mutex.
       # Only a single control thread may exist
-      return unless @control_mutex.try_lock
+#      return unless @control_mutex.try_lock
 
+      if !@control_mutex.try_lock
+        $app_logger.debug("Heater control mutex locked")
+        return        
+      end
+      
       # Set the stop thread signal inactive
       @stop_control.unlock if @stop_control.locked?
 
