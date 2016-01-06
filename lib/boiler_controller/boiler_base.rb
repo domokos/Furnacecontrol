@@ -648,6 +648,9 @@ module BoilerBase
       # Stop control if asked to do so
       if new_mode == :off
         stop_control_thread
+        @prev_mode = @mode
+        @mode = new_mode
+        @mode_changed = true
         return
       end
 

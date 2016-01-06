@@ -565,6 +565,8 @@ class Heating_controller
   # Control heating
   def control_heat(prev_power_needed,power_needed)
 
+    changed = prev_power_needed[:power] == power_needed[:power]
+
     case power_needed[:power]
     when :HW
       # Set mode of the heater
@@ -582,7 +584,7 @@ class Heating_controller
         $app_logger.trace("Setting heater mode to :radheat")
         @buffer_heater.set_mode(:radheat)
       end
-      if prev_power_needed[:power] == :HW
+      if changed and prev_power_needed[:power] == :HW
         @mixer_controller.open
         @mixer_controller.start_control($config[:mixer_start_delay_after_HW])
       else
