@@ -758,7 +758,7 @@ class Heating_controller
 
     # Only perform real check if time is between 11:00 and 11:15 in the morning
     return unless (((Time.now.to_i % (24*60*60))+ 60*60) > (10*60*60)) and
-    (((Time.now.to_i % (24*60*60))+ 60*60) < (12.25*60*60))
+    (((Time.now.to_i % (24*60*60))+ 60*60) < (10.25*60*60))
 
     # If moving already scheduled then return
     return if @moving_valves_required
