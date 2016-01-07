@@ -71,7 +71,7 @@
 #
 # Heat initialization constants
 :init_buffer_reqd_fill_reserve: 80.0
-:buffer_heater_state_change_relaxation_time:  60
+:buffer_heater_state_change_relaxation_time:  180
 #
 # Heating state change related constants
 :forward_above_target: 3.3
