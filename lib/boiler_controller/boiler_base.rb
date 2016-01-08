@@ -519,8 +519,8 @@ module BoilerBase
     # This implements a simple P type controller with limited boundaries
     def calculate_adjustment_time(error)
       retval = @config[:mixer_motor_time_parameter] * error
-      return 0 if retval < 0
-      return 5 if retval > 5
+      return 0 if retval < @config[:min_mixer_motor_movement_time]
+      return @config[:max_mixer_motor_movement_time] if retval > @config[:max_mixer_motor_movement_time]
       return retval
     end
   end # of class MixerControl
