@@ -351,6 +351,9 @@ class Heating_controller
       exit
     end
 
+    # Create watertemp Polycurves
+    @heating_watertemp_polycurve = Globals::Polycurve.new($config[:heating_watertemp_polycurve])
+
     # Prefill sensors and thermostats to ensure smooth startup operation
     for i in 1..6 do
       $app_logger.debug("Prefilling sensors. Round: "+i.to_s+" of 6")
@@ -525,11 +528,15 @@ class Heating_controller
     # Read the config file
     read_config
 
+    # Update thermostat targets
     @living_thermostat.set_threshold($config[:target_living_temp])
     @upstairs_thermostat.set_threshold($config[:target_upstairs_temp])
     @basement_thermostat.set_target($config[:target_basement_temp])
     @mode_thermostat.set_threshold($config[:mode_threshold])
     @HW_thermostat.set_threshold($config[:target_HW_temp])
+
+    # Update watertemp Polycurves
+    @heating_watertemp_polycurve.load($config[:heating_watertemp_polycurve])
 
     if @mode_thermostat.is_on?
       @heating_sm.current != :heating and @mode = :mode_Heat_HW
@@ -543,12 +550,10 @@ class Heating_controller
 
     when :RAD, :RADFLOOR
       # Use @living_floor_thermostat.temp to get a filtered external temperature
-      @target_boiler_temp = $config[:watertemp_slope]*@living_floor_thermostat.temp+$config[:watertemp_shift]
-      if @target_boiler_temp > $config[:watertemp_upper_limit]
-        @target_boiler_temp = $config[:watertemp_upper_limit]
-      elsif @target_boiler_temp < $config[:watertemp_lower_limit]
-        @target_boiler_temp = $config[:watertemp_lower_limit]
-      end
+      # Was: -1.1*input+37.5
+      #      @target_boiler_temp = $config[:watertemp_slope]*@living_floor_thermostat.temp+$config[:watertemp_shift]
+
+      @target_boiler_temp = @heating_watertemp_polycurve.float_value(@living_floor_thermostat.temp)
       @mixer_controller.set_target_temp($config[:FLOOR_watertemp])
 
     when :FLOOR

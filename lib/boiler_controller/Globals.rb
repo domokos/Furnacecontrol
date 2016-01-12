@@ -129,6 +129,10 @@ module Globals
   # defined by two neighbour points. Points' X values are expected to be sorted and monotonously increasig.
   class Polycurve
     def initialize(pointlist, shift = 0)
+      load(pointlist, shift = 0)
+    end
+    
+    def load(pointlist, shift = 0)
       raise "Invalid array size - must be at least 2 it is: "+pointlist.size.to_s if pointlist.size < 2
       @pointlist = Array.new(pointlist)
       @pointlist.each_index do |i|
