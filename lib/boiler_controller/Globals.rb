@@ -91,7 +91,6 @@ module Globals
   class TimerSec
 
     attr_reader :name
-    
     def initialize(timer_time,name)
       @name = name
       @timer_time = timer_time
@@ -122,7 +121,7 @@ module Globals
   # A general timer
   class TimerGeneral < TimerSec
     def expired?
-      return (Time.now - @start_ts) >= @timer 
+      return (Time.now - @start_ts) >= @timer
     end
   end
 
@@ -130,25 +129,39 @@ module Globals
   # defined by two neighbour points. Points' X values are expected to be sorted and monotonously increasig.
   class Polycurve
     def initialize(pointlist, shift = 0)
+      raise "Invalid array size - must be at least 2 it is: "+pointlist.size.to_s if pointlist.size < 2
       @pointlist = Array.new(pointlist)
-      @pointlist.each_index {|i| @pointlist[i][0] += shift }
+      @pointlist.each_index do |i|
+        raise "Invalid array size at index "+i.to_s+" must be 2 it is: "+@pointlist[i].size.to_s if @pointlist[i].size !=2 
+        @pointlist[i][0] += shift
+      end
     end
 
-    def value (x_in)
+    def value(x_in,constarinted=true)
+      float_value(x_in,constrainted).round
+    end
+
+    def float_value (x_in,constrainted=true)
       index = 0
       @pointlist.each_index{ |n|
         index = n
         break if @pointlist[n][0] >= x_in
       }
 
+      #pc = Polycurve.new([[1,10],[2,20],[5,500],[6,600]])
+
       # Check boundaries
-      return @pointlist.first[1] if index == 0
-      return @pointlist.last[1] if index == @pointlist.size-1
+      if constrainted
+        return @pointlist.first[1].to_f if index == 0
+        return @pointlist.last[1].to_f if index == @pointlist.size-1 and @pointlist[index][0] < x_in
+      else
+        index = 1 if index == 0
+      end
 
-      # Linear curve between the two neighbour points
-      return ((@pointlist[index-1][1]-@pointlist[index][1]) / (@pointlist[index-1][0]-@pointlist[index][0]).to_f * (x_in-@pointlist[index-1][0].to_f) + @pointlist[index-1][1]).round
+      # Linear curve between the two neighbouring or extrapolated points
+      return ((@pointlist[index-1][1]-@pointlist[index][1]) / (@pointlist[index-1][0]-@pointlist[index][0]).to_f \
+      * (x_in-@pointlist[index-1][0].to_f) + @pointlist[index-1][1])
     end
-
     # End of class Polycurve
   end
 
