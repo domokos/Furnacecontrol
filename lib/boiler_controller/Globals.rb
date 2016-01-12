@@ -137,7 +137,7 @@ module Globals
       end
     end
 
-    def value(x_in,constarinted=true)
+    def value(x_in,constrainted=true)
       float_value(x_in,constrainted).round
     end
 
