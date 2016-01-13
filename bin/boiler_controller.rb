@@ -802,8 +802,19 @@ class Heating_controller
     @hydr_shift_pump.off
     @hot_water_pump.off
 
-    repeat = 5
-    while (repeat>0)
+    # First move without water circulation
+    relay_movement_thread = Thread.new do
+      Thread.current[:name] = "Relay movement thread"
+      5.times do
+        @buffer_heater.set_relays(:hydr_shifted)
+        sleep 10
+        @buffer_heater.set_relays(:buffer_passthrough)
+        sleep 10
+        @buffer_heater.set_relays(:feed_from_buffer)
+      end
+    end
+
+    5.times do
       @basement_floor_valve.open
       @basement_radiator_valve.open
       @living_floor_valve.open
@@ -814,31 +825,47 @@ class Heating_controller
       @living_floor_valve.close
       @upstairs_floor_valve.close
       sleep 1
-      repeat = repeat-1
     end
 
-    repeat = 5
-    while (repeat>0)
+    # Wait for relay movements to finish
+    relay_movement_thread.join
+
+    # Then move valves with water circulation
+    5.times do
       @basement_floor_valve.open
       @basement_radiator_valve.open
       @living_floor_valve.open
       @upstairs_floor_valve.open
+
+      @buffer_heater.set_relays(:hydr_shifted)
+
       @radiator_pump.on
       @floor_pump.on
       @hydr_shift_pump.on
 
-      sleep 20
+      sleep 10
+      @buffer_heater.set_relays(:buffer_passthrough)
+      sleep 10
+      @hydr_shift_pump.off
+      @buffer_heater.set_relays(:feed_from_buffer)
+      sleep 10
       @radiator_pump.off
       @floor_pump.off
-      @hydr_shift_pump.off
       sleep 2
       @basement_floor_valve.close
       @basement_radiator_valve.close
       @living_floor_valve.close
       @upstairs_floor_valve.close
       sleep 2
-      repeat = repeat-1
     end
+
+    @buffer_heater.set_relays(:hydr_shifted)
+
+    # Activate the hot water pump
+    @hot_water_pump.on
+    sleep 15
+    @hot_water_pump.on
+
     @move_logfile = File.new($config[:magnetic_valve_movement_logfile],"a+")
     @move_logfile.write(Time.now.to_s)
     @move_logfile.write("\n")
