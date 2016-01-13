@@ -38,9 +38,8 @@
 :FLOOR_watertemp: 38.0
 #
 # Parameters of target water temperature calculation curve
-# Target water temperature is calculated by the following linear equation:
-# target_temperature = watertemp_slope*external temperature + watertemp_shift
-# The result of the formula is then limited to the upper and lower limits
+# Target water temperature is calculated by the Polycurve based on points given here
+# by applying linear curves between the points
 :heating_watertemp_polycurve:
 # @ -20 C and below: 70C
 - - -20
@@ -48,10 +47,10 @@
 # @ -10C: 50C
 - - -10
   - 50
-# @ 0C: 38C 
+# @ 0C: 40C 
 - - 0
   - 38
-# @ 10C: 30C
+# @ 10C: 33C
 - - 10
   - 30
 # @ 15C and above: 27C
