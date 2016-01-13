@@ -782,8 +782,8 @@ module BoilerBase
         if buffer.hydr_shift_pump.state != :on
           $app_logger.debug("Turning on hydr shift pump")
           buffer.hydr_shift_pump.on
-          buffer.set_relays(:hydr_shifted)
-          sleep buffer.config[:circulation_maintenance_delay]
+          sleep buffer.config[:circulation_maintenance_delay] \
+          if buffer.set_relays(:hydr_shifted) == :immediate
         else
           $app_logger.debug("Hydr shift pump already on")
           buffer.set_relays(:hydr_shifted)
@@ -828,8 +828,8 @@ module BoilerBase
         if buffer.hydr_shift_pump.state != :on
           $app_logger.debug("Turning on hydr shift pump")
           buffer.hydr_shift_pump.on
-          buffer.set_relays(:buffer_passthrough)
-          sleep buffer.config[:circulation_maintenance_delay]
+          sleep buffer.config[:circulation_maintenance_delay] \
+          if buffer.set_relays(:buffer_passthrough) == :immediate
         else
           $app_logger.debug("Hydr shift pump already on")
           buffer.set_relays(:buffer_passthrough)
