@@ -129,7 +129,7 @@ module Globals
   # defined by two neighbour points. Points' X values are expected to be sorted and monotonously increasig.
   class Polycurve
     def initialize(pointlist, shift = 0)
-      load(pointlist, shift = 0)
+      load(pointlist, shift)
     end
     
     def load(pointlist, shift = 0)
