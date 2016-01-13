@@ -1008,9 +1008,14 @@ module BoilerBase
         when :floorheat, :radheat
 
           # Resume the state if coming from HW and state was not off before HW
-          if @prev_mode == :HW and @prev_sm_state != :off
-            $app_logger.debug("Ending HW - resuming state to: "+@prev_sm_state.to_s)
-            @buffer_sm.trigger(@prev_sm_state)
+          if @prev_mode == :HW
+            if @prev_sm_state == :off
+              $app_logger.debug("State was off before HW start in hydr shift")
+              @buffer_sm.hydrshift
+            else
+              $app_logger.debug("Ending HW - resuming state to: "+@prev_sm_state.to_s)
+              @buffer_sm.trigger(@prev_sm_state)
+            end
           else
             if @mode == :radheat and @buffer_sm.current == :bufferfill
               $app_logger.debug("Setting heating to hydr shifted")
@@ -1018,6 +1023,8 @@ module BoilerBase
             elsif @buffer_sm.current == :off
               $app_logger.debug("Starting heating in hydr shift")
               @buffer_sm.hydrshift
+            else
+              # Do nothing leave it as it is
             end
           end
         else
