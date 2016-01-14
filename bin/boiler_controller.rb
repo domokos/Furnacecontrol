@@ -565,7 +565,7 @@ class Heating_controller
   def control_pumps_valves_for_heating(prev_power_needed,power_needed)
 
     changed = prev_power_needed[:power] != power_needed[:power] or \
-    prev_power_needed[:power] == :off
+    prev_power_needed[:state] == :off
 
     $app_logger.trace("Setting valves and pumps")
 
