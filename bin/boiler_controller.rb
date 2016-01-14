@@ -604,17 +604,12 @@ class Heating_controller
       end
 
     when :RADFLOOR
-      # decide on living floor valve based on external temperature
+      # decide on floor valves based on external temperature
       if @living_floor_thermostat.is_on?
         @living_floor_valve.open
-      else
-        @living_floor_valve.delayed_close
-      end
-
-      # decide on upstairs floor valve based on external temperature
-      if @upstairs_floor_thermostat.is_on?
         @upstairs_floor_valve.open
       else
+        @living_floor_valve.delayed_close
         @upstairs_floor_valve.delayed_close
       end
 
@@ -636,17 +631,12 @@ class Heating_controller
         @radiator_pump.on
       end
     when :FLOOR
-      # decide on living floor valve based on external temperature
+      # decide on floor valves based on external temperature
       if @living_floor_thermostat.is_on?
         @living_floor_valve.open
-      else
-        @living_floor_valve.delayed_close
-      end
-
-      # decide on upstairs floor valve based on external temperature
-      if @upstairs_floor_thermostat.is_on?
         @upstairs_floor_valve.open
       else
+        @living_floor_valve.delayed_close
         @upstairs_floor_valve.delayed_close
       end
 
@@ -678,19 +668,16 @@ class Heating_controller
     elsif @mode == :mode_Heat_HW and (@upstairs_thermostat.is_on? or \
     @living_thermostat.is_on? ) and \
     @living_floor_thermostat.is_off? and \
-    @upstairs_floor_thermostat.is_off? and \
     @basement_thermostat.is_off?
       # Power needed for heating
       return :RAD
     elsif @mode == :mode_Heat_HW and (@upstairs_thermostat.is_on? or \
     @living_thermostat.is_on? ) and \
     (@living_floor_thermostat.is_on? or \
-    @upstairs_floor_thermostat.is_on? or \
     @basement_thermostat.is_on?)
       # Power needed for heating and floor heating
       return :RADFLOOR
     elsif @living_floor_thermostat.is_on? or \
-    @upstairs_floor_thermostat.is_on? or \
     @basement_thermostat.is_on?
       # Power needed for floor heating only
       return :FLOOR
@@ -878,13 +865,9 @@ class Heating_controller
     $heating_logger.debug("\nUpstairs target/temperature: "+@upstairs_thermostat.threshold.to_s+"/"+@upstairs_thermostat.temp.round(2).to_s)
     $heating_logger.debug("Upstairs thermostat state: "+@upstairs_thermostat.state.to_s)
 
-    $heating_logger.debug("\nLiving floor PWM value: "+(@living_floor_thermostat.value*100).round(0).to_s+"%")
-    $heating_logger.debug("Living floor valve: "+@living_floor_valve.state.to_s)
     $heating_logger.debug("Living floor thermostat status: "+@living_floor_thermostat.state.to_s)
-
-    $heating_logger.debug("\nUpstairs floor PWM value: "+(@upstairs_floor_thermostat.value*100).round(0).to_s+"%")
+    $heating_logger.debug("Living floor valve: "+@living_floor_valve.state.to_s)
     $heating_logger.debug("Upstairs floor valve: "+@upstairs_floor_valve.state.to_s)
-    $heating_logger.debug("Upstairs floor thermostat status: "+@upstairs_floor_thermostat.state.to_s)
 
     $heating_logger.debug("\nBasement target/temperature: "+@basement_thermostat.target.to_s+"/"+@basement_thermostat.temp.round(2).to_s)
     $heating_logger.debug("Basement PWM value: "+(@basement_thermostat.value*100).round(0).to_s+"%")
@@ -921,7 +904,6 @@ class Heating_controller
     @basement_thermostat.set_target(@test_controls[:target_basement_temp])
 
     @living_floor_thermostat.test_update(@test_controls[:external_temp])
-    @upstairs_floor_thermostat.test_update(@test_controls[:external_temp])
 
     @living_thermostat.set_threshold(@test_controls[:target_living_temp])
     @upstairs_thermostat.set_threshold(@test_controls[:target_upstairs_temp])
