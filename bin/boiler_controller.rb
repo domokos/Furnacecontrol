@@ -102,40 +102,6 @@ class Heating_controller
       determine_power_needed == "HW" or @moving_valves_required == true
     }
 
-    # Create the value proc for the living floor thermostat.
-    @living_floor_thermostat_valueproc = lambda { |sample_filter, target|
-      if $low_floor_temp_mode
-        if sample_filter.value < -1
-          return 0.2
-        else
-          return 0
-        end
-      else
-        # This is now fixed to : 0.2 @ 13 and 0.8 @ 6 Celsius above 13, zero, below 6 full power (+- of the sample_filter.value shifts curve)
-        tmp = 1.31429 - (sample_filter.value-1) * 0.085714
-        tmp = 0 if tmp < 0.2
-        tmp = 1 if tmp > 0.8
-        return tmp
-      end
-    }
-
-    # Create the value proc for the upstairs floor thermostat.
-    @upstairs_floor_thermostat_valueproc = lambda { |sample_filter, target|
-      if $low_floor_temp_mode
-        if sample_filter.value < -6
-          return 0
-        else
-          return 0.2
-        end
-      else
-        # This is now fixed to : 0.2 @ 13 and 0.8 @ 6 Celsius above 13, zero, below 6 full power (+- of the sample_filter.value shifts curve)
-        tmp = 1.31429 - (sample_filter.value-1) * 0.085714
-        tmp = 0 if tmp < 0.2
-        tmp = 1 if tmp > 0.8
-        return tmp
-      end
-    }
-
     # Create the value proc for the basement thermostat. Lambda is used because proc would also return the "return" command
     @basement_thermostat_valueproc = lambda { |sample_filter, target|
       error = target - sample_filter.value
@@ -156,9 +122,8 @@ class Heating_controller
     # Create thermostats, with default threshold values and hysteresis values
     @living_thermostat = BoilerBase::Symmetric_thermostat.new(@living_sensor,0.3,0.0,15)
     @HW_thermostat = BoilerBase::Asymmetric_thermostat.new(@HW_sensor,2,0,0.0,8)
-    @living_floor_thermostat = BoilerBase::PwmThermostat.new(@external_sensor,30,@living_floor_thermostat_valueproc,@is_HW_or_valve_proc,"Living floor thermostat")
+    @living_floor_thermostat = BoilerBase::Symmetric_thermostat.new(@external_sensor,2,15.0,30)
     @mode_thermostat = BoilerBase::Symmetric_thermostat.new(@external_sensor,0.9,5.0,50)
-    @upstairs_floor_thermostat = BoilerBase::PwmThermostat.new(@external_sensor,30,@upstairs_floor_thermostat_valueproc,@is_HW_or_valve_proc,"Upstairs floor thermostat")
     @upstairs_thermostat = BoilerBase::Symmetric_thermostat.new(@upstairs_sensor,0.3,5.0,15)
     @basement_thermostat = BoilerBase::PwmThermostat.new(@basement_sensor,30,@basement_thermostat_valueproc,@is_HW_or_valve_proc,"Basement thermostat")
 
@@ -353,6 +318,7 @@ class Heating_controller
 
     # Create watertemp Polycurves
     @heating_watertemp_polycurve = Globals::Polycurve.new($config[:heating_watertemp_polycurve])
+    @floor_watertemp_polycurve = Globals::Polycurve.new($config[:floor_watertemp_polycurve])
 
     # Prefill sensors and thermostats to ensure smooth startup operation
     for i in 1..6 do
@@ -537,6 +503,7 @@ class Heating_controller
 
     # Update watertemp Polycurves
     @heating_watertemp_polycurve.load($config[:heating_watertemp_polycurve])
+    @floor_watertemp_polycurve.load($config[:floor_watertemp_polycurve])
 
     if @mode_thermostat.is_on?
       @heating_sm.current != :heating and @mode = :mode_Heat_HW
@@ -549,16 +516,14 @@ class Heating_controller
       # Do nothing - just leave the heating wiper where it is.
 
     when :RAD, :RADFLOOR
-      # Use @living_floor_thermostat.temp to get a filtered external temperature
-      # Was: -1.1*input+37.5
-      #      @target_boiler_temp = $config[:watertemp_slope]*@living_floor_thermostat.temp+$config[:watertemp_shift]
-
-      @target_boiler_temp = @heating_watertemp_polycurve.float_value(@living_floor_thermostat.temp)
-      @mixer_controller.set_target_temp($config[:FLOOR_watertemp])
+      @target_boiler_temp =
+      @heating_watertemp_polycurve.float_value(@living_floor_thermostat.temp) > @floor_watertemp_polycurve.float_value(@living_floor_thermostat.temp) ? \
+      @heating_watertemp_polycurve.float_value(@living_floor_thermostat.temp) : \
+      @floor_watertemp_polycurve.float_value(@living_floor_thermostat.temp)
 
     when :FLOOR
-      @target_boiler_temp = $config[:FLOOR_watertemp]
-      @mixer_controller.set_target_temp($config[:FLOOR_watertemp])
+      @target_boiler_temp = @floor_watertemp_polycurve.float_value(@living_floor_thermostat.temp)
+      @mixer_controller.set_target_temp(@floor_watertemp_polycurve.float_value(@living_floor_thermostat.temp))
 
     when :NONE
       @target_boiler_temp = 7.0
