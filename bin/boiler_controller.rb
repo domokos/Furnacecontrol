@@ -564,13 +564,13 @@ class Heating_controller
   # This function controls valves, pumps and heat during heating by evaluating the required power
   def control_pumps_valves_for_heating(prev_power_needed,power_needed)
 
-    changed = prev_power_needed[:power] != power_needed[:power] or \
-    prev_power_needed[:state] == :off
+    changed = (prev_power_needed[:power] != power_needed[:power]) or \
+    (prev_power_needed[:state] != power_needed[:state])
 
     $app_logger.debug("Prev pn: "+prev_power_needed.to_s)
     $app_logger.debug("pn: "+power_needed.to_s)
     $app_logger.debug("changed: "+changed.to_s)
-    
+
     $app_logger.trace("Setting valves and pumps")
 
     case power_needed[:power]
