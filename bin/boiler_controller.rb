@@ -569,6 +569,10 @@ class Heating_controller
 
     $app_logger.debug("Prev pn: "+prev_power_needed.to_s)
     $app_logger.debug("pn: "+power_needed.to_s)
+    $app_logger.debug("Prev pnstate: "+prev_power_needed[:state].to_s)
+    $app_logger.debug("pnstate: "+power_needed[:state].to_s)
+    $app_logger.debug("states eq: "+(power_needed[:state] == prev_power_needed[:state]).to_s)
+      
     $app_logger.debug("changed: "+changed.to_s)
 
     $app_logger.trace("Setting valves and pumps")
