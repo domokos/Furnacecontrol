@@ -566,6 +566,8 @@ class Heating_controller
 
     changed = (prev_power_needed[:power] != power_needed[:power]) or (prev_power_needed[:state] != power_needed[:state])
 
+    $app_logger.debug("eval: "+((prev_power_needed[:power] != power_needed[:power]) or (prev_power_needed[:state] != power_needed[:state])).to_s)
+
     $app_logger.debug("Prev pn: "+prev_power_needed.to_s)
     $app_logger.debug("pn: "+power_needed.to_s)
     $app_logger.debug("Prev pnstate: "+prev_power_needed[:state].to_s)
