@@ -415,7 +415,6 @@ class Heating_controller
     @upstairs_thermostat.update
     @basement_thermostat.update
     @living_floor_thermostat.update
-    @upstairs_floor_thermostat.update
     @mode_thermostat.update
   end
 
