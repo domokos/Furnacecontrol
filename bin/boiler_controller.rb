@@ -127,10 +127,6 @@ class Heating_controller
     @upstairs_thermostat = BoilerBase::Symmetric_thermostat.new(@upstairs_sensor,0.3,5.0,15)
     @basement_thermostat = BoilerBase::PwmThermostat.new(@basement_sensor,30,@basement_thermostat_valueproc,@is_HW_or_valve_proc,"Basement thermostat")
 
-    #Technical targets must be set to allow PWM proc to detect changes
-    @upstairs_floor_thermostat.set_target(0)
-    @living_floor_thermostat.set_target(0)
-
     # Create magnetic valves
     @basement_radiator_valve = BusDevice::DelayedCloseMagneticValve.new("Basement radiator valve","Contact 8 on main board",
     $config[:main_controller_dev_addr], $config[:basement_radiator_valve_reg_addr], DRY_RUN)
@@ -500,6 +496,7 @@ class Heating_controller
     @basement_thermostat.set_target($config[:target_basement_temp])
     @mode_thermostat.set_threshold($config[:mode_threshold])
     @HW_thermostat.set_threshold($config[:target_HW_temp])
+    @living_floor_thermostat.set_threshold($config[:floor_heating_threshold])
 
     # Update watertemp Polycurves
     @heating_watertemp_polycurve.load($config[:heating_watertemp_polycurve])

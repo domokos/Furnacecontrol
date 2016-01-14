@@ -35,7 +35,7 @@
 :hw_temp_shift: 6
 #
 # External temperature below which floor heating is active
-:floow_heating_threshold: 13.0
+:floor_heating_threshold: 13.0
 #
 # Parameters of target water temperature calculation curve
 # Target water temperature is calculated by the Polycurve based on points given here
