@@ -567,6 +567,10 @@ class Heating_controller
     changed = prev_power_needed[:power] != power_needed[:power] or \
     prev_power_needed[:state] == :off
 
+    $app_logger.debug("Prev pn: "+prev_power_needed.to_s)
+    $app_logger.debug("pn: "+power_needed.to_s)
+    $app_logger.debug("changed: "+changed.to_s)
+    
     $app_logger.trace("Setting valves and pumps")
 
     case power_needed[:power]
@@ -605,15 +609,6 @@ class Heating_controller
       end
 
     when :RADFLOOR
-      # decide on floor valves based on external temperature
-      if @living_floor_thermostat.is_on?
-        @living_floor_valve.open
-        @upstairs_floor_valve.open
-      else
-        @living_floor_valve.delayed_close
-        @upstairs_floor_valve.delayed_close
-      end
-
       # decide on basement valves based on basement temperature
       if @basement_thermostat.is_on?
         @basement_radiator_valve.open
@@ -626,21 +621,21 @@ class Heating_controller
       if changed
         $app_logger.debug("Setting valves and pumps for RADFLOOR")
 
+        # decide on floor valves based on external temperature
+        if @living_floor_thermostat.is_on?
+          @living_floor_valve.open
+          @upstairs_floor_valve.open
+        else
+          @living_floor_valve.delayed_close
+          @upstairs_floor_valve.delayed_close
+        end
+
         # Floor heating on
         @floor_pump.on
         # Radiator pump on
         @radiator_pump.on
       end
     when :FLOOR
-      # decide on floor valves based on external temperature
-      if @living_floor_thermostat.is_on?
-        @living_floor_valve.open
-        @upstairs_floor_valve.open
-      else
-        @living_floor_valve.delayed_close
-        @upstairs_floor_valve.delayed_close
-      end
-
       # decide on basement valve based on basement temperature
       if @basement_thermostat.is_on?
         @basement_floor_valve.open
@@ -651,6 +646,15 @@ class Heating_controller
       if changed
         $app_logger.debug("Setting valves and pumps for FLOOR")
         @basement_radiator_valve.delayed_close
+
+        # decide on floor valves based on external temperature
+        if @living_floor_thermostat.is_on?
+          @living_floor_valve.open
+          @upstairs_floor_valve.open
+        else
+          @living_floor_valve.delayed_close
+          @upstairs_floor_valve.delayed_close
+        end
 
         # Floor heating on
         @floor_pump.on
