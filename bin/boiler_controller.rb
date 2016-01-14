@@ -531,7 +531,8 @@ class Heating_controller
   # Control heating
   def control_heat(prev_power_needed,power_needed)
 
-    changed = prev_power_needed[:power] == power_needed[:power]
+    changed = ((prev_power_needed[:power] != power_needed[:power]) or \
+    (prev_power_needed[:state] != power_needed[:state]))
 
     case power_needed[:power]
     when :HW
