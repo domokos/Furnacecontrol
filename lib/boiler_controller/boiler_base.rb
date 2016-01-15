@@ -479,13 +479,14 @@ module BoilerBase
           @mixer_log_rate_limiter.reset
         end
 
+        $app_logger.debug("-")
+        $app_logger.debug("Mixer controller error: "+error.round(2).to_s)
+
         # Adjust mixing motor if error is out of bounds
         if error.abs > @config[:mixer_error_threshold] and adjustment_time.abs > 0
 
-          $app_logger.debug("-")
           $app_logger.debug("Mixer controller target: "+target.round(2).to_s)
           $app_logger.debug("Mixer controller value: "+value.round(2).to_s)
-          $app_logger.debug("Mixer controller error: "+error.round(2).to_s)
           $app_logger.debug("Mixer controller adjustment time: "+adjustment_time.round(2).to_s)
           $app_logger.debug("Mixer controller int. cw time: "+@integrated_cw_movement_time.round(2).to_s)
           $app_logger.debug("Mixer controller int. ccw time: "+@integrated_ccw_movement_time.round(2).to_s)
@@ -499,7 +500,7 @@ module BoilerBase
             @integrated_ccw_movement_time += adjustment_time
 
             # Adjust available movement time for the other direction
-            @integrated_cw_movement_time = @config[:mixer_unidirectional_movement_time_limit] - @integrated_ccw_movement_time - @config[:mixer_movement_time_hysteresis]
+            @integrated_cw_movement_time -= adjustment_time
             @integrated_cw_movement_time = 0 if @integrated_cw_movement_time < 0
 
             # Move CW
@@ -511,7 +512,7 @@ module BoilerBase
             @integrated_cw_movement_time += adjustment_time
 
             # Adjust available movement time for the other direction
-            @integrated_ccw_movement_time = @config[:mixer_unidirectional_movement_time_limit] - @integrated_cw_movement_time - @config[:mixer_movement_time_hysteresis]
+            @integrated_ccw_movement_time -= adjustment_time
             @integrated_ccw_movement_time = 0 if @integrated_ccw_movement_time < 0
           end
         end
@@ -543,7 +544,7 @@ module BoilerBase
       @int_err_sum - \
       dError* @config[:mixer_motor_kd_parameter]
 
-      $app_logger.debug("\nAdjustments Pval: "+(@config[:mixer_motor_kp_parameter] * error).round(2).to_s+\
+      $app_logger.debug("Adjustments Pval: "+(@config[:mixer_motor_kp_parameter] * error).round(2).to_s+\
       "+Ival: "+@int_err_sum.round(2).to_s+" -Dval: "+(dError* @config[:mixer_motor_kd_parameter]).round(2).to_s)
 
       return 0 if retval.abs < @config[:min_mixer_motor_movement_time]
