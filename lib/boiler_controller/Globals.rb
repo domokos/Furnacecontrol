@@ -131,12 +131,12 @@ module Globals
     def initialize(pointlist, shift = 0)
       load(pointlist, shift)
     end
-    
+
     def load(pointlist, shift = 0)
       raise "Invalid array size - must be at least 2 it is: "+pointlist.size.to_s if pointlist.size < 2
       @pointlist = Array.new(pointlist)
       @pointlist.each_index do |i|
-        raise "Invalid array size at index "+i.to_s+" must be 2 it is: "+@pointlist[i].size.to_s if @pointlist[i].size !=2 
+        raise "Invalid array size at index "+i.to_s+" must be 2 it is: "+@pointlist[i].size.to_s if @pointlist[i].size !=2
         @pointlist[i][0] += shift
       end
     end
@@ -199,121 +199,134 @@ module Globals
     end
   end # of Class LinearRegression
 
-  class TempAnalyzer
-    attr_reader :slope
-    def initialize(buffersize=6)
-      reset
-      @buffersize = buffersize
+  class PIDController
+    def initialize(input_sensor, name, kp, ki, kd, setpoint, outMin, outMax, sampleTime)
+      @name = name
+
+      @kp = kp
+      @ki = ki
+      @kd = kd
+
+      @input_sensor = input_sensor
+
+      @setpoint = setpoint
+      @sampleTime = sampleTime
+      @outMin = outMin
+      @outMax = outMax
+
+      @active = false
+      @stop_mutex = Mutex.new
+      @modification_mutex = Mutex.new
     end
 
-    def reset
-      @temp_vector = []
-      @timestamp_vector = []
-      @starting_timestamp = Time.now.to_f
-      @slope = 0
-      @stable = false
+    def update_parameters(kp,ki,kd,setpoint,outMin,outMax,sampleTime)
+      @modification_mutex.synchronize do
+        @kp = kp
+        @ki = ki
+        @kd = kd
+        @setpoint = setpoint
+        @sampleTime = sampleTime
+        @outMin = outMin
+        @outMax = outMax
+      end
     end
 
-    def average(vector=@temp_vector)
-      return 0 if vector.size == 0
-      sum = 0.0
-      vector.each {|x| sum += x.to_f}
-      return sum / vector.size
+    def output
+      raise "PID not active - would return false values" unless @active
+      return @output
     end
 
-    def sigma(vector=@temp_vector)
-      return 0 if vector.size == 0
-      avg = average(vector)
-      nominator = 0.0
-      vector.each {|x| nominator += (x-avg)*(x-avg) }
-      return Math.sqrt(nominator/vector.size)
-    end
-
-    def stable?
-      return @stable
-    end
-
-    def compute_stability
-      return if @temp_vector.size != @buffersize
-
-      first_slopes = []
-      sign_changes = []
-
-      # Calculate slope based on first and second neighbors
-      @temp_vector.each_index do
-        |i|
-        first_slopes.push((@temp_vector[i+1] - @temp_vector[i])/(@timestamp_vector[i+1]-@timestamp_vector[i]))  if i < @buffersize-1
-        (sign_changes.push(i) if (first_slopes[i-1]<0 and first_slopes[i]>0) or (first_slopes[i-1]>0 and first_slopes[i]<0)) if (i<@buffersize-1 and i>0)
+    def start
+      if @stop_mutex.locked?
+        $app_logger.debug("Stopping PID controller operation active in PID controller: "+@name)
+        return
       end
 
-      # Stable if the derivate vectors do not change direction/sign significantly
-      # this is tested by
+      if @active
+        $app_logger.debug("PID controller already active - returning")
+        return
+      else
+        update_parameters
+        @output = 0
+        init
+        @active = true
+      end
 
-      sign = first_slopes[0] < 0 ? -1 : 1
-      max_negative_deviation = 0
-      max_positive_deviation = 0
-      inhomogenity = false
-      positives = []
-      negatives = []
-
-      first_slopes.each do
-        |element|
-        case
-        # OK
-        when (element<0 and sign<0)
-          max_negative_deviation = element if element < max_negative_deviation
-          negatives.push(element)
-          # Inhomogenity
-        when (element<0 and sign>=0)
-          inhomogenity = true
-          max_negative_deviation = element if element < max_negative_deviation
-          negatives.push(element)
-          # OK
-        when (element>0 and sign<0)
-          max_negative_deviation = element if element < max_negative_deviation
-          positives.push(element)
-          # Inhomogenity
-        when (element<0 and sign>=0)
-          inhomogenity = true
-          max_negative_deviation = element if element < max_negative_deviation
-          positives.push(element)
+      @pid_controller_thread = Thread.new do
+        Thread.current[:name] = "PID controller "+@name
+        while !@stop_mutex.locked?
+          @modification_mutex.synchronize { recalculate }
+          sleep @sampleTime unless @stop_mutex.locked?
         end
       end
-
-      # If there is no inhomogenity then the vector is stable
-      return true if !inhomogenity
-
-      return true if sigma(@temp_vector[@temp_vector.size/4*3,@temp_vector.size-1]) < 0.06
-
-      return false
     end
 
-    def size
-      @timestamp_vector.size
-    end
-
-    def update(current_temp)
-      now = Time.now.to_f
-
-      if now-@starting_timestamp > 243
-        @timestamp_vector.each_index {|x| @timestamp_vector[x] = @timestamp_vector[x]-(now-@starting_timestamp) }
-        @starting_timestamp = now
+    def stop
+      if !@active
+        $app_logger.debug("PID not active - returning")
+        return
       end
 
-      @temp_vector.push(current_temp)
-      @timestamp_vector.push(now-@starting_timestamp)
-
-      if @temp_vector.length > @buffersize
-        @temp_vector.shift
-        @timestamp_vector.shift
+      if @stop_mutex.locked?
+        $app_logger.debug("Stopping PID controller operation already active in PID controller: "+@name)
+        return
       end
 
-      return unless @temp_vector.length > 1
-      lr=LinearRegression.new(@timestamp_vector,@temp_vector)
-      @slope = lr.slope
-      @stable = compute_stability
-    end
-  end # of Class TempAnalyzer
+      # Signal operation thread to exit
+      @stop_mutex.lock
 
+      # Wait for controller thread to exit
+      @pid_controller_thread.join
+
+      # Reset mutexes
+      @stop_mutex.unlock
+      @active = false
+    end
+
+    private
+
+    def recalculate
+      # Compute all the working error variables
+      input = @input_sensor.temp
+
+      error = @setpoint - input
+
+      @ITerm += @ki * error
+      limit_output
+      
+      dInput = input - @lastInput
+
+      # Compute PID Output
+      @output = @kp * error + @ITerm- @kd * dInput
+      limit_output
+      
+      # Remember lastInput
+      @lastInput = input
+    end
+
+    def limit_output
+      if @output > @outMax
+        @output = @outMax
+      elsif @output < @outMin
+        @output = @outMin
+      end
+
+      if @ITerm > @outMax
+        @ITerm = @outMax
+      elsif @ITerm < @outMin
+        @ITerm = @outMin
+      end
+    end
+
+    def init
+      @lastInput = @input_sensor.temp
+      @ITerm = @output
+      if @ITerm > @outMax
+        @ITerm = @outMax
+      elsif @ITerm < @outMin
+        @ITerm = @outMin
+      end
+    end
+  end # of class PIDController
   #End of module Globals
 end
