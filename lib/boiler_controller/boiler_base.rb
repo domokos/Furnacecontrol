@@ -503,13 +503,8 @@ module BoilerBase
             @integrated_ccw_movement_time += adjustment_time
 
             # Adjust available movement time for the other direction
-            if @mixer_initializing
-              @integrated_cw_movement_time = @config[:mixer_unidirectional_movement_time_limit] - @integrated_ccw_movement_time - @config[:mixer_movement_time_hysteresis]
-              @integrated_cw_movement_time = 0 if @integrated_cw_movement_time < 0
-            else
-              @integrated_cw_movement_time = @config[:mixer_unidirectional_movement_time_limit]
-              @mixer_initializing = false
-            end
+            @integrated_cw_movement_time = @config[:mixer_unidirectional_movement_time_limit] - @integrated_ccw_movement_time - @config[:mixer_movement_time_hysteresis]
+            @integrated_cw_movement_time = 0 if @integrated_cw_movement_time < 0
 
             # Move CW
           elsif adjustment_time < 0 and @integrated_cw_movement_time < @config[:mixer_unidirectional_movement_time_limit]
@@ -520,13 +515,8 @@ module BoilerBase
             @integrated_cw_movement_time += adjustment_time
 
             # Adjust available movement time for the other direction
-            if @mixer_initializing
-              @integrated_ccw_movement_time = @config[:mixer_unidirectional_movement_time_limit] - @integrated_cw_movement_time - @config[:mixer_movement_time_hysteresis]
-              @integrated_ccw_movement_time = 0 if @integrated_ccw_movement_time < 0
-            else
-              @integrated_ccw_movement_time = @config[:mixer_unidirectional_movement_time_limit]
-              @mixer_initializing = false
-            end
+            @integrated_ccw_movement_time = @config[:mixer_unidirectional_movement_time_limit] - @integrated_cw_movement_time - @config[:mixer_movement_time_hysteresis]
+            @integrated_ccw_movement_time = 0 if @integrated_ccw_movement_time < 0
           end
         end
         @prev_value = value
