@@ -326,6 +326,7 @@ module BoilerBase
       @integrated_cw_movement_time = 0
       @integrated_ccw_movement_time = 0
       @int_err_sum = 0
+      @prev_value = 0
 
       # Create the log rate limiter
       @mixer_log_rate_limiter = Globals::TimerSec.new(@config[:mixer_limited_log_period],"Mixer controller log timer")
@@ -364,6 +365,9 @@ module BoilerBase
 
       # Clear control thread stop sugnaling mutex
       @stop_control_requested.unlock if @stop_control_requested.locked?
+      @measurement_mutex.synchronize do
+        @prev_value = @mix_filter.value
+      end
       # Start control thread
       @control_thread = Thread.new do
         Thread.current[:name] = "Mixer controller"
@@ -460,8 +464,10 @@ module BoilerBase
         @target_mutex.synchronize { target = @target_temp }
         @measurement_mutex.synchronize do
           value = @mix_filter.value
-          error = target - value
         end
+
+        error = target - value
+        dError = value - @prev_value
 
         if @mixer_log_rate_limiter.expired?
           # Copy the config for updates
@@ -474,12 +480,14 @@ module BoilerBase
         # Adjust mixing motor if error is out of bounds
         if error.abs > @config[:mixer_error_threshold] and calculate_adjustment_time(error.abs) > 0
 
-          adjustment_time = calculate_adjustment_time(error)
+          adjustment_time = calculate_adjustment_time(error,dError)
 
           $app_logger.debug("Mixer controller target: "+target.round(2).to_s)
           $app_logger.debug("Mixer controller value: "+value.round(2).to_s)
           $app_logger.debug("Mixer controller error: "+error.round(2).to_s)
           $app_logger.debug("Mixer controller adjustment time: "+adjustment_time.round(2).to_s)
+          $app_logger.debug("Mixer controller int. cw time: "+@integrated_cw_movement_time.round(2).to_s)
+          $app_logger.debug("Mixer controller int. ccw time: "+@integrated_ccw_movement_time.round(2).to_s+"\n")
 
           # Move CCW
           if adjustment_time > 0 and @integrated_ccw_movement_time < @config[:mixer_unidirectional_movement_time_limit]
@@ -506,6 +514,7 @@ module BoilerBase
             @integrated_ccw_movement_time = 0 if @integrated_ccw_movement_time < 0
           end
         end
+        @prev_value = value
       end
 
       # Stop the measurement thread before exiting
@@ -518,7 +527,9 @@ module BoilerBase
 
     # Calculate mixer motor actuation time based on error
     # This implements a simple P type controller with limited boundaries
-    def calculate_adjustment_time(error)
+    def calculate_adjustment_time(error,dError)
+
+      # Integrate the error
       @int_err_sum += @config[:mixer_motor_ki_parameter] * error
 
       if @int_err_sum.abs > @config[:max_mixer_motor_movement_time]
@@ -526,7 +537,10 @@ module BoilerBase
         @int_err_sum = -@config[:max_mixer_motor_movement_time]
       end
 
-      retval = @config[:mixer_motor_kp_parameter] * error + @int_err_sum
+      # Calculate the controller putput
+      retval = @config[:mixer_motor_kp_parameter] * error + \
+      @int_err_sum - \
+      dError* @config[:mixer_motor_kd_parameter]
 
       return 0 if retval.abs < @config[:min_mixer_motor_movement_time]
 
