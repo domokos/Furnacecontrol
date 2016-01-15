@@ -468,6 +468,7 @@ module BoilerBase
         end
 
         puts dError.class,value.class,target.class
+        puts value,@prev_value
 
         error = target-value
         dError = value-@prev_value
