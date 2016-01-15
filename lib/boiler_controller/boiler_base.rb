@@ -482,12 +482,12 @@ module BoilerBase
         # Adjust mixing motor if error is out of bounds
         if error.abs > @config[:mixer_error_threshold] and adjustment_time.abs > 0
 
-          $app_logger.debug("Mixer controller target: "+target.round(2).to_s)
+          $app_logger.debug("\nMixer controller target: "+target.round(2).to_s)
           $app_logger.debug("Mixer controller value: "+value.round(2).to_s)
           $app_logger.debug("Mixer controller error: "+error.round(2).to_s)
           $app_logger.debug("Mixer controller adjustment time: "+adjustment_time.round(2).to_s)
           $app_logger.debug("Mixer controller int. cw time: "+@integrated_cw_movement_time.round(2).to_s)
-          $app_logger.debug("Mixer controller int. ccw time: "+@integrated_ccw_movement_time.round(2).to_s+"\n")
+          $app_logger.debug("Mixer controller int. ccw time: "+@integrated_ccw_movement_time.round(2).to_s)
 
           # Move CCW
           if adjustment_time > 0 and @integrated_ccw_movement_time < @config[:mixer_unidirectional_movement_time_limit]
