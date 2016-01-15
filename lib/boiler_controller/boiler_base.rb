@@ -475,25 +475,23 @@ module BoilerBase
           # Copy the config for updates
           $config_mutex.synchronize {@config = $config.dup}
           $app_logger.debug("Mixer forward temp: "+value.round(2).to_s)
+          $app_logger.debug("Mixer controller error: "+error.round(2).to_s)
           @mixer_log_rate_limiter.set_timer(@config[:mixer_limited_log_period])
           @mixer_log_rate_limiter.reset
         end
 
-        $app_logger.debug("-")
-        $app_logger.debug("Mixer controller error: "+error.round(2).to_s)
-
         # Adjust mixing motor if it is needed
         if adjustment_time.abs > 0
 
-          $app_logger.debug("Mixer controller target: "+target.round(2).to_s)
-          $app_logger.debug("Mixer controller value: "+value.round(2).to_s)
-          $app_logger.debug("Mixer controller adjustment time: "+adjustment_time.round(2).to_s)
-          $app_logger.debug("Mixer controller int. cw time: "+@integrated_cw_movement_time.round(2).to_s)
-          $app_logger.debug("Mixer controller int. ccw time: "+@integrated_ccw_movement_time.round(2).to_s)
+          $app_logger.trace("Mixer controller target: "+target.round(2).to_s)
+          $app_logger.trace("Mixer controller value: "+value.round(2).to_s)
+          $app_logger.trace("Mixer controller adjustment time: "+adjustment_time.round(2).to_s)
+          $app_logger.trace("Mixer controller int. cw time: "+@integrated_cw_movement_time.round(2).to_s)
+          $app_logger.trace("Mixer controller int. ccw time: "+@integrated_ccw_movement_time.round(2).to_s)
 
           # Move CCW
           if adjustment_time > 0 and @integrated_ccw_movement_time < @config[:mixer_unidirectional_movement_time_limit]
-            $app_logger.debug("Mixer controller adjusting ccw")
+            $app_logger.trace("Mixer controller adjusting ccw")
             @ccw_switch.pulse_block((adjustment_time*10).to_i)
 
             # Keep track of movement time for limiting movement
@@ -506,7 +504,7 @@ module BoilerBase
             # Move CW
           elsif adjustment_time < 0 and @integrated_cw_movement_time < @config[:mixer_unidirectional_movement_time_limit]
             adjustment_time = -adjustment_time
-            $app_logger.debug("Mixer controller adjusting cw")
+            $app_logger.trace("Mixer controller adjusting cw")
             @cw_switch.pulse_block((adjustment_time*10).to_i)
 
             # Keep track of movement time for limiting movement
