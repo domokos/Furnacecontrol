@@ -459,6 +459,7 @@ module BoilerBase
         target = 0
         error = 0
         value = 0
+        dError = 0
 
         # Read target temp thread safely
         @target_mutex.synchronize { target = @target_temp }
