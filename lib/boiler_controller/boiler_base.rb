@@ -467,6 +467,8 @@ module BoilerBase
           value = @mix_filter.value
         end
 
+        puts dError.class," ",value.class, " ",target.class
+        
         error = target - value
         dError = value - @prev_value
 
