@@ -115,7 +115,7 @@
 :mixer_limited_log_period: 120
 :mixer_filter_size: 3
 :mixer_sampling_delay: 3
-:mixer_error_threshold: 0.35
+#:mixer_error_threshold: 0.35
 :mixer_control_loop_delay: 15
 :mixer_start_delay_after_HW: 50
 :mixer_motor_kp_parameter: 1.0

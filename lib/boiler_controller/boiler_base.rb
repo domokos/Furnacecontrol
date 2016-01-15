@@ -482,8 +482,8 @@ module BoilerBase
         $app_logger.debug("-")
         $app_logger.debug("Mixer controller error: "+error.round(2).to_s)
 
-        # Adjust mixing motor if error is out of bounds
-        if error.abs > @config[:mixer_error_threshold] and adjustment_time.abs > 0
+        # Adjust mixing motor if it is needed
+        if adjustment_time.abs > 0
 
           $app_logger.debug("Mixer controller target: "+target.round(2).to_s)
           $app_logger.debug("Mixer controller value: "+value.round(2).to_s)
