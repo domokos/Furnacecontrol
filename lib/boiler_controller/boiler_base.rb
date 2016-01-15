@@ -469,6 +469,7 @@ module BoilerBase
 
         error = target-value
         dError = value-@prev_value
+        adjustment_time = calculate_adjustment_time(error,dError)
 
         if @mixer_log_rate_limiter.expired?
           # Copy the config for updates
@@ -479,9 +480,7 @@ module BoilerBase
         end
 
         # Adjust mixing motor if error is out of bounds
-        if error.abs > @config[:mixer_error_threshold] and calculate_adjustment_time(error.abs) > 0
-
-          adjustment_time = calculate_adjustment_time(error,dError)
+        if error.abs > @config[:mixer_error_threshold] and adjustment_time.abs > 0
 
           $app_logger.debug("Mixer controller target: "+target.round(2).to_s)
           $app_logger.debug("Mixer controller value: "+value.round(2).to_s)
