@@ -477,7 +477,7 @@ module BoilerBase
           adjustment_time = calculate_adjustment_time(error)
 
           $app_logger.debug("Mixer controller target: "+target.round(2).to_s)
-          $app_logger.trace("Mixer controller value: "+value.round(2).to_s)
+          $app_logger.debug("Mixer controller value: "+value.round(2).to_s)
           $app_logger.debug("Mixer controller error: "+error.round(2).to_s)
           $app_logger.debug("Mixer controller adjustment time: "+adjustment_time.round(2).to_s)
 
