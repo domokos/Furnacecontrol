@@ -327,6 +327,7 @@ module BoilerBase
       @integrated_ccw_movement_time = 0
       @int_err_sum = 0
       @prev_value = 0
+      @mixer_initializing = true
 
       # Create the log rate limiter
       @mixer_log_rate_limiter = Globals::TimerSec.new(@config[:mixer_limited_log_period],"Mixer controller log timer")
@@ -383,6 +384,9 @@ module BoilerBase
 
           # Capture a prev_value
           @prev_value = @mix_filter.value
+
+          # Signal initialization
+          @mixer_initializing = true
 
           # Do the actual control, which will return ending the thread if done
           do_control_thread
@@ -499,8 +503,13 @@ module BoilerBase
             @integrated_ccw_movement_time += adjustment_time
 
             # Adjust available movement time for the other direction
-            @integrated_cw_movement_time = @config[:mixer_unidirectional_movement_time_limit] - @integrated_ccw_movement_time - @config[:mixer_movement_time_hysteresis]
-            @integrated_cw_movement_time = 0 if @integrated_cw_movement_time < 0
+            if @mixer_initializing
+              @integrated_cw_movement_time = @config[:mixer_unidirectional_movement_time_limit] - @integrated_ccw_movement_time - @config[:mixer_movement_time_hysteresis]
+              @integrated_cw_movement_time = 0 if @integrated_cw_movement_time < 0
+            else
+              @integrated_cw_movement_time = @config[:mixer_unidirectional_movement_time_limit]
+              @mixer_initializing = false
+            end
 
             # Move CW
           elsif adjustment_time < 0 and @integrated_cw_movement_time < @config[:mixer_unidirectional_movement_time_limit]
@@ -511,8 +520,13 @@ module BoilerBase
             @integrated_cw_movement_time += adjustment_time
 
             # Adjust available movement time for the other direction
-            @integrated_ccw_movement_time = @config[:mixer_unidirectional_movement_time_limit] - @integrated_cw_movement_time - @config[:mixer_movement_time_hysteresis]
-            @integrated_ccw_movement_time = 0 if @integrated_ccw_movement_time < 0
+            if @mixer_initializing
+              @integrated_ccw_movement_time = @config[:mixer_unidirectional_movement_time_limit] - @integrated_cw_movement_time - @config[:mixer_movement_time_hysteresis]
+              @integrated_ccw_movement_time = 0 if @integrated_ccw_movement_time < 0
+            else
+              @integrated_ccw_movement_time = @config[:mixer_unidirectional_movement_time_limit]
+              @mixer_initializing = false
+            end
           end
         end
         @prev_value = value
@@ -533,9 +547,9 @@ module BoilerBase
       # Integrate the error
       @int_err_sum += @config[:mixer_motor_ki_parameter] * error
 
-      if @int_err_sum.abs > @config[:max_mixer_motor_movement_time]
-        @int_err_sum>0 ? @int_err_sum =  @config[:max_mixer_motor_movement_time] :\
-        @int_err_sum = -@config[:max_mixer_motor_movement_time]
+      if @int_err_sum.abs > @config[:mixer_motor_ival_limit]
+        @int_err_sum>0 ? @int_err_sum =  @config[:mixer_motor_ival_limit] :\
+        @int_err_sum = -@config[:mixer_motor_ival_limit]
       end
 
       # Calculate the controller putput
