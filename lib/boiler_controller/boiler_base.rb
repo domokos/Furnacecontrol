@@ -536,7 +536,7 @@ module BoilerBase
       retval = @config[:mixer_motor_kp_parameter] * error + @int_err_sum
 
       $app_logger.debug("Adjustments Pval: "+(@config[:mixer_motor_kp_parameter] * error).round(2).to_s+\
-      "+Ival: "+@int_err_sum.round(2).to_s)
+      " +Ival: "+@int_err_sum.round(2).to_s)
 
       return 0 if retval.abs < @config[:min_mixer_motor_movement_time]
 
