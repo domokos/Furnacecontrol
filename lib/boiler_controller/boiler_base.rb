@@ -544,7 +544,7 @@ module BoilerBase
       dError* @config[:mixer_motor_kd_parameter]
 
       $app_logger.debug("\nAdjustments Pval: "+(@config[:mixer_motor_kp_parameter] * error).round(2).to_s+\
-      "+Ival: "+@int_err_sum.to_s+" -Dval: "+(dError* @config[:mixer_motor_kd_parameter]).to_s)
+      "+Ival: "+@int_err_sum.round(2).to_s+" -Dval: "+(dError* @config[:mixer_motor_kd_parameter]).round(2).to_s)
 
       return 0 if retval.abs < @config[:min_mixer_motor_movement_time]
 
