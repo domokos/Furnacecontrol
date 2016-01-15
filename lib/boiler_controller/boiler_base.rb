@@ -496,7 +496,7 @@ module BoilerBase
             # Move CW
           elsif adjustment_time < 0 and @integrated_cw_movement_time < @config[:mixer_unidirectional_movement_time_limit]
             $app_logger.debug("Mixer controller adjusting cw")
-            @cw_switch.pulse_block((adjustment_time*10).to_i)
+            @cw_switch.pulse_block((-adjustment_time*10).to_i)
 
             # Keep track of movement time for limiting movement
             @integrated_cw_movement_time += adjustment_time
@@ -528,8 +528,15 @@ module BoilerBase
 
       retval = @config[:mixer_motor_kp_parameter] * error + @int_err_sum
 
-      return 0 if retval < @config[:min_mixer_motor_movement_time]
-      return @config[:max_mixer_motor_movement_time] if retval > @config[:max_mixer_motor_movement_time]
+      return 0 if retval.abs < @config[:min_mixer_motor_movement_time]
+
+      if retval.abs > @config[:max_mixer_motor_movement_time]
+        if retval > 0
+          return @config[:max_mixer_motor_movement_time]
+        else
+          return -@config[:max_mixer_motor_movement_time]
+        end
+      end
       return retval
     end
   end # of class MixerControl
