@@ -326,7 +326,6 @@ module BoilerBase
       @integrated_cw_movement_time = 0
       @integrated_ccw_movement_time = 0
       @int_err_sum = 0
-      @prev_value = 0
 
       # Create the log rate limiter
       @mixer_log_rate_limiter = Globals::TimerSec.new(@config[:mixer_limited_log_period],"Mixer controller log timer")
@@ -380,9 +379,6 @@ module BoilerBase
           @config[:mixer_filter_size].times do
             @mix_filter.input_sample(@mix_sensor.temp)
           end
-
-          # Capture a prev_value
-          @prev_value = @mix_filter.value
 
           # Do the actual control, which will return ending the thread if done
           do_control_thread
@@ -468,8 +464,7 @@ module BoilerBase
         end
 
         error = target-value
-        dError = value-@prev_value
-        adjustment_time = calculate_adjustment_time(error,dError)
+        adjustment_time = calculate_adjustment_time(error)
 
         if @mixer_log_rate_limiter.expired?
           # Copy the config for updates
@@ -515,7 +510,6 @@ module BoilerBase
             @integrated_ccw_movement_time = 0 if @integrated_ccw_movement_time < 0
           end
         end
-        @prev_value = value
       end
 
       # Stop the measurement thread before exiting
@@ -528,7 +522,7 @@ module BoilerBase
 
     # Calculate mixer motor actuation time based on error
     # This implements a simple P type controller with limited boundaries
-    def calculate_adjustment_time(error,dError)
+    def calculate_adjustment_time(error)
 
       # Integrate the error
       @int_err_sum += @config[:mixer_motor_ki_parameter] * error
@@ -539,15 +533,15 @@ module BoilerBase
       end
 
       # Calculate the controller putput
-      retval = @config[:mixer_motor_kp_parameter] * error + \
-      @int_err_sum - \
-      dError* @config[:mixer_motor_kd_parameter]
+      retval = @config[:mixer_motor_kp_parameter] * error + @int_err_sum
 
       $app_logger.debug("Adjustments Pval: "+(@config[:mixer_motor_kp_parameter] * error).round(2).to_s+\
-      "+Ival: "+@int_err_sum.round(2).to_s+" -Dval: "+(dError* @config[:mixer_motor_kd_parameter]).round(2).to_s)
+      "+Ival: "+@int_err_sum.round(2).to_s)
 
       return 0 if retval.abs < @config[:min_mixer_motor_movement_time]
 
+      $app_logger.debug("Returning non zero - before max limit adjustment: "+retval.round(2).to_s)
+        
       if retval.abs > @config[:max_mixer_motor_movement_time]
         if retval > 0
           return @config[:max_mixer_motor_movement_time]
