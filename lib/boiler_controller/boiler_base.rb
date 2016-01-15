@@ -508,6 +508,9 @@ module BoilerBase
             # Adjust available movement time for the other direction
             @integrated_ccw_movement_time -= adjustment_time
             @integrated_ccw_movement_time = 0 if @integrated_ccw_movement_time < 0
+          else
+            $app_logger.debug("Mixer controller not moving. Adj:"+adjustment_time.round(2).to_s+\
+            " CW: "+@integrated_cw_movement_time.to_s+" CCW: "+@integrated_ccw_movement_time.to_s)
           end
         end
       end
@@ -541,7 +544,7 @@ module BoilerBase
       return 0 if retval.abs < @config[:min_mixer_motor_movement_time]
 
       $app_logger.debug("Returning non zero - before max limit adjustment: "+retval.round(2).to_s)
-        
+
       if retval.abs > @config[:max_mixer_motor_movement_time]
         if retval > 0
           return @config[:max_mixer_motor_movement_time]
