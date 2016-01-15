@@ -365,9 +365,7 @@ module BoilerBase
 
       # Clear control thread stop sugnaling mutex
       @stop_control_requested.unlock if @stop_control_requested.locked?
-      @measurement_mutex.synchronize do
-        @prev_value = @mix_filter.value
-      end
+
       # Start control thread
       @control_thread = Thread.new do
         Thread.current[:name] = "Mixer controller"
@@ -382,6 +380,9 @@ module BoilerBase
           @config[:mixer_filter_size].times do
             @mix_filter.input_sample(@mix_sensor.temp)
           end
+
+          # Capture a prev_value
+          @prev_value = @mix_filter.value
 
           # Do the actual control, which will return ending the thread if done
           do_control_thread
@@ -459,16 +460,12 @@ module BoilerBase
         target = 0
         error = 0
         value = 0
-        dError = 0
 
         # Read target temp thread safely
         @target_mutex.synchronize { target = @target_temp }
         @measurement_mutex.synchronize do
           value = @mix_filter.value
         end
-
-        puts dError.class,value.class,target.class
-        puts value,@prev_value
 
         error = target-value
         dError = value-@prev_value
