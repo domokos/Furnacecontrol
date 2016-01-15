@@ -467,10 +467,10 @@ module BoilerBase
           value = @mix_filter.value
         end
 
-        puts dError.class," ",value.class, " ",target.class
-        
-        error = target - value
-        dError = value - @prev_value
+        puts dError.class,value.class,target.class
+
+        error = target-value
+        dError = value-@prev_value
 
         if @mixer_log_rate_limiter.expired?
           # Copy the config for updates
