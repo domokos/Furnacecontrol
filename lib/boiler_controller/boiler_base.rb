@@ -327,7 +327,6 @@ module BoilerBase
       @integrated_ccw_movement_time = 0
       @int_err_sum = 0
       @prev_value = 0
-      @mixer_initializing = true
 
       # Create the log rate limiter
       @mixer_log_rate_limiter = Globals::TimerSec.new(@config[:mixer_limited_log_period],"Mixer controller log timer")
@@ -384,9 +383,6 @@ module BoilerBase
 
           # Capture a prev_value
           @prev_value = @mix_filter.value
-
-          # Signal initialization
-          @mixer_initializing = true
 
           # Do the actual control, which will return ending the thread if done
           do_control_thread
