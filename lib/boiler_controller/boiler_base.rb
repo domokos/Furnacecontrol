@@ -319,6 +319,7 @@ module BoilerBase
       @stop_measurement_requested = Mutex.new
       @control_thread_mutex = Mutex.new
       @stop_control_requested = Mutex.new
+      @pause_mutex = Mutex.new
 
       @control_thread = nil
       @measurement_thread = nil
@@ -399,9 +400,18 @@ module BoilerBase
       # Allow the next call to start control to create a new control thread
       @control_thread_mutex.unlock
       $app_logger.debug("Mixer controller control_thread_mutex unlocked")
-
     end
 
+    def pause
+      if @pause_mutex.locked?
+        
+        $app_logger.debug("Mixer controller - measurement thread start requested")
+      end
+    end
+    
+    def resume
+    end
+    
     def start_measurement_thread
       $app_logger.debug("Mixer controller - measurement thread start requested")
       return unless @measurement_thread_mutex.try_lock
