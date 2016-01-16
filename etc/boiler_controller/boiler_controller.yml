@@ -117,9 +117,8 @@
 :mixer_sampling_delay: 3
 :mixer_control_loop_delay: 30
 :mixer_start_delay_after_HW: 50
-:mixer_motor_kp_parameter: 1.2
+:mixer_motor_kp_parameter: 1.6
 :mixer_motor_ki_parameter: 0.3
-:mixer_motor_kd_parameter: 0
 :mixer_motor_ival_limit: 0.6
 :mixer_unidirectional_movement_time_limit: 65
 :mixer_movement_time_hysteresis: 5
