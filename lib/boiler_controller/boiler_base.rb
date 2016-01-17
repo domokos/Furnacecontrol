@@ -378,7 +378,7 @@ module BoilerBase
             do_control_thread
 
             # Delay between control actions
-            sleep @config[:mixer_control_loop_delay] unless @stop_control_requested.locked? or @pause_mutex.locked?
+            sleep @config[:mixer_control_loop_delay] unless @stop_control_requested.locked? or @paused
           end
         end # of control mutex synchronize
       end
