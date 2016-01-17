@@ -421,12 +421,12 @@ module BoilerBase
 
     def resumecheck
       if !@control_thread_mutex.locked? or @control_thread == nil
-        $app_logger.debug("Mixer controller not running")
+        $app_logger.trace("Mixer controller not running")
         return false
       end
 
       if !@paused
-        $app_logger.debug("Mixer controller - controller not paused")
+        $app_logger.trace("Mixer controller - controller not paused")
         return false
       end
       return true
