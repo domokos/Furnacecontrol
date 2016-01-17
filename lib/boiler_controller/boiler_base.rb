@@ -415,7 +415,7 @@ module BoilerBase
       else
         $app_logger.debug("Mixer controller - pausing control")
         # Signal controller to pause
-        @pause = true
+        @paused = true
       end
     end
 
