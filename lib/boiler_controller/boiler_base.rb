@@ -380,6 +380,8 @@ module BoilerBase
             # Delay between control actions
             sleep @config[:mixer_control_loop_delay] unless @stop_control_requested.locked? or @paused
           end
+          # Stop the measurement thread before exiting
+          stop_measurement_thread
         end # of control mutex synchronize
       end
     end
@@ -559,11 +561,7 @@ module BoilerBase
           $app_logger.debug("Mixer controller not moving. Adj:"+adjustment_time.round(2).to_s+\
           " CW: "+@integrated_cw_movement_time.to_s+" CCW: "+@integrated_ccw_movement_time.to_s)
         end
-
       end
-
-      # Stop the measurement thread before exiting
-      stop_measurement_thread
     end
 
     # Calculate mixer motor actuation time based on error
