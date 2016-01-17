@@ -320,7 +320,7 @@ module BoilerBase
       @control_thread_mutex = Mutex.new
       @stop_control_requested = Mutex.new
       @paused = true
-      @openresume_active = false
+      @resuming = false
 
       @control_thread = nil
       @measurement_thread = nil
@@ -430,26 +430,31 @@ module BoilerBase
         $app_logger.trace("Mixer controller - controller not paused")
         return false
       end
+
+      if @resuming
+        $app_logger.trace("Mixer controller - resuming active")
+        return false
+      end
       return true
     end
 
     def openresume(delay=0)
-      return if @openresume_active
-      @openresume_active = true
       if resumecheck
+        @resuming = true
         openresume_thread = Thread.new do
           Thread.current[:name] = "Mixer openresume thread"
           $app_logger.debug("Mixer controller - opening valve")
           @ccw_switch.pulse_block(250)
           @ccw_switch.pulse_block(60)
-          resume(delay)
-          @openresume_active = false
+          resume(delay,true)
+          @resuming = false
         end
       end
     end
 
-    def resume(delay=0)
-      if resumecheck
+    def resume(delay=0,unconditional=false)
+      if resumecheck or unconditional
+        @resuming = true
         resumethread = Thread.new do
           Thread.current[:name] = "Mixer resume thread"
           # Delay resuming the controller if requested
@@ -462,6 +467,7 @@ module BoilerBase
 
           # Signal controller to resume
           @paused = false
+          @resuming = false
         end
       end
     end
