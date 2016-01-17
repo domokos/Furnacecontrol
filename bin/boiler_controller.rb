@@ -233,6 +233,7 @@ class Heating_controller
     # Activation actions for Heating
     @heating_sm.on_enter_heating do |event|
       $app_logger.debug("Activating \"Heat\" state")
+      controller.mixer_controller.start_control
       # Do not control pumps or valves
     end
 
@@ -539,7 +540,7 @@ class Heating_controller
       # Set mode of the heater
       $app_logger.trace("Setting heater mode to HW")
       @buffer_heater.set_mode(:HW)
-      @mixer_controller.stop_control
+      @mixer_controller.pause
     when :RAD, :RADFLOOR, :FLOOR
       # Set mode and required water temperature of the boiler
       $app_logger.trace("Setting heater target temp to: "+@target_boiler_temp.to_s)
@@ -552,10 +553,9 @@ class Heating_controller
         @buffer_heater.set_mode(:radheat)
       end
       if changed and prev_power_needed[:power] == :HW
-        @mixer_controller.open
-        @mixer_controller.start_control($config[:mixer_start_delay_after_HW])
+        @mixer_controller.openresume($config[:mixer_start_delay_after_HW])
       else
-        @mixer_controller.start_control
+        @mixer_controller.resume
       end
     else
       raise "Unexpected power_needed encountered in heating state: "+power_needed[:power].to_s
