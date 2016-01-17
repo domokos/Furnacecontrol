@@ -58,8 +58,8 @@
   - 27
 #
 :floor_watertemp_polycurve:
-# @ -5 C and below: 40C
-- - -1
+# @ -4 C and below: 40C
+- - -4
   - 40
 # @ 5C: 36C
 - - 5
