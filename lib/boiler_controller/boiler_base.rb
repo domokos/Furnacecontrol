@@ -320,6 +320,7 @@ module BoilerBase
       @control_thread_mutex = Mutex.new
       @stop_control_requested = Mutex.new
       @paused = true
+      @openresume_active = false
 
       @control_thread = nil
       @measurement_thread = nil
@@ -433,6 +434,8 @@ module BoilerBase
     end
 
     def openresume(delay=0)
+      return if @openresume_active
+      @openresume_active = true
       if resumecheck
         openresume_thread = Thread.new do
           Thread.current[:name] = "Mixer openresume thread"
@@ -440,6 +443,7 @@ module BoilerBase
           @ccw_switch.pulse_block(250)
           @ccw_switch.pulse_block(60)
           resume(delay)
+          @openresume_active = false
         end
       end
     end
