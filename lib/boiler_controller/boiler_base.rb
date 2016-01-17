@@ -412,7 +412,7 @@ module BoilerBase
       end
 
       if @paused
-        $app_logger.debug("Mixer controller - controller already paused - ignoring")
+        $app_logger.trace("Mixer controller - controller already paused - ignoring")
       else
         $app_logger.debug("Mixer controller - pausing control")
         # Signal controller to pause
@@ -422,7 +422,7 @@ module BoilerBase
 
     def resumecheck
       if !@control_thread_mutex.locked? or @control_thread == nil
-        $app_logger.trace("Mixer controller not running")
+        $app_logger.debug("Mixer controller not running")
         return false
       end
 
