@@ -599,7 +599,7 @@ module BoilerBase
           $app_logger.debug("Calculated value: "+retval.round(2).to_s+" returning: "+@config[:max_mixer_motor_movement_time].to_s)
           return @config[:max_mixer_motor_movement_time]
         else
-          $app_logger.debug("Calculated value: "+retval.round(2).to_s+" returning: "+-@config[:max_mixer_motor_movement_time].to_s)
+          $app_logger.debug("Calculated value: "+retval.round(2).to_s+" returning: -"+@config[:max_mixer_motor_movement_time].to_s)
           return -@config[:max_mixer_motor_movement_time]
         end
       end
