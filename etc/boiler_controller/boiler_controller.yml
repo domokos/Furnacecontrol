@@ -120,6 +120,7 @@
 :mixer_motor_kp_parameter: 1.2
 :mixer_motor_ki_parameter: 0.3
 :mixer_motor_ival_limit: 0.6
+:mixer_motor_integrate_error_limit: 0.15
 :mixer_unidirectional_movement_time_limit: 65
 :mixer_movement_time_hysteresis: 5
 :min_mixer_motor_movement_time: 0.5

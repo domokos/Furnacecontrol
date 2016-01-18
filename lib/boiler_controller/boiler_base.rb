@@ -578,8 +578,9 @@ module BoilerBase
     # This implements a simple P type controller with limited boundaries
     def calculate_adjustment_time(error)
 
-      # Integrate the error
-      @int_err_sum += @config[:mixer_motor_ki_parameter] * error
+      # Integrate the error if above the integrate threshold
+      @int_err_sum += @config[:mixer_motor_ki_parameter] * error \
+      if error.abs > @config[:mixer_motor_integrate_error_limit]
 
       if @int_err_sum.abs > @config[:mixer_motor_ival_limit]
         @int_err_sum>0 ? @int_err_sum =  @config[:mixer_motor_ival_limit] :\
