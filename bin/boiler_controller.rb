@@ -102,40 +102,6 @@ class Heating_controller
       determine_power_needed == "HW" or @moving_valves_required == true
     }
 
-    # Create the value proc for the living floor thermostat.
-    @living_floor_thermostat_valueproc = lambda { |sample_filter, target|
-      if $low_floor_temp_mode
-        if sample_filter.value < -1
-          return 0.2
-        else
-          return 0
-        end
-      else
-        # This is now fixed to : 0.2 @ 13 and 0.8 @ 6 Celsius above 13, zero, below 6 full power (+- of the sample_filter.value shifts curve)
-        tmp = 1.31429 - (sample_filter.value-1) * 0.085714
-        tmp = 0 if tmp < 0.2
-        tmp = 1 if tmp > 0.8
-        return tmp
-      end
-    }
-
-    # Create the value proc for the upstairs floor thermostat.
-    @upstairs_floor_thermostat_valueproc = lambda { |sample_filter, target|
-      if $low_floor_temp_mode
-        if sample_filter.value < -6
-          return 0
-        else
-          return 0.2
-        end
-      else
-        # This is now fixed to : 0.2 @ 13 and 0.8 @ 6 Celsius above 13, zero, below 6 full power (+- of the sample_filter.value shifts curve)
-        tmp = 1.31429 - (sample_filter.value-1) * 0.085714
-        tmp = 0 if tmp < 0.2
-        tmp = 1 if tmp > 0.8
-        return tmp
-      end
-    }
-
     # Create the value proc for the basement thermostat. Lambda is used because proc would also return the "return" command
     @basement_thermostat_valueproc = lambda { |sample_filter, target|
       error = target - sample_filter.value
@@ -156,15 +122,10 @@ class Heating_controller
     # Create thermostats, with default threshold values and hysteresis values
     @living_thermostat = BoilerBase::Symmetric_thermostat.new(@living_sensor,0.3,0.0,15)
     @HW_thermostat = BoilerBase::Asymmetric_thermostat.new(@HW_sensor,2,0,0.0,8)
-    @living_floor_thermostat = BoilerBase::PwmThermostat.new(@external_sensor,30,@living_floor_thermostat_valueproc,@is_HW_or_valve_proc,"Living floor thermostat")
+    @living_floor_thermostat = BoilerBase::Symmetric_thermostat.new(@external_sensor,2,15.0,30)
     @mode_thermostat = BoilerBase::Symmetric_thermostat.new(@external_sensor,0.9,5.0,50)
-    @upstairs_floor_thermostat = BoilerBase::PwmThermostat.new(@external_sensor,30,@upstairs_floor_thermostat_valueproc,@is_HW_or_valve_proc,"Upstairs floor thermostat")
     @upstairs_thermostat = BoilerBase::Symmetric_thermostat.new(@upstairs_sensor,0.3,5.0,15)
     @basement_thermostat = BoilerBase::PwmThermostat.new(@basement_sensor,30,@basement_thermostat_valueproc,@is_HW_or_valve_proc,"Basement thermostat")
-
-    #Technical targets must be set to allow PWM proc to detect changes
-    @upstairs_floor_thermostat.set_target(0)
-    @living_floor_thermostat.set_target(0)
 
     # Create magnetic valves
     @basement_radiator_valve = BusDevice::DelayedCloseMagneticValve.new("Basement radiator valve","Contact 8 on main board",
@@ -272,6 +233,7 @@ class Heating_controller
     # Activation actions for Heating
     @heating_sm.on_enter_heating do |event|
       $app_logger.debug("Activating \"Heat\" state")
+      controller.mixer_controller.start_control
       # Do not control pumps or valves
     end
 
@@ -353,6 +315,7 @@ class Heating_controller
 
     # Create watertemp Polycurves
     @heating_watertemp_polycurve = Globals::Polycurve.new($config[:heating_watertemp_polycurve])
+    @floor_watertemp_polycurve = Globals::Polycurve.new($config[:floor_watertemp_polycurve])
 
     # Prefill sensors and thermostats to ensure smooth startup operation
     for i in 1..6 do
@@ -453,7 +416,6 @@ class Heating_controller
     @upstairs_thermostat.update
     @basement_thermostat.update
     @living_floor_thermostat.update
-    @upstairs_floor_thermostat.update
     @mode_thermostat.update
   end
 
@@ -534,9 +496,11 @@ class Heating_controller
     @basement_thermostat.set_target($config[:target_basement_temp])
     @mode_thermostat.set_threshold($config[:mode_threshold])
     @HW_thermostat.set_threshold($config[:target_HW_temp])
+    @living_floor_thermostat.set_threshold($config[:floor_heating_threshold])
 
     # Update watertemp Polycurves
     @heating_watertemp_polycurve.load($config[:heating_watertemp_polycurve])
+    @floor_watertemp_polycurve.load($config[:floor_watertemp_polycurve])
 
     if @mode_thermostat.is_on?
       @heating_sm.current != :heating and @mode = :mode_Heat_HW
@@ -549,16 +513,14 @@ class Heating_controller
       # Do nothing - just leave the heating wiper where it is.
 
     when :RAD, :RADFLOOR
-      # Use @living_floor_thermostat.temp to get a filtered external temperature
-      # Was: -1.1*input+37.5
-      #      @target_boiler_temp = $config[:watertemp_slope]*@living_floor_thermostat.temp+$config[:watertemp_shift]
-
-      @target_boiler_temp = @heating_watertemp_polycurve.float_value(@living_floor_thermostat.temp)
-      @mixer_controller.set_target_temp($config[:FLOOR_watertemp])
+      @target_boiler_temp =
+      @heating_watertemp_polycurve.float_value(@living_floor_thermostat.temp) > @floor_watertemp_polycurve.float_value(@living_floor_thermostat.temp) ? \
+      @heating_watertemp_polycurve.float_value(@living_floor_thermostat.temp) : \
+      @floor_watertemp_polycurve.float_value(@living_floor_thermostat.temp)
 
     when :FLOOR
-      @target_boiler_temp = $config[:FLOOR_watertemp]
-      @mixer_controller.set_target_temp($config[:FLOOR_watertemp])
+      @target_boiler_temp = @floor_watertemp_polycurve.float_value(@living_floor_thermostat.temp)
+      @mixer_controller.set_target_temp(@floor_watertemp_polycurve.float_value(@living_floor_thermostat.temp))
 
     when :NONE
       @target_boiler_temp = 7.0
@@ -578,7 +540,7 @@ class Heating_controller
       # Set mode of the heater
       $app_logger.trace("Setting heater mode to HW")
       @buffer_heater.set_mode(:HW)
-      @mixer_controller.stop_control
+      @mixer_controller.pause
     when :RAD, :RADFLOOR, :FLOOR
       # Set mode and required water temperature of the boiler
       $app_logger.trace("Setting heater target temp to: "+@target_boiler_temp.to_s)
@@ -591,10 +553,9 @@ class Heating_controller
         @buffer_heater.set_mode(:radheat)
       end
       if changed and prev_power_needed[:power] == :HW
-        @mixer_controller.open
-        @mixer_controller.start_control($config[:mixer_start_delay_after_HW])
+        @mixer_controller.openresume($config[:mixer_start_delay_after_HW])
       else
-        @mixer_controller.start_control
+        @mixer_controller.resume
       end
     else
       raise "Unexpected power_needed encountered in heating state: "+power_needed[:power].to_s
@@ -645,20 +606,6 @@ class Heating_controller
       end
 
     when :RADFLOOR
-      # decide on living floor valve based on external temperature
-      if @living_floor_thermostat.is_on?
-        @living_floor_valve.open
-      else
-        @living_floor_valve.delayed_close
-      end
-
-      # decide on upstairs floor valve based on external temperature
-      if @upstairs_floor_thermostat.is_on?
-        @upstairs_floor_valve.open
-      else
-        @upstairs_floor_valve.delayed_close
-      end
-
       # decide on basement valves based on basement temperature
       if @basement_thermostat.is_on?
         @basement_radiator_valve.open
@@ -671,26 +618,21 @@ class Heating_controller
       if changed
         $app_logger.debug("Setting valves and pumps for RADFLOOR")
 
+        # decide on floor valves based on external temperature
+        if @living_floor_thermostat.is_on?
+          @living_floor_valve.open
+          @upstairs_floor_valve.open
+        else
+          @living_floor_valve.delayed_close
+          @upstairs_floor_valve.delayed_close
+        end
+
         # Floor heating on
         @floor_pump.on
         # Radiator pump on
         @radiator_pump.on
       end
     when :FLOOR
-      # decide on living floor valve based on external temperature
-      if @living_floor_thermostat.is_on?
-        @living_floor_valve.open
-      else
-        @living_floor_valve.delayed_close
-      end
-
-      # decide on upstairs floor valve based on external temperature
-      if @upstairs_floor_thermostat.is_on?
-        @upstairs_floor_valve.open
-      else
-        @upstairs_floor_valve.delayed_close
-      end
-
       # decide on basement valve based on basement temperature
       if @basement_thermostat.is_on?
         @basement_floor_valve.open
@@ -701,6 +643,15 @@ class Heating_controller
       if changed
         $app_logger.debug("Setting valves and pumps for FLOOR")
         @basement_radiator_valve.delayed_close
+
+        # decide on floor valves based on external temperature
+        if @living_floor_thermostat.is_on?
+          @living_floor_valve.open
+          @upstairs_floor_valve.open
+        else
+          @living_floor_valve.delayed_close
+          @upstairs_floor_valve.delayed_close
+        end
 
         # Floor heating on
         @floor_pump.on
@@ -719,19 +670,16 @@ class Heating_controller
     elsif @mode == :mode_Heat_HW and (@upstairs_thermostat.is_on? or \
     @living_thermostat.is_on? ) and \
     @living_floor_thermostat.is_off? and \
-    @upstairs_floor_thermostat.is_off? and \
     @basement_thermostat.is_off?
       # Power needed for heating
       return :RAD
     elsif @mode == :mode_Heat_HW and (@upstairs_thermostat.is_on? or \
     @living_thermostat.is_on? ) and \
     (@living_floor_thermostat.is_on? or \
-    @upstairs_floor_thermostat.is_on? or \
     @basement_thermostat.is_on?)
       # Power needed for heating and floor heating
       return :RADFLOOR
     elsif @living_floor_thermostat.is_on? or \
-    @upstairs_floor_thermostat.is_on? or \
     @basement_thermostat.is_on?
       # Power needed for floor heating only
       return :FLOOR
@@ -919,13 +867,9 @@ class Heating_controller
     $heating_logger.debug("\nUpstairs target/temperature: "+@upstairs_thermostat.threshold.to_s+"/"+@upstairs_thermostat.temp.round(2).to_s)
     $heating_logger.debug("Upstairs thermostat state: "+@upstairs_thermostat.state.to_s)
 
-    $heating_logger.debug("\nLiving floor PWM value: "+(@living_floor_thermostat.value*100).round(0).to_s+"%")
-    $heating_logger.debug("Living floor valve: "+@living_floor_valve.state.to_s)
     $heating_logger.debug("Living floor thermostat status: "+@living_floor_thermostat.state.to_s)
-
-    $heating_logger.debug("\nUpstairs floor PWM value: "+(@upstairs_floor_thermostat.value*100).round(0).to_s+"%")
+    $heating_logger.debug("Living floor valve: "+@living_floor_valve.state.to_s)
     $heating_logger.debug("Upstairs floor valve: "+@upstairs_floor_valve.state.to_s)
-    $heating_logger.debug("Upstairs floor thermostat status: "+@upstairs_floor_thermostat.state.to_s)
 
     $heating_logger.debug("\nBasement target/temperature: "+@basement_thermostat.target.to_s+"/"+@basement_thermostat.temp.round(2).to_s)
     $heating_logger.debug("Basement PWM value: "+(@basement_thermostat.value*100).round(0).to_s+"%")
@@ -962,7 +906,6 @@ class Heating_controller
     @basement_thermostat.set_target(@test_controls[:target_basement_temp])
 
     @living_floor_thermostat.test_update(@test_controls[:external_temp])
-    @upstairs_floor_thermostat.test_update(@test_controls[:external_temp])
 
     @living_thermostat.set_threshold(@test_controls[:target_living_temp])
     @upstairs_thermostat.set_threshold(@test_controls[:target_upstairs_temp])
