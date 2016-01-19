@@ -181,7 +181,7 @@ class Heating_controller
     @heating_sm.on_enter_off do |event|
 
       # Perform initialization on startup
-      if event.from == :none
+      if event.name == :init
         $app_logger.debug("Heater SM initiaization")
 
         # Turn off all pumps

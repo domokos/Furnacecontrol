@@ -832,7 +832,7 @@ module BoilerBase
       # - Turn off HW production of boiler
       # - Turn off the heater relay
       @buffer_sm.on_enter_off do |event|
-        if event.from == :none
+        if event.name == :init
           $app_logger.debug("Bufferheater initializing")
           buffer.hw_wiper.set_water_temp(65.0)
           buffer.set_relays(:hydr_shifted)
