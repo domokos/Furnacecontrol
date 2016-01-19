@@ -568,7 +568,7 @@ module BoilerBase
           @integrated_ccw_movement_time -= adjustment_time
           @integrated_ccw_movement_time = 0 if @integrated_ccw_movement_time < 0
         else
-          $app_logger.debug("Mixer controller not moving. Adj:"+adjustment_time.round(2).to_s+\
+          $app_logger.trace("Mixer controller not moving. Adj:"+adjustment_time.round(2).to_s+\
           " CW: "+@integrated_cw_movement_time.to_s+" CCW: "+@integrated_ccw_movement_time.to_s)
         end
       end
@@ -590,21 +590,21 @@ module BoilerBase
       # Calculate the controller putput
       retval = @config[:mixer_motor_kp_parameter] * error + @int_err_sum
 
-      $app_logger.debug("Adjustments Pval: "+(@config[:mixer_motor_kp_parameter] * error).round(2).to_s+\
+      $app_logger.trace("Adjustments Pval: "+(@config[:mixer_motor_kp_parameter] * error).round(2).to_s+\
       " Ival: "+@int_err_sum.round(2).to_s)
 
       return 0 if retval.abs < @config[:min_mixer_motor_movement_time]
 
       if retval.abs > @config[:max_mixer_motor_movement_time]
         if retval > 0
-          $app_logger.debug("Calculated value: "+retval.round(2).to_s+" returning: "+@config[:max_mixer_motor_movement_time].to_s)
+          $app_logger.trace("Calculated value: "+retval.round(2).to_s+" returning: "+@config[:max_mixer_motor_movement_time].to_s)
           return @config[:max_mixer_motor_movement_time]
         else
-          $app_logger.debug("Calculated value: "+retval.round(2).to_s+" returning: -"+@config[:max_mixer_motor_movement_time].to_s)
+          $app_logger.trace("Calculated value: "+retval.round(2).to_s+" returning: -"+@config[:max_mixer_motor_movement_time].to_s)
           return -@config[:max_mixer_motor_movement_time]
         end
       end
-      $app_logger.debug("Returning: "+retval.round(2).to_s)
+      $app_logger.trace("Returning: "+retval.round(2).to_s)
       return retval
     end
   end # of class MixerControl
