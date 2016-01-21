@@ -84,9 +84,6 @@ pid = fork do
     boiler_control = Heating_controller.new(:Off,:Heat)
     $app_logger.info("Controller initialized - starting operation")
 
-    # Setup the rest api
-    setup_restapi
-
     begin
       boiler_control.operate
     rescue Exception => e
