@@ -2,7 +2,6 @@ require "/usr/local/lib/boiler_controller/Buscomm"
 require "/usr/local/lib/boiler_controller/Globals"
 require "/usr/local/lib/boiler_controller/bus_device"
 require "rubygems"
-require "robustthread"
 require "finite_machine"
 
 module BoilerBase
