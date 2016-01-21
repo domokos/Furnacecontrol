@@ -40,14 +40,6 @@ Signal.trap("URG") do
   $heating_logger.level = Logger::DEBUG
 end
 
-class BoilerThinBackend < ::Thin::Backends::TcpServer
-  def initialize(host, port, options)
-    super(host, port)
-    @ssl = true
-    @ssl_options = options
-  end
-end
-
 # Beginnning of main execution thread
 
 Thread.current["thread_name"] = "Starter thread"
