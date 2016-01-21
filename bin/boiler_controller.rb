@@ -368,12 +368,12 @@ class Heating_controller
 
     when :postheating
       # Evaluating postheating state:
-      # If Delta T on the Furnace drops below 5 C then -> off
+      # If Delta T on the Boiler drops below 5 C then -> off
       # If need power is not false then -> heat
-      # If Delta T on the Furnace drops below 5 C then -> off
+      # If Delta T on the Boiler drops below 5 C then -> off
 
       if @forward_temp - @return_temp < 5.0
-        $app_logger.debug("Delta T on the Furnace dropped below 5 C")
+        $app_logger.debug("Delta T on the boiler dropped below 5 C")
         # Turn off the heater
         @heating_sm.turnoff
         # If need power then -> Heat
@@ -384,18 +384,18 @@ class Heating_controller
 
     when :posthwing
       # Evaluating PostHW state:
-      # If Delta T on the Furnace drops below 5 C then -> Off
-      # If Furnace temp below HW temp + 4 C then -> Off
+      # If Delta T on the Boiler drops below 5 C then -> Off
+      # If Boiler temp below HW temp + 4 C then -> Off
       # If need power is not false then -> Heat
-      # If Delta T on the Furnace drops below 5 C then -> Off
+      # If Delta T on the Boiler drops below 5 C then -> Off
 
       if @forward_temp - @return_temp < 5.0
-        $app_logger.debug("Delta T on the Furnace dropped below 5 C")
+        $app_logger.debug("Delta T on the Boiler dropped below 5 C")
         # Turn off the heater
         @heating_sm.turnoff
-        # If Furnace temp below HW temp + 4 C then -> Off
+        # If Boiler temp below HW temp + 4 C then -> Off
       elsif @forward_temp < @HW_thermostat.temp + 4
-        $app_logger.debug("Furnace temp below HW temp + 4 C")
+        $app_logger.debug("Boiler temp below HW temp + 4 C")
         # Turn off the heater
         @heating_sm.turnoff
         # If need power then -> Heat
