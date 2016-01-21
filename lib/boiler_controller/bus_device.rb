@@ -324,6 +324,7 @@ module BusDevice
     TEMP_BUS_READ_TIMEOUT = 2
     ONEWIRE_TEMP_FAIL = -1295.0625 #"" << 0x0f.chr << 0xaf.chr * ONE_BIT_TEMP_VALUE
     DEFAULT_TEMP = 85.0
+    UNREALISTIC_TEMP_DIFF_THRESHOLD = 15
     def initialize(name, location, slave_address, register_address, dry_run, mock_temp, debug=false)
       @name = name
       @slave_address = slave_address
@@ -347,14 +348,26 @@ module BusDevice
       else
         @lasttemp = DEFAULT_TEMP
       end
+      @skipped_temp_values = 0
     end
 
     def temp
       @temp_reader_mutex.synchronize do
         if @delay_timer.expired?
           temp_tmp = read_temp
-          @lasttemp = temp_tmp unless temp_tmp < -55 or temp_tmp > 125
-          @delay_timer.reset
+          # Skip out of bounds and sudden power-on reset values
+          if temp_tmp < -55 or temp_tmp > 125 or
+          ((temp_tmp-@lasttemp).abs > UNREALISTIC_TEMP_DIFF_THRESHOLD and temp_tmp == DEFAULT_TEMP)
+            @skipped_temp_values += 1
+          else
+            @lasttemp = temp_tmp
+            @delay_timer.reset
+            @skipped_temp_values = 0
+          end
+          if @skipped_temp_values > 0
+            $app_logger.debug("Skipped "+@skipped_temp_values.to_s+" samples at "+@name)
+            $app_logger.debug("Last skipped temp value is: "+temp_tmp.to_s)
+          end
         end
       end
       return @lasttemp
