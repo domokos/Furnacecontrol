@@ -38,4 +38,5 @@ class BoilerRestapi < Sinatra::Application
     return retval
   end
 
+  run!
 end
