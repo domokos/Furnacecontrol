@@ -10,7 +10,7 @@ class MyThinBackend < ::Thin::Backends::TcpServer
   end
 end
 
-class BoilerRestapi < Sinatra::Application
+$BoilerRestapi = Sinatra.new do
 
   configure do
     set :environment, :production

@@ -29,12 +29,14 @@ puts myalma.szorzott(2)
 puts "Starting restapi"
 
 mythread = Thread.new do
-  SinatraApp.run!
+
+  puts "Starting restapi"
+  $BoilerRestapi.run!
+  puts "Restapi stoppped"
 end
 
-sleep 10
+sleep 15
 
 puts "Stopping restapi"
 
 mythread.kill
-
