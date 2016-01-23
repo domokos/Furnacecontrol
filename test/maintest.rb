@@ -3,7 +3,7 @@ require '/home/boiler/git/Furnacecontrol/test/sinatratest.rb'
 
 class Alma
   attr_accessor :value
-  def initialize(vaue)
+  def initialize(value)
     @value = value
   end
 
