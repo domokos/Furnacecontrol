@@ -39,6 +39,6 @@ $BoilerRestapi = Sinatra.new do
   end
 
   get '/kuty' do
-    $kutyumuyu
+    $kutyumuyu.to_yaml
   end
 end
