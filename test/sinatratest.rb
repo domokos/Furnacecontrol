@@ -40,6 +40,7 @@ $BoilerRestapi = Sinatra.new do
   end
 
   get '/kuty' do
+    puts $alma.szorzott(2)
     $kutyumuyu.to_yaml
   end
 end

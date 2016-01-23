@@ -23,9 +23,7 @@ class Alma
   end
 end
 
-myalma = Alma.new(2)
-
-puts myalma.szorzott(2)
+$alma = Alma.new(2)
 
 puts "Starting restapi"
 
