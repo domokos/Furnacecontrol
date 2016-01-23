@@ -1,6 +1,7 @@
 #!/usr/local/rvm/rubies/ruby-2.1.5/bin/ruby
 require 'sinatra/base'
 require 'thin'
+require 'yaml'
 
 class MyThinBackend < ::Thin::Backends::TcpServer
   def initialize(host, port, options)
