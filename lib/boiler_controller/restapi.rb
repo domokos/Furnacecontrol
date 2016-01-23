@@ -38,6 +38,4 @@ $BoilerRestapi = Sinatra.new do
     end
     return retval
   end
-
-  run!
 end

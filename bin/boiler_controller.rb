@@ -2,7 +2,9 @@
 # Boiler control softvare
 
 require "/usr/local/lib/boiler_controller/heating_controller"
+require "/usr/local/lib/boiler_controller/restapi"
 require "robustthread"
+
 
 Thread.abort_on_exception=true
 
