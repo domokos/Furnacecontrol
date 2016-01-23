@@ -6,3 +6,4 @@ install -m 644 -o boiler -g root -p etc/boiler_controller/boiler_controller.yml 
 rm /usr/local/lib/boiler_controller/*
 install -m 644 -o boiler -g root -p lib/boiler_controller/* /usr/local/lib/boiler_controller/
 install -m 755 -o root -g root -p service/boilercontrol /etc/init.d/
+
