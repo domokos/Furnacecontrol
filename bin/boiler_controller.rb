@@ -53,6 +53,11 @@ end
 daemonize = ARGV.find_index("--daemon") != nil
 
 pid = fork do
+  restapi_thread = Thread.new do
+    $app_logger.info("Starting restapi")
+    $BoilerRestapi.run!
+  end
+
   main_rt = RobustThread.new(:label => "Main daemon thread") do
 
     Thread.current[:name] = "Main daemon"
@@ -82,8 +87,12 @@ pid = fork do
       $app_logger.fatal("Exception backtrace: "+e.backtrace.join("\n"))
       $shutdown_reason = Globals::FATAL_SHUTDOWN
       boiler_control.shutdown
+      restapi_thread.kill
+      sleep 1
       exit
     end
+    restapi_thread.kill
+    sleep 1
   end
 end
 

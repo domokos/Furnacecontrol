@@ -1,5 +1,6 @@
 require "sinatra/base"
 require "thin"
+require "yaml"
 
 class BoilerThinBackend < ::Thin::Backends::TcpServer
   def initialize(host, port, options)
@@ -11,7 +12,7 @@ end
 
 # Setup the webserver for the rest interface
 
-class BoilerRestapi < Sinatra::Application
+$BoilerRestapi = Sinatra.new do
 
   configure do
     set :environment, :production

@@ -1,7 +1,6 @@
 #!/usr/local/rvm/rubies/ruby-2.1.5/bin/ruby
 require '/home/boiler/git/Furnacecontrol/test/sinatratest.rb'
 
-
 class Alma
   attr_accessor :value
   def initialize(value)
@@ -38,8 +37,10 @@ $kutyumuyu = {}
 $kutyumuyu[:name] = "Kutyumutyus"
 $kutyumuyu[:breed] = "korcs"
 
-sleep 150
+sleep 10
 
 puts "Stopping restapi"
 
-mythread.kill
+$BoilerRestapi.quit!
+
+sleep 5
