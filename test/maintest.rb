@@ -1,5 +1,5 @@
 #!/usr/local/rvm/rubies/ruby-2.1.5/bin/ruby
-require '/home/boiler/sinatratest.rb'
+require '/home/boiler/git/Furnacecontrol/test/sinatratest.rb'
 
 class Alma
   attr_accessor :value
