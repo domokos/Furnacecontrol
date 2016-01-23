@@ -22,8 +22,6 @@ class Alma
   end
 end
 
-myapp = BoilerRestapi.new
-
 myalma = Alma.new(2)
 
 puts myalma.szorzott(2)
@@ -31,7 +29,7 @@ puts myalma.szorzott(2)
 puts "Starting restapi"
 
 mythread = Thread.new do
-  myapp.run!
+  SinatraApp.run!
 end
 
 sleep 10
