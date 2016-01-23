@@ -35,7 +35,9 @@ mythread = Thread.new do
   puts "Restapi stoppped"
 end
 
-sleep 15
+$kutyumuyu = "Kutyumutyus"
+
+sleep 150
 
 puts "Stopping restapi"
 

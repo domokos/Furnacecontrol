@@ -38,4 +38,7 @@ $BoilerRestapi = Sinatra.new do
   <basement>25.12</downstairs>"
   end
 
+  get '/kuty' do
+    $kutyumuyu
+  end
 end
