@@ -55,7 +55,7 @@ $BoilerRestapi = Sinatra.new do
 
     puts symb == :target_living_temp
 
-    $config[symb]
+    $config[symb].to_s
   end
 
 end
