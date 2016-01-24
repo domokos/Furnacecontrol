@@ -37,7 +37,7 @@ $kutyumuyu = {}
 $kutyumuyu[:name] = "Kutyumutyus"
 $kutyumuyu[:breed] = "korcs"
 
-sleep 10
+sleep 100
 
 puts "Stopping restapi"
 

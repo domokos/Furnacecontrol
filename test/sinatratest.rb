@@ -43,4 +43,15 @@ $BoilerRestapi = Sinatra.new do
     puts $alma.szorzott(2)
     $kutyumuyu.to_yaml
   end
+  
+  get '/config:itemname' do
+    puts params['itemname']
+    paramname = params['itemname'].to_sym
+    retval = ""
+    $config_mutex.synchronize do
+      retval = $config[paramname]
+    end
+    return retval
+  end
+  
 end
