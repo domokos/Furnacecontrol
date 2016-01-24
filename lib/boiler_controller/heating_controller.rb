@@ -284,7 +284,7 @@ class Heating_controller
       break if $shutdown_reason != Globals::NO_SHUTDOWN
     end
 
-    $app_logger.debug("Boiler controller initialized initial state set to: #{@heating_sm.current}, Initial mode set to: #{@mode.to_s}")
+    $app_logger.debug("Boiler controller initialized initial state set to: #{@heating_sm.current}, Initial mode set to: #{@mode}")
 
   end
 

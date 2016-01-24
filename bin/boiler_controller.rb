@@ -5,7 +5,6 @@ require "/usr/local/lib/boiler_controller/heating_controller"
 require "/usr/local/lib/boiler_controller/restapi"
 require "robustthread"
 
-
 Thread.abort_on_exception=true
 
 $stdout.sync = true
@@ -20,7 +19,7 @@ $low_floor_temp_mode = false
 Signal.trap("TTIN") do
   puts "---------\n"
   Thread.list.each do |thread|
-    puts "Thread name: "+thread[:name].to_s+" ID: #{thread.object_id.to_s(36)}"
+    puts "Thread name: #{thread[:name]} ID: #{thread.object_id.to_s(36)}"
     puts thread.backtrace.join("\n")
     puts "---------\n"
   end
