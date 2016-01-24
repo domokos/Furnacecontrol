@@ -48,10 +48,12 @@ $BoilerRestapi = Sinatra.new do
     $config = {}
     $config[:target_living_temp] = 150
 
-    puts params['itemname']
-    puts params['itemname'].to_sym
+    puts params['itemname'][1,99]
+    puts params['itemname'][1,99].to_sym
 
-    $config[params['itemname']]
+    symb = puts params['itemname'][1,99].to_sym
+
+    $config[symb]
   end
 
 end
