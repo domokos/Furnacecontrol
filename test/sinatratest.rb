@@ -52,7 +52,6 @@ $BoilerRestapi = Sinatra.new do
     puts params['itemname'].to_sym
 
     $config[params['itemname']]
-    return retval
   end
 
 end
