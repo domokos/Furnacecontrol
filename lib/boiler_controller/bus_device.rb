@@ -31,32 +31,32 @@ module BusDevice
         while true
           $app_logger.trace("Check round started")
           @@check_process_mutex.synchronize {actual_check_list = @@check_list.dup}
-          $app_logger.trace("Element count in checkround: "+actual_check_list.size.to_s)
+          $app_logger.trace("Element count in checkround: #{actual_check_list.size}")
           el_count = 1
           actual_check_list.each do |element|
-            $app_logger.trace("Element # "+el_count.to_s+" checking launched")
+            $app_logger.trace("Element # #{el_count} checking launched")
             el_count +=1
 
             # Distribute checking each object across CHECK_INTERVAL_PERIOD_SEC evenly
             actual_check_list.size > 0 and sleep CHECK_INTERVAL_PERIOD_SEC / actual_check_list.size
             sleep 1
-            $app_logger.trace("Bus device consistency checker process: Checking '"+element[:Obj].name+"'")
+            $app_logger.trace("Bus device consistency checker process: Checking '#{element[:Obj].name}'")
 
             # Check if the checker process is accessible
             if (defined? element[:Proc]) != nil
 
               # Call the checker process and capture result
               result = element[:Proc].call
-              $app_logger.trace("Bus device consistency checker process: Checkresult for '"+element[:Obj].name+"': "+result.to_s)
+              $app_logger.trace("Bus device consistency checker process: Checkresult for '#{element[:Obj].name}': #{result}")
             else
 
               # Log that the checker process is not accessible, and forcibly unregister it
-              $app_logger.error("Bus device consistency checker process: Check method not defined for: '"+element.inspect+" Deleting from list")
+              $app_logger.error("Bus device consistency checker process: Check method not defined for: '#{element.inspect}' Deleting from list")
               @@check_process_mutex.synchronize {@@check_list.delete(element)}
             end
 
             # Just log the result - the checker process itself is expected to take the appropriate action upon failure
-            $app_logger.trace("Bus device consistency checker process: Check method result for: '"+element[:Obj].name+"': "+result.to_s)
+            $app_logger.trace("Bus device consistency checker process: Check method result for: '#{element[:Obj].name}': #{result}")
           end
         end
       end
@@ -99,7 +99,7 @@ module BusDevice
       @state_semaphore.synchronize do
         if @state != :on
           @state = :on
-          write_device(1) == :Success and $app_logger.trace("Succesfully turned Switch '"+@name+"' on.")
+          write_device(1) == :Success and $app_logger.trace("Succesfully turned Switch '#{@name}' on.")
         end
       end # of state semaphore sync
     end
@@ -109,7 +109,7 @@ module BusDevice
       @state_semaphore.synchronize do
         if @state != :off
           @state = :off
-          write_device(0) == :Success and $app_logger.trace("Succesfully turned Switch '"+@name+"' off.")
+          write_device(0) == :Success and $app_logger.trace("Succesfully turned Switch '#{@name}' off.")
         end
       end # of state semaphore sync
     end
@@ -122,15 +122,15 @@ module BusDevice
       if !@dry_run
         begin
           retval = @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+value.chr)
-          $app_logger.trace("Sucessfully written "+value.to_s+" to register '"+@name+"'")
+          $app_logger.trace("Sucessfully written #{value} to register '#{@name}'")
         rescue MessagingError => e
           retval = e.return_message
-          $app_logger.fatal("Unrecoverable communication error on bus, writing '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
+          $app_logger.fatal("Unrecoverable communication error on bus, writing '#{@name}' ERRNO: #{retval[:Return_code]} - #{Buscomm::RESPONSE_TEXT[retval[:Return_code]]}")
           $shutdown_reason = Globals::FATAL_SHUTDOWN
           return :Failure
         end
       else
-        $app_logger.trace("Dry run - writing "+value.to_s+" to register '"+@name+"'")
+        $app_logger.trace("Dry run - writing #{value} to register '#{@name}'")
       end
       return :Success
     end
@@ -164,8 +164,8 @@ module BusDevice
           while retval[:Content][Buscomm::PARAMETER_START].ord != state_val and retry_count <= CHECK_RETRY_COUNT
 
             errorstring = "Mismatch during check between expected switch with Name: '"+@name+"' Location: '"+@location+"'\n"
-            errorstring += "Known state: "+state_val.to_s+" device returned state: "+retval[:Content][Buscomm::PARAMETER_START].ord.to_s+"\n"
-            errorstring += "Trying to set device to the known state - attempt no: "+retry_count.to_s
+            errorstring += "Known state: #{state_val} device returned state: #{retval[:Content][Buscomm::PARAMETER_START].ord}\n"
+            errorstring += "Trying to set device to the known state - attempt no: #{retry_count}"
 
             $app_logger.error(errorstring)
 
@@ -190,7 +190,7 @@ module BusDevice
       rescue MessagingError => e
         # Log the messaging error
         retval = e.return_message
-        $app_logger.fatal("Unrecoverable communication error on bus communicating with '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
+        $app_logger.fatal("Unrecoverable communication error on bus communicating with '"+@name+"' ERRNO: #{retval[:Return_code]} - #{Buscomm::RESPONSE_TEXT[retval[:Return_code]]}")
 
         # Signal the main thread for fatal error shutdown
         $shutdown_reason = Globals::FATAL_SHUTDOWN
@@ -279,10 +279,10 @@ module BusDevice
       if !@dry_run
         begin
           retval = @@comm_interface.send_message(@slave_address,Buscomm::READ_REGISTER,@register_address.chr)
-          $app_logger.trace("Sucessfully read device '"+@name+"' address "+@register_address.to_s)
+          $app_logger.trace("Sucessfully read device '#{@name}' address #{@register_address}")
         rescue MessagingError => e
           retval = e.return_message
-          $app_logger.fatal("Unrecoverable communication error on bus, reading '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
+          $app_logger.fatal("Unrecoverable communication error on bus, reading '#{@name}' ERRNO: #{retval[:Return_code]} - #{Buscomm::RESPONSE_TEXT[retval[:Return_code]]}")
           $shutdown_reason = Globals::FATAL_SHUTDOWN
           return 0
         end
@@ -290,7 +290,7 @@ module BusDevice
         return retval[:Content][Buscomm::PARAMETER_START].ord
 
       else
-        $app_logger.debug("Dry run - reading device '"+@name+"' address "+@register_address.to_s)
+        $app_logger.debug("Dry run - reading device '#{@name}' address #{@register_address}")
         return 0
       end
     end
@@ -301,15 +301,15 @@ module BusDevice
       if !@dry_run
         begin
           retval = @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+value.chr)
-          $app_logger.trace("Sucessfully written "+value.to_s+" to pulse switch '"+@name+"'")
+          $app_logger.trace("Sucessfully written #{value} to pulse switch '#{@name}'")
         rescue MessagingError => e
           retval = e.return_message
-          $app_logger.fatal("Unrecoverable communication error on bus, writing '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
+          $app_logger.fatal("Unrecoverable communication error on bus, writing '#{@name}' ERRNO: #{retval[:Return_code]} - #{Buscomm::RESPONSE_TEXT[retval[:Return_code]]}")
           $shutdown_reason = Globals::FATAL_SHUTDOWN
           return :Failure
         end
       else
-        $app_logger.trace("Dry run - writing "+value.to_s+" to register '"+@name+"'")
+        $app_logger.trace("Dry run - writing #{value} to register '#{@name}'")
       end
       return :Success
     end
@@ -365,8 +365,8 @@ module BusDevice
             @skipped_temp_values = 0
           end
           if @skipped_temp_values > 0
-            $app_logger.debug("Skipped "+@skipped_temp_values.to_s+" samples at "+@name)
-            $app_logger.debug("Last skipped temp value is: "+temp_tmp.to_s)
+            $app_logger.debug("Skipped #{@skipped_temp_values} samples at #{@name}")
+            $app_logger.debug("Last skipped temp value is: #{temp_tmp}")
           end
         end
       end
@@ -392,7 +392,7 @@ module BusDevice
       rescue MessagingError => e
         # Log the messaging error
         retval = e.return_message
-        $app_logger.fatal("Unrecoverable communication error on bus reading '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]]+" Device return code: "+retval[:DeviceResponseCode].to_s)
+        $app_logger.fatal("Unrecoverable communication error on bus reading '"+@name+"' ERRNO: #{retval[:Return_code]} - #{Buscomm::RESPONSE_TEXT[retval[:Return_code]]} Device return code: #{retval[:DeviceResponseCode]}")
 
         # Signal the main thread for fatal error shutdown
         $shutdown_reason = Globals::FATAL_SHUTDOWN
@@ -440,7 +440,7 @@ module BusDevice
         if value_requested != @value
           @value = value_requested
           write_device(@value, VOLATILE)
-          $app_logger.debug(@name+" set to value "+@value.to_s+" meaning water temperature "+@temp_required.round(2).to_s+" C")
+          $app_logger.debug(@name+" set to value #{@value} meaning water temperature #{@temp_required.round(2)} C")
         end
       end # of state semaphore synchronize
     end
@@ -462,13 +462,13 @@ module BusDevice
           else
             @@comm_interface.send_message(@slave_address,Buscomm::SET_REGISTER,@register_address.chr+0x01.chr+0xff.chr+is_volatile.chr)
           end
-          $app_logger.trace("Dry run - writing "+value.to_s(16)+" to wiper register with is_volatile flag set to "+is_volatile.to_s+" in '"+@name+"'")
+          $app_logger.trace("Dry run - writing "+value.to_s(16)+" to wiper register with is_volatile flag set to #{is_volatile} in '#{@name}'")
         rescue MessagingError => e
           # Get the returned message
           retval = e.return_message
 
           # Log the error and bail out
-          $app_logger.fatal("Unrecoverable communication error on bus, writing '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
+          $app_logger.fatal("Unrecoverable communication error on bus, writing '#{@name}' ERRNO: #{retval[:Return_code]} - #{Buscomm::RESPONSE_TEXT[retval[:Return_code]]}")
           $shutdown_reason = Globals::FATAL_SHUTDOWN
         end
       end
@@ -501,8 +501,8 @@ module BusDevice
           while retval[:Content][Buscomm::PARAMETER_START].ord != @value and retry_count <= CHECK_RETRY_COUNT
 
             errorstring = "Mismatch during check between expected water_temp: '"+@name+"' Location: '"+@location+"'\n"
-            errorstring += "Known value: "+@value.to_s+" device returned state: "+retval[:Content][Buscomm::PARAMETER_START].ord.to_s+"\n"
-            errorstring += "Trying to set device to the known state - attempt no: "+ retry_count.to_s
+            errorstring += "Known value: #{@value} device returned state: #{retval[:Content][Buscomm::PARAMETER_START].ord}\n"
+            errorstring += "Trying to set device to the known state - attempt no: #{retry_count}"
 
             $app_logger.error(errorstring)
 
@@ -527,10 +527,10 @@ module BusDevice
         # Log the messaging error
         if e.class  == MessagingError
           retval = e.return_message
-          $app_logger.fatal("Unrecoverable communication error on bus communicating with '"+@name+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
+          $app_logger.fatal("Unrecoverable communication error on bus communicating with '"+@name+"' ERRNO: #{retval[:Return_code]} - #{Buscomm::RESPONSE_TEXT[retval[:Return_code]]}")
         else
-          $app_logger.fatal("Exception: "+e.inspect)
-          $app_logger.fatal("Exception: "+e.backtrace.to_s)
+          $app_logger.fatal("Exception: #{e.inspect}")
+          $app_logger.fatal("Exception: #{e.backtrace}")
         end
 
         # Signal the main thread for fatal error shutdown
