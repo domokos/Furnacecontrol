@@ -78,16 +78,16 @@ pid = fork do
     pidfile.close
 
     # Set the initial state
-    boiler_control = Heating_controller.new(:Off,:Heat)
+    $boiler_control = Heating_controller.new(:Off,:Heat)
     $app_logger.info("Controller initialized - starting operation")
 
     begin
-      boiler_control.operate
+      $boiler_control.operate
     rescue Exception => e
       $app_logger.fatal("Exception caught in main block: "+e.inspect)
       $app_logger.fatal("Exception backtrace: "+e.backtrace.join("\n"))
       $shutdown_reason = Globals::FATAL_SHUTDOWN
-      boiler_control.shutdown
+      $boiler_control.shutdown
       $BoilerRestapi.quit!
       exit
     end

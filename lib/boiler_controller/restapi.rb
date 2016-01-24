@@ -40,4 +40,15 @@ $BoilerRestapi = Sinatra.new do
     return retval.to_s
   end
 
+  get '/current:itemname' do
+    case params['itemname']
+    when "living_temp"
+      $boiler_control.living_thermostat.temp
+    end
+  end
+
+  put '/reload' do
+    $boiler_control.reload
+  end
+
 end

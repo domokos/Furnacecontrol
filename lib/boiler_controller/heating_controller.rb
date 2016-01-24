@@ -7,13 +7,15 @@ class Heating_controller
   attr_reader :mixer_controller, :buffer_heater, :heating_watertemp, :HW_watertemp, :heater_relay
   attr_reader :radiator_pump, :floor_pump,  :hydr_shift_pump, :hot_water_pump
   attr_reader :basement_floor_valve, :basement_radiator_valve, :living_floor_valve, :upstairs_floor_valve
-  def initialize(initial_state,initial_mode)
+
+  attr_reader :forward_temp, :HW_thermostat, :return_temp, :living_thermostat, :upstairs_thermostat
+  attr_reader :basement_thermostat, :living_floor_thermostat, :mode_thermostat, :target_boiler_temp
+  def initialize(initial_state, initial_mode)
 
     # Init instance variables
     @target_boiler_temp = 0.0
     @forward_temp = 0.0
     @return_temp = 0.0
-    @HW_temp = 0.0
     @test_cycle_cnt = 0
     @moving_valves_required = false
 
@@ -288,6 +290,8 @@ class Heating_controller
 
   end
 
+  private
+
   # The function evaluating states and performing necessary
   # transitions basd on the current value of sensors
   def evaluate_state_change(prev_power_needed,power_needed)
@@ -376,6 +380,8 @@ class Heating_controller
     @mode_thermostat.update
   end
 
+  public
+
   # The main loop of the controller
   def operate
     @state_history = Array.new(4,{:state=>@heating_sm.current,:power=>determine_power_needed,:timestamp=>Time.now.getlocal(0)})
@@ -442,11 +448,10 @@ class Heating_controller
     shutdown
   end
 
+  private
+
   # Read the target temperatures, determine targets and operating mode
   def determine_targets(prev_power_needed,power_needed)
-    # Read the config file
-    read_config
-
     # Update thermostat targets
     @living_thermostat.set_threshold($config[:target_living_temp])
     @upstairs_thermostat.set_threshold($config[:target_upstairs_temp])
@@ -875,6 +880,12 @@ class Heating_controller
     $app_logger.debug("Power needed: #{determine_power_needed}")
     @test_cycle_cnt += 1
 
+  end
+
+  public
+
+  def reload
+    read_config
   end
 
   def shutdown
