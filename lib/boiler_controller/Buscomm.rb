@@ -218,15 +218,15 @@ class Buscomm
         @slaves.each { |slave_address, last_addressed|
           if last_addressed < Time.now.to_i - SLAVES_KEEPALIVE_INTERVAL_SEC
             begin
-              $app_logger.verbose("Slave '"+slave_address.to_s+"' has seen no communication since '"+SLAVES_KEEPALIVE_INTERVAL_SEC.to_s+"' sec. Pinging to make sure it stays alive.")
+              $app_logger.verbose("Slave '#{slave_address}' has seen no communication since '#{SLAVES_KEEPALIVE_INTERVAL_SEC}' sec. Pinging to make sure it stays alive.")
               send_message(slave_address,PING,"")
             rescue MessagingError => e
               retval = e.return_message
-              $app_logger.fatal("Unrecoverable communication error on bus, pinging slave '"+slave_address.to_s+"' ERRNO: "+retval[:Return_code].to_s+" - "+Buscomm::RESPONSE_TEXT[retval[:Return_code]])
+              $app_logger.fatal("Unrecoverable communication error on bus, pinging slave '#{slave_address}' ERRNO: #{retval[:Return_code]} - #{Buscomm::RESPONSE_TEXT[retval[:Return_code]]}")
               $shutdown_reason = Globals::FATAL_SHUTDOWN
             end
           else
-            $app_logger.verbose("Slave '"+slave_address.to_s+"' has last seen communication at '"+Time.at(last_addressed).strftime("%Y-%m-%d %H:%M:%S")+"', "+(Time.now.to_i-last_addressed).to_s+" secs ago. Skip pinging it.")
+            $app_logger.verbose("Slave '#{slave_address}' has last seen communication at '#{Time.at(last_addressed).strftime("%Y-%m-%d %H:%M:%S")}', #{(Time.now.to_i-last_addressed)} secs ago. Skip pinging it.")
           end
         }
       end
@@ -265,7 +265,7 @@ class Buscomm
 
         if @response[:Return_code] == Buscomm::NO_ERROR
           if @slaves[slave_address] == nil
-            $app_logger.verbose("New slave device '"+slave_address.to_s+"' identified - registering for keepalive")
+            $app_logger.verbose("New slave device '#{slave_address}' identified - registering for keepalive")
             start_keepalive_process
           end
           @slaves[slave_address] = Time.now.to_i
@@ -281,10 +281,10 @@ class Buscomm
         if retry_count > 0
           ret_c = 1
           response_history.each { |resp|
-            $app_logger.warn("Messaging retry #"+ret_c.to_s+" Error code: "+resp[:Return_code].to_s+" - "+RESPONSE_TEXT[resp[:Return_code]]+" Device return code: "+resp[:DeviceResponseCode].to_s)
+            $app_logger.warn("Messaging retry ##{ret_c} Error code: #{resp[:Return_code]} - #{RESPONSE_TEXT[resp[:Return_code]]} Device return code: #{resp[:DeviceResponseCode]}")
             ret_c += 1 }
         end
-        raise MessagingError.new(@response), "Messaging retry failed at retry # "+retry_count.to_s+" giving up." if retry_count > MESSAGING_RETRY_COUNT
+        raise MessagingError.new(@response), "Messaging retry failed at retry # #{retry_count} giving up." if retry_count > MESSAGING_RETRY_COUNT
 
         # Sleep more and more - maybe the communication error resolves itself
         sleep retry_count * 0.3
@@ -315,7 +315,7 @@ class Buscomm
       temp = "" << ret[:Content][PARAMETER_START] << ret[:Content][PARAMETER_START+1]
       print "\nTemp: ", temp.unpack("s")[0]*0.0625 ," C\n"
     else
-      print "Comm error - Error code: "+ret[:Return_code].to_s+" - "+ RESPONSE_TEXT[retval[:Return_code]]
+      print "Comm error - Error code: #{ret[:Return_code]} - #{RESPONSE_TEXT[retval[:Return_code]]}"
     end
   end
 
