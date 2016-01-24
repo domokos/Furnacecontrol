@@ -43,7 +43,13 @@ $BoilerRestapi = Sinatra.new do
   get '/current:itemname' do
     case params['itemname']
     when ":living_temp"
-      $boiler_control.living_thermostat.temp.to_s
+      $boiler_control.living_thermostat.temp.round(2).to_s
+    when ":upstairs_temp"
+      $boiler_control.upstairs_thermostat.temp.round(2).to_s
+    when ":basement_temp"
+      $boiler_control.basement_thermostat.temp.round(2).to_s
+    when ":external_temp"
+      $boiler_control.living_floor_thermostat.temp.round(2).to_s
     end
   end
 
