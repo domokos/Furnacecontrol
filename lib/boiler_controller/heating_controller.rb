@@ -276,7 +276,7 @@ class Heating_controller
 
     # Prefill sensors and thermostats to ensure smooth startup operation
     for i in 1..6 do
-      $app_logger.debug("Prefilling sensors. Round: "+i.to_s+" of 6")
+      $app_logger.debug("Prefilling sensors. Round: #{i} of 6")
       read_sensors
       temp_power_needed = {:state=>@heating_sm.current,:power=>determine_power_needed}
       determine_targets(temp_power_needed,temp_power_needed)
@@ -284,7 +284,7 @@ class Heating_controller
       break if $shutdown_reason != Globals::NO_SHUTDOWN
     end
 
-    $app_logger.debug("Boiler controller initialized initial state set to: "+@heating_sm.current.to_s+", Initial mode set to: "+@mode.to_s)
+    $app_logger.debug("Boiler controller initialized initial state set to: #{@heating_sm.current}, Initial mode set to: #{@mode.to_s}")
 
   end
 
@@ -301,7 +301,7 @@ class Heating_controller
       # Else: Stay in off state
 
       if power_needed[:power] != :NONE
-        $app_logger.debug("Need power is : "+power_needed[:power].to_s)
+        $app_logger.debug("Need power is : #{power_needed[:power]}")
         @heating_sm.turnon
       else
         $app_logger.trace("Decision: No power requirement - not changing state")
@@ -335,7 +335,7 @@ class Heating_controller
         @heating_sm.turnoff
         # If need power then -> Heat
       elsif power_needed[:power] != :NONE
-        $app_logger.debug("Need power is "+power_needed[:power].to_s)
+        $app_logger.debug("Need power is #{power_needed[:power]}")
         @heating_sm.turnon
       end
 
@@ -357,7 +357,7 @@ class Heating_controller
         @heating_sm.turnoff
         # If need power then -> Heat
       elsif power_needed[:power] != :NONE
-        $app_logger.debug("Need power is "+power_needed[:power].to_s)
+        $app_logger.debug("Need power is #{power_needed[:power]}")
         # Turn off the heater
         @heating_sm.turnoff
       end
@@ -500,7 +500,7 @@ class Heating_controller
       @mixer_controller.pause
     when :RAD, :RADFLOOR, :FLOOR
       # Set mode and required water temperature of the boiler
-      $app_logger.trace("Setting heater target temp to: "+@target_boiler_temp.to_s)
+      $app_logger.trace("Setting heater target temp to: #{@target_boiler_temp}")
       @buffer_heater.set_target(@target_boiler_temp)
       if power_needed[:power] == :FLOOR
         $app_logger.trace("Setting heater mode to :floorheat")
@@ -515,7 +515,7 @@ class Heating_controller
         @mixer_controller.resume
       end
     else
-      raise "Unexpected power_needed encountered in heating state: "+power_needed[:power].to_s
+      raise "Unexpected power_needed encountered in heating state: #{power_needed[:power]}"
     end
   end
 
@@ -771,7 +771,7 @@ class Heating_controller
     # Activate the hot water pump
     @hot_water_pump.on
     sleep 15
-    @hot_water_pump.on
+    @hot_water_pump.off
 
     @move_logfile = File.new($config[:magnetic_valve_movement_logfile],"a+")
     @move_logfile.write(Time.now.to_s)
@@ -784,10 +784,10 @@ class Heating_controller
 
   # Perform app cycle logging
   def app_cycle_logging(power_needed)
-    $app_logger.trace("Forward boiler temp: "+@forward_temp.to_s)
-    $app_logger.trace("Return temp: "+@return_temp.to_s)
-    $app_logger.trace("HW temp: "+@HW_thermostat.temp.to_s)
-    $app_logger.trace("Need power: "+power_needed.to_s)
+    $app_logger.trace("Forward boiler temp: #{@forward_temp}")
+    $app_logger.trace("Return temp: #{@return_temp}")
+    $app_logger.trace("HW temp: #{@HW_thermostat.temp}")
+    $app_logger.trace("Need power: #{power_needed}")
   end
 
   # Perform heating cycle logging
@@ -795,16 +795,16 @@ class Heating_controller
     return unless @logger_timer.expired?
     @logger_timer.reset
 
-    $heating_logger.debug("LOGITEM BEGIN @"+Time.now.asctime)
-    $heating_logger.debug("Active state: "+@heating_sm.current.to_s)
+    $heating_logger.debug("LOGITEM BEGIN @ #{Time.now.asctime}")
+    $heating_logger.debug("Active state: #{@heating_sm.current}")
 
     sth=""
     @state_history.each {|e| sth+= ") => ("+e[:state].to_s+","+e[:power].to_s+","+(Time.now.getlocal(0)-e[:timestamp].to_i).strftime("%T")+" ago"}
-    $heating_logger.debug("State and power_needed history : "+sth[5,1000]+")")
-    $heating_logger.debug("Forward temperature: "+@forward_temp.round(2).to_s)
-    $heating_logger.debug("Return water temperature: "+@return_temp.round(2).to_s)
-    $heating_logger.debug("Delta T on the Boiler: "+(@forward_temp-@return_temp).round(2).to_s)
-    $heating_logger.debug("Target boiler temp: "+@target_boiler_temp.round(2).to_s)
+    $heating_logger.debug("State and power_needed history : #{sth[5,1000]})")
+    $heating_logger.debug("Forward temperature: #{@forward_temp.round(2)}")
+    $heating_logger.debug("Return water temperature: #{@return_temp.round(2)}")
+    $heating_logger.debug("Delta T on the Boiler: #{(@forward_temp-@return_temp).round(2)}")
+    $heating_logger.debug("Target boiler temp: #{@target_boiler_temp.round(2)}")
 
     $heating_logger.debug("\nHW temperature: "+@HW_thermostat.temp.round(2).to_s)
 
