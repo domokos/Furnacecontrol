@@ -991,7 +991,7 @@ module BoilerBase
       when :hydrshift
 
         # Hydr shift Boiler - State change condition evaluation
-        if (@forward_temp > @target_temp + @config[:forward_above_target]) and
+        if (@forward_temp > limit_watertemp(@target_temp) + @config[:forward_above_target]) and
         @boiler_on and
         @relax_timer.expired?
 
@@ -1000,7 +1000,7 @@ module BoilerBase
           $app_logger.debug("Boiler overheating - state will change from #{@buffer_sm.current}")
           $app_logger.debug("Heat in buffer: #{@heat_in_buffer[:temp]} Percentage: #{@heat_in_buffer[:percentage]}")
 
-          if @heat_in_buffer[:temp] > @target_temp and
+          if @heat_in_buffer[:temp] > limit_watertemp(@target_temp) and
           @heat_in_buffer[:percentage] > @config[:init_buffer_reqd_fill_reserve]
             $app_logger.debug("Decision: Buffer contains enough heat - feed from buffer")
             @buffer_sm.frombuffer
@@ -1023,7 +1023,7 @@ module BoilerBase
         # This logic is here to try forcing the heating back to hydr shift heating in cases where
         # the heat generated can be dissipated. This a safety escrow
         # to try avoiding unnecessary buffer filling
-        if @target_temp > @config[:buffer_passthrough_fwd_temp_limit] and @relax_timer.expired?
+        if limit_watertemp(@target_temp,@config[:buffer_passthrough_overshoot]) > @config[:buffer_passthrough_fwd_temp_limit] and @relax_timer.expired?
           $app_logger.debug("Target set above buffer_passthrough_fwd_temp_limit. State will change from buffer passthrough")
           $app_logger.debug("Decision: hydr shifted")
           @buffer_sm.hydrshift
@@ -1032,7 +1032,7 @@ module BoilerBase
           # too hot then start feeding from the buffer.
           # As of now we assume that the boiler is able to generate the output temp requred
           # therefore it is enough to monitor the deltaT to find out if the above condition is met
-        elsif @forward_temp > (@target_temp + @config[:buffer_passthrough_overshoot] + @config[:forward_above_target]) and
+        elsif @forward_temp > (limit_watertemp(@target_temp,@config[:buffer_passthrough_overshoot]) + @config[:forward_above_target]) and
         @boiler_on and
         @relax_timer.expired?
           $app_logger.debug("Overheating - buffer full. State will change from buffer passthrough")
@@ -1043,9 +1043,6 @@ module BoilerBase
           # Set the required water temperature raised with the buffer filling offset
           # Decide how ot set relays based on boiler state
         else
-
-          @target_temp - $config[:minimum_heating_watertemp]
-
           @heat_wiper.set_water_temp(limit_watertemp(@target_temp,@config[:buffer_passthrough_overshoot]))
           @boiler_on ? set_relays(:buffer_passthrough) : set_relays(:hydr_shifted)
         end
@@ -1058,7 +1055,7 @@ module BoilerBase
         # then it needs re-filling. This will ensure an operation of filling the buffer with
         # target+@config[:buffer_passthrough_overshoot] and consuming until target-@config[:buffer_expiry_threshold]
         # The effective hysteresis is therefore @config[:buffer_passthrough_overshoot]+@config[:buffer_expiry_threshold]
-        if @forward_temp < @target_temp - @config[:buffer_expiry_threshold]  and @relax_timer.expired?
+        if @forward_temp < limit_watertemp(@target_temp) - @config[:buffer_expiry_threshold]  and @relax_timer.expired?
           $app_logger.debug("Buffer empty - state will change from buffer feed")
 
           # If in radheat mode then go back to hydr shift heat
@@ -1069,7 +1066,7 @@ module BoilerBase
             # Else evaluate going back to bufferfill or hydr shift
           else
             # If we are below the exit limit then go for filling the buffer
-            if @target_temp < @config[:buffer_passthrough_fwd_temp_limit]
+            if limit_watertemp(@target_temp) < @config[:buffer_passthrough_fwd_temp_limit]
               $app_logger.debug("Decision: fill buffer in buffer passthrough")
               @buffer_sm.bufferfill
 
