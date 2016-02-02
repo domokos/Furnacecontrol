@@ -480,9 +480,19 @@ class Heating_controller
       @heating_watertemp_polycurve.float_value(@living_floor_thermostat.temp) : \
       @floor_watertemp_polycurve.float_value(@living_floor_thermostat.temp)
 
+      # Only set mixer target temp if FLOOR component is present
+      @mixer_controller.set_target_temp(@floor_watertemp_polycurve.float_value(@living_floor_thermostat.temp)) if \
+      power_needed[:power] == :RADFLOOR
+
+      # Enforce a minimum target boiler temp
+      @target_boiler_temp = $config[:minimum_heating_watertemp] if @target_boiler_temp < $config[:minimum_heating_watertemp]
+
     when :FLOOR
       @target_boiler_temp = @floor_watertemp_polycurve.float_value(@living_floor_thermostat.temp)
       @mixer_controller.set_target_temp(@floor_watertemp_polycurve.float_value(@living_floor_thermostat.temp))
+
+      # Only set mixer target temp if FLOOR component is present
+      @target_boiler_temp = $config[:minimum_heating_watertemp] if @target_boiler_temp < $config[:minimum_heating_watertemp]
 
     when :NONE
       @target_boiler_temp = 7.0
@@ -515,9 +525,13 @@ class Heating_controller
         @buffer_heater.set_mode(:radheat)
       end
       if changed and prev_power_needed[:power] == :HW
-        @mixer_controller.openresume($config[:mixer_start_delay_after_HW])
+        power_needed[:power] != :RAD ? \
+        @mixer_controller.openresume($config[:mixer_start_delay_after_HW]) : \
+        @mixer_controller.pause
       else
-        @mixer_controller.resume
+        power_needed[:power] != :RAD ? \
+        @mixer_controller.resume : \
+        @mixer_controller.pause
       end
     else
       raise "Unexpected power_needed encountered in heating state: #{power_needed[:power]}"
