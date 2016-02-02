@@ -814,6 +814,13 @@ module BoilerBase
       end
     end
 
+    # Calculate limited boiler target watertemp taking overshoot into account
+    def limit_watertemp(watertemp,overshoot=0)
+      watertemp + overshoot < @config[:minimum_heating_watertemp] ? \
+      @config[:minimum_heating_watertemp] : \
+      watertemp + overshoot
+    end
+
     private
 
     # Define  the state transition actions
@@ -957,13 +964,6 @@ module BoilerBase
         end # of hw pump stopper delayed thread
       end # of exit HW action
     end # of setting up state machine callbacks - set_sm_actions
-
-    # Calculate limited boiler target watertemp taking overshoot into account
-    def limit_watertemp(watertemp,overshoot=0)
-      watertemp + overshoot < @config[:minimum_heating_watertemp] ? \
-      @config[:minimum_heating_watertemp] : \
-      watertemp + overshoot
-    end
 
     #
     # Evaluate heating conditions and
