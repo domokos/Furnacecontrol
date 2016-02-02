@@ -1238,7 +1238,7 @@ module BoilerBase
         $app_logger.trace("Threshold forward_above_target: #{@config[:forward_above_target]}")
         $app_logger.trace("Delta_t: #{@delta_t}")
         if do_limited_logging
-          $app_logger.debug("HydrShift heating. Target: #{@target_temp.round(2)}")
+          $app_logger.debug("HydrShift heating. Not limited target: #{@target_temp.round(2)}")
           $app_logger.debug("Forward temp: #{@forward_temp}")
           $app_logger.debug("Delta_t: #{@delta_t}")
           @boiler_on ? $app_logger.debug("Boiler detected : on") : $app_logger.debug("Boiler detected : off")
@@ -1249,15 +1249,14 @@ module BoilerBase
         $app_logger.trace("buffer_passthrough_fwd_temp_limit: #{@config[:buffer_passthrough_fwd_temp_limit]}")
         $app_logger.trace("Delta_t: #{@delta_t}")
         if do_limited_logging
-          $app_logger.debug("Buffer Passthrough. Target: #{(@target_temp + @config[:buffer_passthrough_overshoot]).round(2)}")
+          $app_logger.debug("Buffer Passthrough. Not limited target: #{(@target_temp + @config[:buffer_passthrough_overshoot]).round(2)}")
           $app_logger.debug("Forward temp: #{@forward_temp}")
           $app_logger.debug("Delta_t: #{@delta_t}")
           @boiler_on ? $app_logger.debug("Boiler detected : on") : $app_logger.debug("Boiler detected : off")
         end
       when :frombuffer
-        $app_logger.trace("Forward temp: #{@forward_temp}")
-        $app_logger.trace("Target temp: #{@target_temp.round(2)}")
         if do_limited_logging
+          $app_logger.debug("Not limited target temp: #{@target_temp.round(2)}")
           $app_logger.debug("Feed from buffer. Forward temp: #{@forward_temp}")
           $app_logger.debug("Delta_t: #{@delta_t}")
         end
