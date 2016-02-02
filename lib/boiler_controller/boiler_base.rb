@@ -861,7 +861,8 @@ module BoilerBase
       # - start the boiler
       # - Start the hydr shift pump
       @buffer_sm.on_enter_hydrshift do |event|
-        buffer.heat_wiper.set_water_temp(buffer.target_temp)
+        buffer.heat_wiper.set_water_temp( \
+        buffer.limit_watertemp(buffer.target_temp))
         if buffer.hydr_shift_pump.state != :on
           $app_logger.debug("Turning on hydr shift pump")
           buffer.hydr_shift_pump.on
@@ -907,7 +908,8 @@ module BoilerBase
       # - turn on heating
       # - turn on hydr shift pump
       @buffer_sm.on_enter_bufferfill do |event|
-        buffer.heat_wiper.set_water_temp(buffer.target_temp+buffer.config[:buffer_passthrough_overshoot])
+        buffer.heat_wiper.set_water_temp( \
+        buffer.limit_watertemp(buffer.target_temp,buffer.config[:buffer_passthrough_overshoot]))
         if buffer.hydr_shift_pump.state != :on
           $app_logger.debug("Turning on hydr shift pump")
           buffer.hydr_shift_pump.on
@@ -956,6 +958,13 @@ module BoilerBase
       end # of exit HW action
     end # of setting up state machine callbacks - set_sm_actions
 
+    # Calculate limited boiler target watertemp taking overshoot into account
+    def limit_watertemp(watertemp,overshoot=0)
+      watertemp + overshoot < @config[:minimum_heating_watertemp] ? \
+      @config[:minimum_heating_watertemp] : \
+      watertemp + overshoot
+    end
+
     #
     # Evaluate heating conditions and
     # set feed strategy
@@ -1003,7 +1012,7 @@ module BoilerBase
           # Hydr_shift - State maintenance operations
           # Just set the required water temperature
         else
-          @heat_wiper.set_water_temp(@target_temp)
+          @heat_wiper.set_water_temp(limit_watertemp(@target_temp))
         end
 
         # Evaluate Buffer Fill state
@@ -1034,7 +1043,10 @@ module BoilerBase
           # Set the required water temperature raised with the buffer filling offset
           # Decide how ot set relays based on boiler state
         else
-          @heat_wiper.set_water_temp(@target_temp + @config[:buffer_passthrough_overshoot])
+
+          @target_temp - $config[:minimum_heating_watertemp]
+
+          @heat_wiper.set_water_temp(limit_watertemp(@target_temp,@config[:buffer_passthrough_overshoot]))
           @boiler_on ? set_relays(:buffer_passthrough) : set_relays(:hydr_shifted)
         end
 

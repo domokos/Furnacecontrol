@@ -484,15 +484,9 @@ class Heating_controller
       @mixer_controller.set_target_temp(@floor_watertemp_polycurve.float_value(@living_floor_thermostat.temp)) if \
       power_needed[:power] == :RADFLOOR
 
-      # Enforce a minimum target boiler temp
-      @target_boiler_temp = $config[:minimum_heating_watertemp] if @target_boiler_temp < $config[:minimum_heating_watertemp]
-
     when :FLOOR
       @target_boiler_temp = @floor_watertemp_polycurve.float_value(@living_floor_thermostat.temp)
       @mixer_controller.set_target_temp(@floor_watertemp_polycurve.float_value(@living_floor_thermostat.temp))
-
-      # Only set mixer target temp if FLOOR component is present
-      @target_boiler_temp = $config[:minimum_heating_watertemp] if @target_boiler_temp < $config[:minimum_heating_watertemp]
 
     when :NONE
       @target_boiler_temp = 7.0
