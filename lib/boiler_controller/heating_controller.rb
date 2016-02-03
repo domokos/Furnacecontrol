@@ -526,15 +526,9 @@ class Heating_controller
         $app_logger.trace("Setting heater mode to :radheat")
         @buffer_heater.set_mode(:radheat)
       end
-      if changed and prev_power_needed[:power] == :HW
-        power_needed[:power] != :RAD ? \
-        @mixer_controller.openresume($config[:mixer_start_delay_after_HW]) : \
-        @mixer_controller.pause
-      else
-        power_needed[:power] != :RAD ? \
-        @mixer_controller.resume : \
-        @mixer_controller.pause
-      end
+      power_needed[:power] != :RAD ? \
+      @mixer_controller.resume($config[:mixer_start_delay_after_HW]) : \
+      @mixer_controller.pause
     else
       raise "Unexpected power_needed encountered in heating state: #{power_needed[:power]}"
     end
