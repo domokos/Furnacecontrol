@@ -76,7 +76,7 @@ class Heating_controller
         return 0
       else
         value = (error+0.9)/5.0 * multiplier
-        if (value > 1.0)
+        if (value > 0.9)
           return 1
         elsif (value < 0.2)
           return 0
