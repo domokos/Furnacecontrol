@@ -127,7 +127,7 @@
 :mixer_unidirectional_movement_time_limit: 65
 :mixer_movement_time_hysteresis: 5
 :min_mixer_motor_movement_time: 0.5
-:max_mixer_motor_movement_time: 2
+:max_mixer_motor_movement_time: 3.5
 #
 # *********************************************************************************************
 # Controller network addresses 
