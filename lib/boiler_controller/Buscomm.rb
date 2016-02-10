@@ -29,29 +29,30 @@ class Buscomm
   MESSAGING_RETRY_COUNT = 4
 
   # Messaging states
-  WAITING_FOR_TRAIN = 0
-  RECEIVING_TRAIN = 1
-  IN_SYNC = 2
-  RECEIVING_MESSAGE = 3
+  #  :waiting_for_train
+  #  :receiving_train
+  #  :in_sync
+  #  :receiving_message
 
   # Messaging structure elements
   TRAIN_CHR = 0xff.chr
 
   # Message receiving error conditions
-  NO_ERROR = 0 # No error
-  NO_TRAIN_RECEIVED = 1 # Expected train sequence, got something else => Ignoring communication
-  ILL_FORMED_MESSAGE = 2 # Receive buffer length exceeded
-  MESSAGING_TIMEOUT = 3 # Timeout occured - expected but no communication is seen on the bus
-  COMM_CRC_ERROR = 4 # Frame with CRC error received
-  DEVICE_ERROR = 5 # Device responded with error
+  #:no_error = 0 # No error
+  #:no_train_received = 1 # Expected train sequence, got something else => Ignoring communication
+  #:ill_formed_message = 2 # Receive buffer length exceeded
+  #:messaging_timeout = 3 # Timeout occured - expected but no communication is seen on the bus
+  #:crc_error = 4 # Frame with CRC error received
+  #:device_error = 5 # Device responded with error
 
-  RESPONSE_TEXT = [
-    "No error",
-    "No train received",
-    "Ill formed message - received length too short or too long",
-    "Messaging timeout",
-    "CRC error - recieved message fails checksum check",
-    "Device returned error"]
+  RESPONSE_TEXT = {
+    :no_error => "No error",
+    :no_train_received => "No train received",
+    :ill_formed_message => "Ill formed message - received length too short or too long",
+    :messaging_timeout => "Messaging timeout",
+    :crc_error => "CRC error - recieved message fails checksum check",
+    :device_error => "Device returned error"
+  }
 
   #
   # Command opcodes
@@ -263,7 +264,7 @@ class Buscomm
 
         @response = wait_for_response
 
-        if @response[:Return_code] == Buscomm::NO_ERROR
+        if @response[:Return_code] == :no_error
           if @slaves[slave_address] == nil
             $app_logger.verbose("New slave device '#{slave_address}' identified - registering for keepalive")
             start_keepalive_process
@@ -306,7 +307,7 @@ class Buscomm
   end
 
   def printret(ret)
-    if ret[:Return_code] == Buscomm::NO_ERROR
+    if ret[:Return_code] == :no_error
       print "Success - Response content: [ "
       ret[:Content].each_byte do |b|
         print b.to_s(16) , " "
@@ -327,7 +328,7 @@ class Buscomm
     @sp.flush
     response = ""
     byte_recieved = 0
-    response_state = WAITING_FOR_TRAIN
+    response_state = :waiting_for_train
     escape_char_received = false
     timeout_start = Time.now.to_f
     return_value = nil
@@ -340,7 +341,7 @@ class Buscomm
     while true
 
       # Handle timeout
-      return_value = {:Return_code => MESSAGING_TIMEOUT, :Content => nil} if (Time.now.to_f - timeout_start) > COMM_DATA[@comm_speed][TIMEOUT_DATA].to_f / 1000
+      return_value = {:Return_code => :messaging_timeout, :Content => nil} if (Time.now.to_f - timeout_start) > COMM_DATA[@comm_speed][TIMEOUT_DATA].to_f / 1000
 
       # If return_value is set then return it otherwise continue receiving
       unless return_value == nil
@@ -360,47 +361,47 @@ class Buscomm
       # Character received - process it
       case response_state
 
-      when WAITING_FOR_TRAIN
+      when :waiting_for_train
         if byte_recieved  == TRAIN_CHR
-          train_length = 0
-          response_state = RECEIVING_TRAIN
+          train_length = 1
+          response_state = :receiving_train
         else
           # Ignore anything received
         end
 
-      when RECEIVING_TRAIN, IN_SYNC
+      when :receiving_train, :in_sync
         # Received the expected character increase the
         # train length seen so far and change state if
         # enough train is seen
         if byte_recieved == TRAIN_CHR
           train_length += 1
-          response_state = IN_SYNC if train_length == TRAIN_LENGTH_RCV
+          response_state = :in_sync if train_length == TRAIN_LENGTH_RCV
         else
-          if response_state == RECEIVING_TRAIN
+          if response_state == :receiving_train
             # Not a train character is received, not yet synced
             # Go back to Waiting for train state
-            response_state = WAITING_FOR_TRAIN;
+            response_state = :waiting_for_train
           else
             # Got a non-train character when synced -
             # start processig the message: change state
-            response_state = RECEIVING_MESSAGE;
+            response_state = :receiving_message
             response << byte_recieved
             msg_size = byte_recieved
-            return_value = {:Return_code => ILL_FORMED_MESSAGE, :Content => response} if msg_size.ord < MIN_MESSAGE_LENGTH or msg_size.ord > MAX_MESSAGE_LENGTH
+            return_value = {:Return_code => :ill_formed_message, :Content => response} if msg_size.ord < MIN_MESSAGE_LENGTH or msg_size.ord > MAX_MESSAGE_LENGTH
           end
         end
 
-      when RECEIVING_MESSAGE
+      when :receiving_message
         if response.size < msg_size.ord
           # Receive the next message character
           response << byte_recieved
         elsif crc16(response[0,msg_size.ord-2]) != ((response[msg_size.ord-2].ord << 8 ) | response[msg_size.ord-1].ord) or response[OPCODE] == CRC_ERROR
-          return_value = {:Return_code => COMM_CRC_ERROR, :Content => response}
+          return_value = {:Return_code => :crc_error, :Content => response}
         else
           if response[OPCODE].ord == COMMAND_SUCCESS or response[OPCODE].ord == ECHO or response[OPCODE].ord == MASTER_ECHO
-            return_value = {:Return_code => NO_ERROR, :Content => response}
+            return_value = {:Return_code => :no_error, :Content => response}
           else
-            return_value = {:Return_code => DEVICE_ERROR, :Content => response, :DeviceResponseCode => response[OPCODE].ord}
+            return_value = {:Return_code => :device_error, :Content => response, :DeviceResponseCode => response[OPCODE].ord}
           end
         end
       end
