@@ -36,6 +36,9 @@
 #
 # External temperature below which floor heating is active
 :floor_heating_threshold: 13.0
+
+# Minimum forward heating watertemp to use
+:minimum_heating_watertemp: 35.0
 #
 # Parameters of target water temperature calculation curve
 # Target water temperature is calculated by the Polycurve based on points given here
@@ -64,9 +67,9 @@
 # @ 5C: 36C
 - - 5
   - 36
-# @ 10C and above: 27C 
+# @ 10C and above: 31C 
 - - 10
-  - 27
+  - 31
 #
 #
 # Mock values for non-existent/dry run sensors
@@ -124,7 +127,7 @@
 :mixer_unidirectional_movement_time_limit: 65
 :mixer_movement_time_hysteresis: 5
 :min_mixer_motor_movement_time: 0.5
-:max_mixer_motor_movement_time: 5
+:max_mixer_motor_movement_time: 3.5
 #
 # *********************************************************************************************
 # Controller network addresses 
