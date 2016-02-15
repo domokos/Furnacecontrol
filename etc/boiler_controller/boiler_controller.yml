@@ -38,7 +38,7 @@
 :floor_heating_threshold: 13.0
 
 # Minimum forward heating watertemp to use
-:minimum_heating_watertemp: 35.0
+:minimum_heating_watertemp: 33.0
 #
 # Parameters of target water temperature calculation curve
 # Target water temperature is calculated by the Polycurve based on points given here
@@ -67,9 +67,9 @@
 # @ 5C: 36C
 - - 5
   - 36
-# @ 10C and above: 31C 
+# @ 10C and above: 28C 
 - - 10
-  - 31
+  - 28
 #
 #
 # Mock values for non-existent/dry run sensors

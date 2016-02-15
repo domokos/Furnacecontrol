@@ -429,14 +429,12 @@ class Buscomm
   end
 
   def reverse_bits(char)
-    retval = char.unpack('B*').pack('b*').unpack("C")[0]
-    return retval
+    char.unpack('B*').pack('b*').unpack("C")[0]
   end
 
   # CRC16 CCITT (0xFFFF) checksum
   def crc16(buf)
     crc = 0xffff
-    tmp = []
     buf.each_char do |b|
       crc = ((crc << 8) & 0xffff) ^ CRC_LOOKUP[(crc >> 8) ^ reverse_bits(b) & 0xff]
     end

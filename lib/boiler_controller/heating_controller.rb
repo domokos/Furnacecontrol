@@ -587,17 +587,17 @@ class Heating_controller
         @basement_floor_valve.delayed_close
       end
 
+      # decide on floor valves based on external temperature
+      if @living_floor_thermostat.is_on?
+        @living_floor_valve.open
+        @upstairs_floor_valve.open
+      else
+        @living_floor_valve.delayed_close
+        @upstairs_floor_valve.delayed_close
+      end
+
       if changed
         $app_logger.debug("Setting valves and pumps for RADFLOOR")
-
-        # decide on floor valves based on external temperature
-        if @living_floor_thermostat.is_on?
-          @living_floor_valve.open
-          @upstairs_floor_valve.open
-        else
-          @living_floor_valve.delayed_close
-          @upstairs_floor_valve.delayed_close
-        end
 
         # Floor heating on
         @floor_pump.on
@@ -612,18 +612,18 @@ class Heating_controller
         @basement_floor_valve.delayed_close
       end
 
+      # decide on floor valves based on external temperature
+      if @living_floor_thermostat.is_on?
+        @living_floor_valve.open
+        @upstairs_floor_valve.open
+      else
+        @living_floor_valve.delayed_close
+        @upstairs_floor_valve.delayed_close
+      end
+
       if changed
         $app_logger.debug("Setting valves and pumps for FLOOR")
         @basement_radiator_valve.delayed_close
-
-        # decide on floor valves based on external temperature
-        if @living_floor_thermostat.is_on?
-          @living_floor_valve.open
-          @upstairs_floor_valve.open
-        else
-          @living_floor_valve.delayed_close
-          @upstairs_floor_valve.delayed_close
-        end
 
         # Floor heating on
         @floor_pump.on
