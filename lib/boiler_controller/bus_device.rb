@@ -96,22 +96,28 @@ module BusDevice
 
     # Turn the device on
     def on
+      retval = false
       @state_semaphore.synchronize do
         if @state != :on
           @state = :on
           write_device(1) == :Success and $app_logger.trace("Succesfully turned Switch '#{@name}' on.")
+          retval = true
         end
       end # of state semaphore sync
+      return retval
     end
 
     # Turn the device off
     def off
+      retval = false
       @state_semaphore.synchronize do
         if @state != :off
           @state = :off
           write_device(0) == :Success and $app_logger.trace("Succesfully turned Switch '#{@name}' off.")
+          retval = true
         end
       end # of state semaphore sync
+      return retval
     end
 
     private
@@ -215,18 +221,22 @@ module BusDevice
     alias_method :parent_on, :on
 
     def delayed_close
-      return unless @delayed_close_semaphore.try_lock
+      return false unless @delayed_close_semaphore.try_lock
+      retval = false
       @modification_semaphore.synchronize do
         Thread.new do
           sleep DELAYED_CLOSE_VALVE_DELAY
-          parent_off
+          retval = parent_off
         end
       end
       @delayed_close_semaphore.unlock
+      return retval
     end
 
     def on
-      @modification_semaphore.synchronize { parent_on }
+      retval = false
+      @modification_semaphore.synchronize { retval = parent_on }
+      return retval
     end
 
     def open

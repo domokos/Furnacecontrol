@@ -769,35 +769,24 @@ module BoilerBase
 
       case config
       when :hydr_shifted
-        moved |= @forward_valve.state != :off
-        @forward_valve.off
-        moved |= @return_valve.state != :off
-        @return_valve.off
-        moved |= @bypass_valve.state != :off
-        @bypass_valve.off
+        moved |= @forward_valve.off
+        moved |= @return_valve.off
+        moved |= @bypass_valve.off
         @relay_state = :hydr_shifted
       when :buffer_passthrough
-        moved |= @forward_valve.state != :off
-        @forward_valve.off
-        moved |= @return_valve.state != :on
-        @return_valve.on
-        moved |= @bypass_valve.state != :off
-        @bypass_valve.off
+        moved |= @forward_valve.off
+        moved |= @return_valve.on
+        moved |= @bypass_valve.off
         @relay_state = :buffer_passthrough
       when :feed_from_buffer
-        moved |= @forward_valve.state != :on
-        @forward_valve.on
-        moved |= @return_valve.state != :off
-        @return_valve.off
-        moved |= @bypass_valve.state != :on
-        @bypass_valve.on
+        moved |= @forward_valve.on
+        moved |= @return_valve.off
+        moved |= @bypass_valve.on
         @relay_state = :feed_from_buffer
       when :HW
         $app_logger.debug("Don't care bypass valve is: #{@bypass_valve.state}")
-        moved |= @forward_valve.state != :off
-        @forward_valve.off
-        moved |= @return_valve.state != :off
-        @return_valve.off
+        moved |= @forward_valve.off
+        moved |= @return_valve.off
         @relay_state = :HW
       end
 
