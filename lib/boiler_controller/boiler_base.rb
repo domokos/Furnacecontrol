@@ -1087,12 +1087,14 @@ module BoilerBase
       end
     end # of evaluate_heater_state_change
 
-    # Evaluating mode change of the boiler
-    def evaluate_mode_change
+    # Perform mode change of the boiler
+    def perform_mode_change
       # :floorheat,:radheat,:off,:HW
       # @mode contains the new mode
       # @prev_mode contains the prevoius mode
       $app_logger.debug("Heater control mode changed, got new mode: #{@mode}")
+
+      @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>((@upper_sensor.temp - @config[:buffer_base_temp])*100)/(@lower_sensor.temp - @config[:buffer_base_temp])}
 
       case @mode
       when :HW
@@ -1103,11 +1105,15 @@ module BoilerBase
           $app_logger.debug("Ending HW - resuming state to: #{@prev_sm_state}")
           @buffer_sm.trigger(@prev_sm_state)
 
-          # Start in either of the three states based on conditions
+          # Start/continue in either of the three states based on conditions
         else
+          # Do hydrshift if radheat is specified
           if @mode == :radheat
             $app_logger.debug("Setting heating to hydr shift")
             @buffer_sm.hydrshift
+
+            # Do oscillating bufferfill mode heatinh
+            # starti it either in bufferfill or frombuffer based on heat available in the buffer
           else # @mode == :floorheat
             if @heat_in_buffer[:temp] > @target_temp - @config[:buffer_expiry_threshold]
               $app_logger.debug("Setting heating to frombuffer")
@@ -1120,18 +1126,6 @@ module BoilerBase
         end
       else
         raise "Invalid mode in do_control after mode change. Expecting either ':HW', ':radheat' or ':floorheat' got: '#{@mode}'"
-      end
-    end
-
-    # The actual tasks of the control thread
-    def do_control
-      @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>((@upper_sensor.temp - @config[:buffer_base_temp])*100)/(@lower_sensor.temp - @config[:buffer_base_temp])}
-      if @mode_changed
-        evaluate_mode_change
-        @mode_changed = false
-      else
-        controller_log
-        evaluate_heater_state_change
       end
     end
 
@@ -1158,12 +1152,20 @@ module BoilerBase
         # Loop until signalled to exit
         while !@stop_control.locked?
           $config_mutex.synchronize {@config = $config.dup}
+          # Make sure mode only changes outside of the block
           @modesetting_mutex.synchronize do
             # Update any objects that may use parameters from the newly copied config
             update_config_items
 
             # Perform the actual periodic control loop actions
-            do_control
+            if @mode_changed
+              perform_mode_change
+              @mode_changed = false
+            else
+              controller_log
+              evaluate_heater_state_change
+            end
+
           end
           sleep @config[:buffer_heat_control_loop_delay] unless @stop_control.locked?
         end
