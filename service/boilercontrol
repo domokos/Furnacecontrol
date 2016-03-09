@@ -12,6 +12,8 @@ PATH=/usr/sbin:/bin:/usr/bin:/sbin
 BOILERCONTROL=/usr/local/bin/boiler_controller.rb
 PIDDIR=/var/run/boiler_controller
 PIDFILE=$PIDDIR/boiler_controller.pid
+LOGFILE=/var/log/boiler_controller/boiler_service.log
+ERRORLOGFILE=/var/log/boiler_controller/boiler_error.log
 
 if [ ! -x "$BOILERCONTROL" ]; then
   echo -n $"No executable found, exiting"
@@ -30,7 +32,7 @@ case "$1" in
      chown root.boiler $PIDDIR
      chmod g+rwx $PIDDIR
      export GEM_PATH=/usr/local/rvm/gems/ruby-2.1.5:/usr/local/rvm/gems/ruby-2.1.5@global
-     daemon --user boiler -3 "$BOILERCONTROL --daemon --pidfile $PIDFILE &>/dev/null"
+     daemon --user boiler -3 "$BOILERCONTROL --daemon --pidfile $PIDFILE >>$LOGFILE 2>>$ERRORLOGFILE"
      echo
      exit 0
      ;;
