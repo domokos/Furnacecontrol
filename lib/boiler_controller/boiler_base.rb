@@ -1183,9 +1183,12 @@ module BoilerBase
       $app_logger.debug("Waiting control thread to exit")
       @control_thread.join
 
+      $app_logger.debug("Unlocking control mutex")
       # Unlock the thread lock so a new call to start_control_thread
       # can create the control thread
       @control_mutex.unlock
+      
+      $app_logger.debug("Control thread stopped")
     end # of stop_control_thread
 
     def controller_log
