@@ -43,11 +43,12 @@ end
 
 # Beginnning of main execution thread
 
-Thread.current["thread_name"] = "Starter thread"
+Thread.current["thread_name"] = "Main starter thread"
 
 RobustThread.logger = $daemon_logger
 
 Signal.trap("TERM") do
+  $app_logger.info("TERM signal caught - setting shutdown reason to NORMAL_SHUTDOWN")
   $shutdown_reason = Globals::NORMAL_SHUTDOWN
 end
 

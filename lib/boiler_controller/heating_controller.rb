@@ -453,6 +453,7 @@ class Heating_controller
         @moving_valves_required = false
       end
     end
+    $app_logger.debug("Main cycle ended shutting down")
     shutdown
   end
 
