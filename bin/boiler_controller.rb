@@ -27,19 +27,19 @@ Signal.trap("TTIN") do
 end
 
 Signal.trap("USR1") do
-  $app_logger.info("USR1 signal caught - setting heating logging to DEBUG, app logging to INFO")
+  puts "USR1 signal caught - setting heating logging to DEBUG, app logging to INFO"
   $app_logger.level = Globals::BoilerLogger::INFO
   $heating_logger.level = Logger::DEBUG
 end
 
 Signal.trap("USR2") do
-  $app_logger.info("USR2 signal caught - setting all logging to INFO")
+  puts "USR2 signal caught - setting all logging to INFO"
   $app_logger.level = Globals::BoilerLogger::INFO
   $heating_logger.level = Logger::INFO
 end
 
 Signal.trap("URG") do
-  $app_logger.info("URG signal caught - setting all logging to DEBUG")
+  puts "URG signal caught - setting all logging to DEBUG"
   $app_logger.level = Globals::BoilerLogger::DEBUG
   $heating_logger.level = Logger::DEBUG
 end
@@ -51,7 +51,7 @@ Thread.current["thread_name"] = "Main starter thread"
 RobustThread.logger = $daemon_logger
 
 Signal.trap("TERM") do
-  $app_logger.info("TERM signal caught - setting shutdown reason to NORMAL_SHUTDOWN")
+  puts "TERM signal caught - setting shutdown reason to NORMAL_SHUTDOWN"
   $shutdown_reason = Globals::NORMAL_SHUTDOWN
 end
 
