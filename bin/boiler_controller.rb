@@ -58,6 +58,8 @@ pid = fork do
     $BoilerRestapi.run!
   end
 
+  sleep 1
+
   Signal.trap("TERM") do
     puts "TERM signal caught - setting shutdown reason to NORMAL_SHUTDOWN"
     $shutdown_reason = Globals::NORMAL_SHUTDOWN
