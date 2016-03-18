@@ -50,17 +50,17 @@ Thread.current["thread_name"] = "Main starter thread"
 
 RobustThread.logger = $daemon_logger
 
-Signal.trap("TERM") do
-  puts "TERM signal caught - setting shutdown reason to NORMAL_SHUTDOWN"
-  $shutdown_reason = Globals::NORMAL_SHUTDOWN
-end
-
 daemonize = ARGV.find_index("--daemon") != nil
 
 pid = fork do
   restapi_thread = Thread.new do
     $app_logger.info("Starting restapi")
     $BoilerRestapi.run!
+  end
+
+  Signal.trap("TERM") do
+    puts "TERM signal caught - setting shutdown reason to NORMAL_SHUTDOWN"
+    $shutdown_reason = Globals::NORMAL_SHUTDOWN
   end
 
   main_rt = RobustThread.new(:label => "Main daemon thread") do
