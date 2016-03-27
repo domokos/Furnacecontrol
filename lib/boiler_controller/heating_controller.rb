@@ -473,11 +473,7 @@ class Heating_controller
     @heating_watertemp_polycurve.load($config[:heating_watertemp_polycurve])
     @floor_watertemp_polycurve.load($config[:floor_watertemp_polycurve])
 
-    if @mode_thermostat.is_on?
-      @heating_sm.current != :heating and @mode = :mode_Heat_HW
-    else
-      @heating_sm.current != :heating and @mode = :mode_HW
-    end
+    @mode_thermostat.is_on? ? @mode = :mode_Heat_HW : @mode = :mode_HW
 
     case power_needed[:power]
     when :HW
