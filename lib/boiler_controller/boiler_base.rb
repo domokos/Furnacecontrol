@@ -370,7 +370,7 @@ module BoilerBase
           # Control until if stop is requested
           while !@stop_control_requested.locked?
             # Pause as long as pause is requested
-            while @paused
+            while @paused and !@stop_control_requested.locked?
               sleep 1
             end
 
@@ -1187,7 +1187,7 @@ module BoilerBase
       # Unlock the thread lock so a new call to start_control_thread
       # can create the control thread
       @control_mutex.unlock
-      
+
       $app_logger.debug("Control thread stopped")
     end # of stop_control_thread
 
