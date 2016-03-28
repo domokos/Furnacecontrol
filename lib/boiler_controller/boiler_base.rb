@@ -370,15 +370,15 @@ module BoilerBase
           # Control until if stop is requested
           while !@stop_control_requested.locked?
             # Pause as long as pause is requested
-            while @paused and !@stop_control_requested.locked?
+            if @paused
               sleep 1
+            else
+              # Do the actual control
+              do_control_thread
+
+              # Delay between control actions
+              sleep @config[:mixer_control_loop_delay] unless @stop_control_requested.locked? or @paused
             end
-
-            # Do the actual control
-            do_control_thread
-
-            # Delay between control actions
-            sleep @config[:mixer_control_loop_delay] unless @stop_control_requested.locked? or @paused
           end
           # Stop the measurement thread before exiting
           stop_measurement_thread
