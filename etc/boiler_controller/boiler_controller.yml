@@ -64,9 +64,12 @@
 # @ 5C: 35C
 - - 5
   - 35
-# @ 10C and above: 30C 
+  @ 10C: 30C
 - - 10
   - 30
+# @ 15C: 29C 
+- - 15
+  - 29
 #
 #
 # Mock values for non-existent/dry run sensors
