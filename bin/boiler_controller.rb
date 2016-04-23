@@ -1,4 +1,4 @@
-#!/usr/local/rvm/rubies/ruby-2.1.5/bin/ruby
+#!/usr/local/rvm/rubies/ruby-2.3.0/bin/ruby
 # Boiler control softvare
 
 require "/usr/local/lib/boiler_controller/heating_controller"
