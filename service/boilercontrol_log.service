@@ -1,0 +1,8 @@
+[Unit]
+Description=Boilercontrol_log
+Requires=boilercontrol.service
+
+[Service]
+Type=oneshot
+User=boiler
+ExecStart=/usr/local/bin/boilercontrol_log

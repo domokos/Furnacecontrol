@@ -1,0 +1,12 @@
+[Unit]
+Description=Boilercontrol
+Requires=boilercontrol.service
+
+[Service]
+Type=oneshot
+User=boiler
+ExecStart=/usr/bin/sleep 5
+ExecStart=/usr/local/bin/boilercontrol_log
+
+[Install]
+WantedBy=multi-user.target

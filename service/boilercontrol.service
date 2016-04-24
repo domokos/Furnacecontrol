@@ -1,0 +1,16 @@
+[Unit]
+Description=Boilercontrol
+After=network.service
+Requires=network.service
+
+[Service]
+Type=forking
+Environment=GEM_PATH=/usr/local/rvm/gems/ruby-2.3.0:/usr/local/rvm/gems/ruby-2.3.0@global
+PIDFile=/var/run/boiler_controller/boiler_controller.pid
+User=boiler
+TimeoutStopSec=60
+Nice=-3
+ExecStart=/usr/local/bin/boiler_controller.rb --daemon --pidfile /var/run/boiler_controller/boiler_controller.pid
+
+[Install]
+WantedBy=multi-user.target
