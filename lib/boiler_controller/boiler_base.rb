@@ -224,7 +224,7 @@ module BoilerBase
           while @@sec_elapsed < @@timebase do
             any_thermostats_on = false
             @@thermostat_instances.each do |th|
-              if th.cycle_threshold >= @@sec_elapsed
+              if th.cycle_threshold > @@sec_elapsed
                 th.modification_mutex.synchronize do
                   if th.state != :on
                     th.state = :on
