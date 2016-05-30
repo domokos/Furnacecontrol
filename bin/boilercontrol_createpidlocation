@@ -1,0 +1,5 @@
+#!/usr/bin/bash
+mkdir /var/run/boiler_controller
+chown root.boiler /var/run/boiler_controller
+chmod g+w /var/run/boiler_controller
+

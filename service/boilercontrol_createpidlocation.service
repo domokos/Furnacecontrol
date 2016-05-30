@@ -1,0 +1,8 @@
+[Unit]
+Description=Boilercontrol_createpidlocation
+Requires=systemd-udevd.service
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/local/bin/boilercontrol_createpidlocation
