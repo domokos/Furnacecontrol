@@ -1,7 +1,7 @@
 [Unit]
 Description=Boilercontrol
 After=network.service
-Requires=network.service boilercontrol_createpidloation.service
+Requires=network.service boilercontrol_createpidlocation.service
 
 [Service]
 Type=forking
