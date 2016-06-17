@@ -648,8 +648,8 @@ class Heating_controller
     @basement_thermostat.is_on?)
       # Power needed for heating and floor heating
       return :RADFLOOR
-    elsif @living_floor_thermostat.is_on? or \
-    @basement_thermostat.is_on?
+    elsif @mode == :mode_Heat_HW and (@living_floor_thermostat.is_on? or \
+    @basement_thermostat.is_on?)
       # Power needed for floor heating only
       return :FLOOR
     else

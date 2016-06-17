@@ -10,7 +10,7 @@
 :target_living_temp: 22.0
 :target_upstairs_temp: 21.5
 :target_basement_temp: 25.5
-:mode_threshold: 15.0
+:mode_threshold: 20.0
 :target_HW_temp: 51.0
 #
 #
