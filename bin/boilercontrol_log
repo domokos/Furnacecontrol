@@ -1,2 +1,3 @@
 #!/usr/bin/bash
+sleep 2
 /usr/bin/kill -URG `/usr/sbin/pidof /usr/local/rvm/rubies/ruby-2.3.0/bin/ruby /usr/local/bin/boiler_controller.rb`
