@@ -10,10 +10,20 @@
 :target_living_temp: 22.0
 :target_upstairs_temp: 21.5
 :target_basement_temp: 25.5
-:mode_threshold: 20.0
 :target_HW_temp: 51.0
 #
+# *********************************************************************************************
+# Thermostat parameters 
+# *********************************************************************************************
 #
+# External temperature below which floor heating is active
+:floor_heating_threshold: 13.0
+# Hysteresis value for living floor thermostat
+:living_floor_hysteresis: 1.0
+#
+# Threshold and hysteresis values for mode setting
+:mode_threshold: 20.0
+:mode_hysteresis: 1.0
 #
 # *********************************************************************************************
 # Low level Operation parameters 
@@ -34,9 +44,6 @@
 # Shifg the HW ntc curve up/down with the parameter - for calibration reasosns only
 :hw_temp_shift: 6
 #
-# External temperature below which floor heating is active
-:floor_heating_threshold: 13.0
-
 # Minimum forward heating watertemp to use
 :minimum_heating_watertemp: 34.5
 #

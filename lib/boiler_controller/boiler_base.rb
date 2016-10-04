@@ -66,13 +66,13 @@ module BoilerBase
     end
   end # of class Filter
 
-  # The Thermostat base class providing histeresis behavior to a sensor
+  # The Thermostat base class providing hysteresis behavior to a sensor
   class Thermostat_base
     attr_reader :state, :threshold
-    attr_accessor :histeresis
-    def initialize(sensor,histeresis,threshold,filtersize)
+    attr_accessor :hysteresis
+    def initialize(sensor,hysteresis,threshold,filtersize)
       @sensor = sensor
-      @histeresis = histeresis
+      @hysteresis = hysteresis
       @threshold = threshold
       @sample_filter = Filter.new(filtersize)
       if @sensor.temp >= @threshold
@@ -115,20 +115,20 @@ module BoilerBase
   class Symmetric_thermostat < Thermostat_base
     def determine_state
       if @state == :off
-        @state = :on if @sample_filter.value < @threshold - @histeresis
+        @state = :on if @sample_filter.value < @threshold - @hysteresis
       else
-        @state = :off if @sample_filter.value > @threshold + @histeresis
+        @state = :off if @sample_filter.value > @threshold + @hysteresis
       end
     end
   end
 
   class Asymmetric_thermostat < Thermostat_base
 
-    attr_accessor :up_histeresis, :down_histeresis
-    def initialize(sensor,down_histeresis,up_histeresis,threshold,filtersize)
+    attr_accessor :up_hysteresis, :down_hysteresis
+    def initialize(sensor,down_hysteresis,up_hysteresis,threshold,filtersize)
       @sensor = sensor
-      @up_histeresis = up_histeresis
-      @down_histeresis = down_histeresis
+      @up_hysteresis = up_hysteresis
+      @down_hysteresis = down_hysteresis
       @threshold = threshold
       @sample_filter = Filter.new(filtersize)
       if @sensor.temp >= @threshold
@@ -140,15 +140,15 @@ module BoilerBase
 
     def determine_state
       if @state == :off
-        @state = :on if @sample_filter.value < @threshold - @down_histeresis
+        @state = :on if @sample_filter.value < @threshold - @down_hysteresis
       else
-        @state = :off if @sample_filter.value > @threshold + @up_histeresis
+        @state = :off if @sample_filter.value > @threshold + @up_hysteresis
       end
     end
 
-    def set_histeresis(new_down_histeresis,new_up_histeresis)
-      @down_histeresis = new_down_histeresis
-      @up_histeresis = new_up_histeresis
+    def set_hysteresis(new_down_hysteresis,new_up_hysteresis)
+      @down_hysteresis = new_down_hysteresis
+      @up_hysteresis = new_up_hysteresis
     end
 
   end

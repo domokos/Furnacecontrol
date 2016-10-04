@@ -89,8 +89,8 @@ class Heating_controller
     # Create thermostats, with default threshold values and hysteresis values
     @living_thermostat = BoilerBase::Symmetric_thermostat.new(@living_sensor,0.3,0.0,15)
     @HW_thermostat = BoilerBase::Asymmetric_thermostat.new(@HW_sensor,2,0,0.0,8)
-    @living_floor_thermostat = BoilerBase::Symmetric_thermostat.new(@external_sensor,2,15.0,30)
-    @mode_thermostat = BoilerBase::Symmetric_thermostat.new(@external_sensor,0.9,5.0,50)
+    @living_floor_thermostat = BoilerBase::Symmetric_thermostat.new(@external_sensor,$config[:living_floor_hysteresis],$config[:floor_heating_threshold],30)
+    @mode_thermostat = BoilerBase::Symmetric_thermostat.new(@external_sensor,$config[:mode_hysteresis],$config[:mode_threshold],50)
     @upstairs_thermostat = BoilerBase::Symmetric_thermostat.new(@upstairs_sensor,0.3,5.0,15)
     @basement_thermostat = BoilerBase::PwmThermostat.new(@basement_sensor,30,@basement_thermostat_valueproc,@is_HW_or_valve_proc,"Basement thermostat")
 
@@ -466,6 +466,8 @@ class Heating_controller
     @upstairs_thermostat.set_threshold($config[:target_upstairs_temp])
     @basement_thermostat.set_target($config[:target_basement_temp])
     @mode_thermostat.set_threshold($config[:mode_threshold])
+    @mode_thermostat.hysteresis=$config[:mode_hysteresis]
+
     @HW_thermostat.set_threshold($config[:target_HW_temp])
     @living_floor_thermostat.set_threshold($config[:floor_heating_threshold])
 
