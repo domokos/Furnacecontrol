@@ -55,7 +55,7 @@ daemonize = ARGV.find_index("--daemon") != nil
 pid = fork do
   restapi_thread = Thread.new do
     $app_logger.info("Starting restapi")
-    #$BoilerRestapi.run!
+    $BoilerRestapi.run!
   end
 
   sleep 1

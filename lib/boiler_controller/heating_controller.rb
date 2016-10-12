@@ -1,6 +1,5 @@
 require "/usr/local/lib/boiler_controller/boiler_base"
 require "rubygems"
-require "yaml"
 
 class Heating_controller
 

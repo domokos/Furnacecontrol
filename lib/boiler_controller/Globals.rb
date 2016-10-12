@@ -1,4 +1,5 @@
 require "robustthread"
+require "yaml"
 
 module Globals
 
@@ -96,7 +97,7 @@ module Globals
     end
   end
 
-  Globals::read_global_config
+  read_global_config
 
   # A Timer class for timing whole seconds
   class TimerSec
