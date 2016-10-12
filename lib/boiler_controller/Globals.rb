@@ -86,7 +86,6 @@ module Globals
   # The mutex and the map for synchronizing read/write the boiler configuration
   $config_mutex = Mutex.new
   $config = []
-  read_global_config
 
   def read_global_config
     begin
@@ -96,6 +95,8 @@ module Globals
       $shutdown_reason = Globals::FATAL_SHUTDOWN
     end
   end
+
+  read_global_config
 
   # A Timer class for timing whole seconds
   class TimerSec
