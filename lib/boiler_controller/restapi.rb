@@ -17,7 +17,7 @@ $BoilerRestapi = Sinatra.new do
   configure do
     set :environment, :production
     set :bind, '192.168.130.4'
-    set :port, 4567
+    set :port, 9999
     set :server, "thin"
     class << settings
       def server_settings
