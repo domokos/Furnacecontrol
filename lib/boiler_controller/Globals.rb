@@ -87,7 +87,7 @@ module Globals
   $config_mutex = Mutex.new
   $config = []
 
-  def read_global_config
+  def self.read_global_config
     begin
       $config_mutex.synchronize {$config = YAML.load_file(CONFIG_FILE_PATH)}
     rescue
@@ -96,7 +96,7 @@ module Globals
     end
   end
 
-  read_global_config
+  Globals::read_global_config
 
   # A Timer class for timing whole seconds
   class TimerSec

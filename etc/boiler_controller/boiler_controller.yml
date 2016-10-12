@@ -143,16 +143,16 @@
 # *********************************************************************************************
 #
 # The IP on which the server is litening - bind address
-:rest_serverip: "192.168.130.6"
+:rest_serverip: 192.168.130.6
 #
 # The tcp port for incoming connections
 :rest_serverport: 4567
 #
 # The private key of the server for TLS
-:rest_privatekey: "/etc/pki/tls/private/phobos.szilva.key"
+:rest_privatekey: /etc/pki/tls/private/phobos.szilva.key
 #
 # The cert file of the server for tls
-:rest_cert_file: "/etc/pki/tls/certs/phobos.szilva.crt"
+:rest_cert_file: /etc/pki/tls/certs/phobos.szilva.crt
 #
 #
 # *********************************************************************************************
@@ -161,14 +161,14 @@
 # *********************************************************************************************
 #
 # The device of the serial bus 
-:serial_device: "/dev/ttyUSB0"
+:serial_device: /dev/ttyUSB0
 #
 # The address of the bus master to use
 :bus_master_address: 1
 #
 # The check period on the bus for the integrity of each device in seconds
 # Should roughly be 10 times the number of devices on the bus
-:check_period_interval_sec
+:check_period_interval_sec: 200
 #
 # Main panel device - Boiler room
 :main_controller_dev_addr: 11
