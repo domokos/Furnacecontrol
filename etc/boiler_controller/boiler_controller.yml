@@ -136,6 +136,19 @@
 :min_mixer_motor_movement_time: 0.5
 :max_mixer_motor_movement_time: 3.5
 #
+#
+# *********************************************************************************************
+# Rest API parameters 
+# Modifying these parameters requires a restart
+# *********************************************************************************************
+#
+# The IP on which the server is litening - bind address
+:rest_serverip: 192.168.130.6
+#
+# The tcp port for incoming connections
+:rest_serverport: 4567
+#
+#
 # *********************************************************************************************
 # Controller network addresses 
 # Modifying these parameters requires a restart
