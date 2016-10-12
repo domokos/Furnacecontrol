@@ -1,5 +1,6 @@
 #!/usr/bin/bash
-mkdir /var/run/boiler_controller
+if [ ! -d /var/run/boiler_controller ] ; then 
+	mkdir /var/run/boiler_controller
+fi
 chown root.boiler /var/run/boiler_controller
 chmod g+w /var/run/boiler_controller
-

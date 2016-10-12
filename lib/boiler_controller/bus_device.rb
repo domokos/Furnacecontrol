@@ -6,15 +6,12 @@ require "robustthread"
 module BusDevice
   class DeviceBase
 
-    CHECK_INTERVAL_PERIOD_SEC = 200
-    MASTER_ADDRESS = 1
-    SERIALPORT_NUM = 0
     COMM_SPEED = Buscomm::COMM_SPEED_9600_H
 
     # Delayed close magnetic valve close delay in secs
     DELAYED_CLOSE_VALVE_DELAY = 2
     def initialize
-      (defined? @@comm_interface) == nil and @@comm_interface = Buscomm.new(MASTER_ADDRESS, SERIALPORT_NUM, COMM_SPEED)
+      (defined? @@comm_interface) == nil and @@comm_interface = Buscomm.new($config[:bus_master_address], $config[:serial_device], COMM_SPEED)
       (defined? @@check_process_mutex) == nil and @@check_process_mutex = Mutex.new
       (defined? @@check_list) == nil and @@check_list = []
     end
@@ -37,8 +34,8 @@ module BusDevice
             $app_logger.trace("Element # #{el_count} checking launched")
             el_count +=1
 
-            # Distribute checking each object across CHECK_INTERVAL_PERIOD_SEC evenly
-            actual_check_list.size > 0 and sleep CHECK_INTERVAL_PERIOD_SEC / actual_check_list.size
+            # Distribute checking each object across the check period evenly
+            actual_check_list.size > 0 and sleep $config[:check_period_interval_sec] / actual_check_list.size
             sleep 1
             $app_logger.trace("Bus device consistency checker process: Checking '#{element[:Obj].name}'")
 
