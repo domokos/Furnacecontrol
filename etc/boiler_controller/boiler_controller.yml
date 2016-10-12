@@ -148,6 +148,12 @@
 # The tcp port for incoming connections
 :rest_serverport: 4567
 #
+# The private key of the server for TLS
+:rest_privatekey: /etc/pki/tls/private/phobos.szilva.key
+#
+# The cert file of the server for tls
+:rest_cert_file: /etc/pki/tls/certs/phobos.szilva.crt
+#
 #
 # *********************************************************************************************
 # Controller network addresses 

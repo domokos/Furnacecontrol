@@ -23,8 +23,8 @@ $BoilerRestapi = Sinatra.new do
       def server_settings
         {
           :backend          => BoilerThinBackend,
-          :private_key_file => "/etc/pki/tls/private/hera.szilva.key",
-          :cert_chain_file  => "/etc/pki/tls/certs/hera.szilva.crt",
+          :private_key_file => $config[:rest_privatekey],
+          :cert_chain_file  => $config[:rest_cert_file],
           :verify_peer      => false
         }
       end
