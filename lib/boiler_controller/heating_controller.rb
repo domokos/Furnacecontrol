@@ -661,12 +661,7 @@ class Heating_controller
   end
 
   def read_config
-    begin
-      $config_mutex.synchronize {$config = YAML.load_file(Globals::CONFIG_FILE_PATH)}
-    rescue
-      $app_logger.fatal("Cannot open config file: "+Globals::CONFIG_FILE_PATH+" Shutting down.")
-      $shutdown_reason = Globals::FATAL_SHUTDOWN
-    end
+    Globals::read_global_config
 
     $config_mutex.synchronize do
       @forward_sensor.mock_temp = $config[:forward_mock_temp] if (defined? @forward_sensor != nil)

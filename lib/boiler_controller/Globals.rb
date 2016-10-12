@@ -86,6 +86,16 @@ module Globals
   # The mutex and the map for synchronizing read/write the boiler configuration
   $config_mutex = Mutex.new
   $config = []
+  read_global_config
+
+  def read_global_config
+    begin
+      $config_mutex.synchronize {$config = YAML.load_file(CONFIG_FILE_PATH)}
+    rescue
+      $app_logger.fatal("Cannot open config file: "+CONFIG_FILE_PATH+" Shutting down.")
+      $shutdown_reason = Globals::FATAL_SHUTDOWN
+    end
+  end
 
   # A Timer class for timing whole seconds
   class TimerSec
@@ -293,13 +303,13 @@ module Globals
 
       @ITerm += @ki * error
       limit_output
-      
+
       dInput = input - @lastInput
 
       # Compute PID Output
       @output = @kp * error + @ITerm- @kd * dInput
       limit_output
-      
+
       # Remember lastInput
       @lastInput = input
     end
