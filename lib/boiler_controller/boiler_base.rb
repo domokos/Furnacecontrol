@@ -980,6 +980,8 @@ module BoilerBase
         # Hydr shift Boiler - State change condition evaluation
         if (@forward_temp > limit_watertemp(@target_temp) + @config[:forward_above_target]) and
         @boiler_on and
+        # Stay in hydr shift antway if target is above limit for buffering logic
+        limit_watertemp(@target_temp,@config[:buffer_passthrough_overshoot]) <= @config[:buffer_passthrough_fwd_temp_limit] and
         @relax_timer.expired?
 
           # Too much heat with hydr shift heat - let's either feed from buffer or fill the buffer
