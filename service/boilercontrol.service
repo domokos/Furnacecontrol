@@ -11,6 +11,8 @@ User=boiler
 TimeoutStopSec=60
 Nice=-3
 ExecStart=/usr/local/bin/boiler_controller.rb --daemon --pidfile /var/run/boiler_controller/boiler_controller.pid
+Restart=always
+RestartSec=180
 
 [Install]
 WantedBy=multi-user.target

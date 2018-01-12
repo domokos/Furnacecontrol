@@ -19,7 +19,7 @@ module BoilerBase
     }
 
     callbacks {
-      on_before {|event| $app_logger.debug("Heating state change from #{event.from} to #{event.to}")}
+      on_before {|event| $app_logger.info("Heating state change from #{event.from} to #{event.to}")}
     }
   end # of class Heating SM
 
@@ -224,7 +224,7 @@ module BoilerBase
           while @@sec_elapsed < @@timebase do
             any_thermostats_on = false
             @@thermostat_instances.each do |th|
-              if th.cycle_threshold > @@sec_elapsed
+              if th.cycle_threshold >= @@sec_elapsed
                 th.modification_mutex.synchronize do
                   if th.state != :on
                     th.state = :on

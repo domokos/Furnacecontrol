@@ -282,7 +282,8 @@ class Heating_controller
     # Create watertemp Polycurves
     @heating_watertemp_polycurve = Globals::Polycurve.new($config[:heating_watertemp_polycurve])
     @floor_watertemp_polycurve = Globals::Polycurve.new($config[:floor_watertemp_polycurve])
-
+    @HW_watertemp_polycurve = Globals::Polycurve.new($config[:HW_watertemp_polycurve])
+      
     # Prefill sensors and thermostats to ensure smooth startup operation
     for i in 1..6 do
       $app_logger.debug("Prefilling sensors. Round: #{i} of 6")
@@ -467,13 +468,16 @@ class Heating_controller
     @mode_thermostat.set_threshold($config[:mode_threshold])
     @mode_thermostat.hysteresis=$config[:mode_hysteresis]
 
-    @HW_thermostat.set_threshold($config[:target_HW_temp])
     @living_floor_thermostat.set_threshold($config[:floor_heating_threshold])
 
     # Update watertemp Polycurves
     @heating_watertemp_polycurve.load($config[:heating_watertemp_polycurve])
     @floor_watertemp_polycurve.load($config[:floor_watertemp_polycurve])
+    @HW_watertemp_polycurve.load($config[:HW_watertemp_polycurve])
 
+    # Set HW target temp
+    @HW_thermostat.set_threshold(@HW_watertemp_polycurve.float_value(@living_floor_thermostat.temp))
+      
     @mode_thermostat.is_on? ? @mode = :mode_Heat_HW : @mode = :mode_HW
 
     case power_needed[:power]
@@ -564,7 +568,7 @@ class Heating_controller
       end
 
       if changed
-        $app_logger.debug("Setting valves and pumps for RAD")
+        $app_logger.info("Setting valves and pumps for RAD")
         @basement_floor_valve.delayed_close
         @living_floor_valve.delayed_close
         @upstairs_floor_valve.delayed_close
@@ -595,7 +599,7 @@ class Heating_controller
       end
 
       if changed
-        $app_logger.debug("Setting valves and pumps for RADFLOOR")
+        $app_logger.info("Setting valves and pumps for RADFLOOR")
 
         # Floor heating on
         @floor_pump.on
@@ -620,7 +624,7 @@ class Heating_controller
       end
 
       if changed
-        $app_logger.debug("Setting valves and pumps for FLOOR")
+        $app_logger.info("Setting valves and pumps for FLOOR")
         @basement_radiator_valve.delayed_close
 
         # Floor heating on
