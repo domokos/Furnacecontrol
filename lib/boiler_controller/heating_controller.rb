@@ -484,15 +484,17 @@ class Heating_controller
     when :HW
       # Do nothing - just leave the heating wiper where it is.
 
-    when :RAD, :RADFLOOR
+    when :RAD
+      @target_boiler_temp = @heating_watertemp_polycurve.float_value(@living_floor_thermostat.temp)
+
+    when :RADFLOOR
+      # Set target to the higher value
       @target_boiler_temp =
       @heating_watertemp_polycurve.float_value(@living_floor_thermostat.temp) > @floor_watertemp_polycurve.float_value(@living_floor_thermostat.temp) ? \
       @heating_watertemp_polycurve.float_value(@living_floor_thermostat.temp) : \
       @floor_watertemp_polycurve.float_value(@living_floor_thermostat.temp)
 
-      # Only set mixer target temp if FLOOR component is present
-      @mixer_controller.set_target_temp(@floor_watertemp_polycurve.float_value(@living_floor_thermostat.temp)) if \
-      power_needed[:power] == :RADFLOOR
+      @mixer_controller.set_target_temp(@floor_watertemp_polycurve.float_value(@living_floor_thermostat.temp))
 
     when :FLOOR
       @target_boiler_temp = @floor_watertemp_polycurve.float_value(@living_floor_thermostat.temp)
