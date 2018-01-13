@@ -764,7 +764,7 @@ module BoilerBase
 
       return if @relay_state == config
 
-      $app_logger.info("Changing relay state to: '#{config}' from '#{@relay_state}'")
+      $app_logger.info("Changing relay state: '#{@relay_state}' => '#{config}'")
       moved = false
 
       case config
