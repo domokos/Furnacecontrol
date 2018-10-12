@@ -1,12 +1,11 @@
 #!/usr/local/rvm/rubies/ruby-2.1.5/bin/ruby
 
-#Encoding.default_internal = Encoding.find('ASCII-8BIT')
+# Encoding.default_internal = Encoding.find('ASCII-8BIT')
 
 $stdout.sync = true
 require 'rubygems'
 require 'serialport'
-require 'thread'
-require "/usr/local/lib/boiler_controller/Globals"
+require '/usr/local/lib/boiler_controller/Globals'
 
 # The custom exception of messaging that can hold the
 # return message of the messaging subsystem
@@ -18,13 +17,14 @@ class MessagingError < StandardError
   end
 end
 
+# The class of the bus communication
 class Buscomm
   MAX_MESSAGE_LENGTH = 15
   MIN_MESSAGE_LENGTH = 7
   SERIAL_RECIEVE_BUFFER_LIMIT = 100
 
   # Messaging parameters
-  TRAIN_LENGTH_RCV  = 3
+  TRAIN_LENGTH_RCV = 3
   TRAIN_LENGTH_SND = 4
   MESSAGING_RETRY_COUNT = 4
 
@@ -46,13 +46,13 @@ class Buscomm
   #:device_error = 5 # Device responded with error
 
   RESPONSE_TEXT = {
-    :no_error => "No error",
-    :no_train_received => "No train received",
-    :ill_formed_message => "Ill formed message - received length too short or too long",
-    :messaging_timeout => "Messaging timeout",
-    :crc_error => "CRC error - recieved message fails checksum check",
-    :device_error => "Device returned error"
-  }
+    no_error: 'No error',
+    no_train_received: 'No train received',
+    ill_formed_message: 'Ill formed message - received length too short or too long',
+    messaging_timeout: 'Messaging timeout',
+    crc_error: 'CRC error - recieved message fails checksum check',
+    device_error: 'Device returned error'
+  }.freeze
 
   #
   # Command opcodes
@@ -102,27 +102,28 @@ class Buscomm
   BAUD_DATA = 0
   TIMEOUT_DATA = 1
 
-  COMM_DATA = [
-    [300,2100], # COMM_SPEED_300_L
-    [1200,600], # COMM_SPEED_1200_L
-    [2400,350], # COMM_SPEED_2400_L
-    [4800,550], # COMM_SPEED_4800_L
-    [9600,250], # COMM_SPEED_9600_L
-    [14400,142], # COMM_SPEED_14400_L
-    [28800,121], # COMM_SPEED_28800_L
-    [57600,110], #	COMM_SPEED_57600_L
+  COMM_DATA =
+    [
+      [300, 2100], # COMM_SPEED_300_L
+      [1200, 600], # COMM_SPEED_1200_L
+      [2400, 350], # COMM_SPEED_2400_L
+      [4800, 550], # COMM_SPEED_4800_L
+      [9600, 250], # COMM_SPEED_9600_L
+      [14_400, 142], # COMM_SPEED_14400_L
+      [28_800, 121], # COMM_SPEED_28800_L
+      [57_600, 110], # COMM_SPEED_57600_L
 
-    [300,2100], # COMM_SPEED_300_H
-    [1200,600], # COMM_SPEED_1200_H
-    [2400,350], # COMM_SPEED_2400_H
-    [4800,225], # COMM_SPEED_4800_H
-    [9600,250], # COMM_SPEED_9600_H
-    [14400,142], # COMM_SPEED_14400_H
-    [19200,131], # COMM_SPEED_19200_H
-    [28800,121], # COMM_SPEED_28800_H
-    [57600,110],  # COMM_SPEED_57600_H
-    [115200,100]] # COMM_SPEED_115200_H
-
+      [300, 2100], # COMM_SPEED_300_H
+      [1200, 600], # COMM_SPEED_1200_H
+      [2400, 350], # COMM_SPEED_2400_H
+      [4800, 225], # COMM_SPEED_4800_H
+      [9600, 250], # COMM_SPEED_9600_H
+      [14_400, 142], # COMM_SPEED_14400_H
+      [19_200, 131], # COMM_SPEED_19200_H
+      [28_800, 121], # COMM_SPEED_28800_H
+      [57_600, 110], # COMM_SPEED_57600_H
+      [115_200, 100] # COMM_SPEED_115200_H
+    ]
   #
   # Response opcodes
   #
@@ -147,7 +148,7 @@ class Buscomm
   # Undefined response - should never occur - indicates coding issue
   RESPONSE_UNDEFINED = 6
 
-  #   **********************************************************************************
+  #   *************************************************************************
   #   * The messaging format:
   #   * TRAIN_CHR - n*8 bits - at least TRAIN_LENGTH_RCV
   #   * LENGTH - the length of the message
@@ -160,7 +161,7 @@ class Buscomm
   #   *
   #   *  * The SEQ field holds a message sequence number
   #   *  * Index of the message buffer points to the last parameter byte
-  #   ***********************************************************************************/
+  #   ************************************************************************/
 
   # Message indexes
   LENGTH = 0
@@ -169,22 +170,22 @@ class Buscomm
   SEQ = 3
   OPCODE = 4
   PARAMETER_START = 5
-  #PARAMETER_END LENGTH-2
-  #CRC1 - LENGTH-1
-  #CRC2 - LENGTH
+  # PARAMETER_END LENGTH-2
+  # CRC1 - LENGTH-1
+  # CRC2 - LENGTH
 
-  PARITY=0
-  STOPBITS=1
-  DATABITS=8
+  PARITY = 0
+  STOPBITS = 1
+  DATABITS = 8
 
   SLAVES_KEEPALIVE_INTERVAL_SEC = 15
   SLAVES_KEEPALIVE_CHECK_INTERVAL = 2
 
   def initialize(master_address, portnum, comm_speed)
-
     @comm_speed = comm_speed
     @sp = SerialPort.new(portnum)
-    set_host_paremeters(portnum, PARITY, STOPBITS, COMM_DATA[@comm_speed][BAUD_DATA], DATABITS)
+    set_host_paremeters(portnum, PARITY, STOPBITS,
+                        COMM_DATA[@comm_speed][BAUD_DATA], DATABITS)
     @sp.flow_control = SerialPort::NONE
     @sp.sync = true
     @sp.binmode
@@ -200,9 +201,9 @@ class Buscomm
     @serial_read_mutex = Mutex.new
 
     @serial_response_buffer = []
-    @message_send_buffer = ""
+    @message_send_buffer = ''
 
-    @train = ""
+    @train = ''
 
     i = TRAIN_LENGTH_SND
     while i > 0
@@ -212,61 +213,72 @@ class Buscomm
   end
 
   def start_keepalive_process
-    return unless @keepalive_process == nil
+    return unless @keepalive_process.nil?
+
     @keepalive_process = Thread.new do
-      while true
+      loop do
         sleep SLAVES_KEEPALIVE_CHECK_INTERVAL
-        @slaves.each { |slave_address, last_addressed|
+        @slaves.each do |slave_address, last_addressed|
           if last_addressed < Time.now.to_i - SLAVES_KEEPALIVE_INTERVAL_SEC
             begin
-              $app_logger.verbose("Slave '#{slave_address}' has seen no communication since '#{SLAVES_KEEPALIVE_INTERVAL_SEC}' sec. Pinging to make sure it stays alive.")
-              send_message(slave_address,PING,"")
+              $app_logger.verbose("Slave '#{slave_address}' has seen no "\
+                "communication since '#{SLAVES_KEEPALIVE_INTERVAL_SEC}' sec. "\
+                'Pinging to make sure it stays alive.')
+              send_message(slave_address, PING, '')
             rescue MessagingError => e
               retval = e.return_message
-              $app_logger.fatal("Unrecoverable communication error on bus, pinging slave '#{slave_address}' ERRNO: #{retval[:Return_code]} - #{Buscomm::RESPONSE_TEXT[retval[:Return_code]]}")
+              $app_logger.fatal('Unrecoverable communication error on bus, '\
+                "pinging slave '#{slave_address}' ERRNO: #{retval[:Return_code]} "\
+                "- #{Buscomm::RESPONSE_TEXT[retval[:Return_code]]}")
               $shutdown_reason = Globals::FATAL_SHUTDOWN
             end
           else
-            $app_logger.verbose("Slave '#{slave_address}' has last seen communication at '#{Time.at(last_addressed).strftime("%Y-%m-%d %H:%M:%S")}', #{(Time.now.to_i-last_addressed)} secs ago. Skip pinging it.")
+            $app_logger.verbose("Slave '#{slave_address}' has last seen "\
+              "communication at '#{Time.at(last_addressed)\
+              .strftime('%Y-%m-%d %H:%M:%S')}', #{(Time.now.to_i - last_addressed)} "\
+              'secs ago. Skip pinging it.')
           end
-        }
+        end
       end
     end
   end
 
-  def send_message(slave_address,opcode,parameter)
+  def send_message(slave_address, opcode, parameter)
     # Communicate in a synchronized manner
     # only one communication session is allowed on a single the bus so
     # synchronize it across potentially multiple use of the same Buscomm object
     # to make it Thread safe
     @busmutex.synchronize do
       retry_count = 0
-      success = false
       response_history = []
 
-      while true
+      loop do
         @message_send_buffer.clear
 
         #Create the message
-        @message_send_buffer << @master_address.chr << slave_address.chr << @message_seq.chr << opcode.chr << parameter
+        @message_send_buffer << @master_address.chr << slave_address.chr << \
+          @message_seq.chr << opcode.chr << parameter
 
         #Increment message seq
         @message_seq < 255 ? @message_seq += 1 : @message_seq = 0
 
-        @message_send_buffer = (@message_send_buffer.length+3).chr + @message_send_buffer
+        @message_send_buffer = (@message_send_buffer.length + 3).chr + \
+        @message_send_buffer
 
         crc = crc16(@message_send_buffer)
 
-        @message_send_buffer = @train + @message_send_buffer + ( crc >> 8).chr + (crc & 0xff).chr + TRAIN_CHR.chr
+        @message_send_buffer = @train + @message_send_buffer + (crc >> 8).chr + \
+                               (crc & 0xff).chr + TRAIN_CHR.chr
 
         @sp.write(@message_send_buffer)
-        $app_logger.trace("Message sent waiting for response")
+        $app_logger.trace('Message sent waiting for response')
 
         @response = wait_for_response
 
         if @response[:Return_code] == :no_error
-          if @slaves[slave_address] == nil
-            $app_logger.verbose("New slave device '#{slave_address}' identified - registering for keepalive")
+          if @slaves[slave_address].nil?
+            $app_logger.verbose("New slave device '#{slave_address}' "\
+              'identified - registering for keepalive')
             start_keepalive_process
           end
           @slaves[slave_address] = Time.now.to_i
@@ -281,11 +293,17 @@ class Buscomm
         # Print response history if already retried once
         if retry_count > 0
           ret_c = 1
-          response_history.each { |resp|
-            $app_logger.warn("Messaging retry ##{ret_c} Error code: #{resp[:Return_code]} - #{RESPONSE_TEXT[resp[:Return_code]]} Device return code: #{resp[:DeviceResponseCode]}")
-            ret_c += 1 }
+          response_history.each do |resp|
+            $app_logger.warn("Messaging retry ##{ret_c} Error code: "\
+              "#{resp[:Return_code]} - #{RESPONSE_TEXT[resp[:Return_code]]} "\
+              "Device return code: #{resp[:DeviceResponseCode]}")
+            ret_c += 1
+          end
         end
-        raise MessagingError.new(@response), "Messaging retry failed at retry # #{retry_count} giving up." if retry_count > MESSAGING_RETRY_COUNT
+        if retry_count > MESSAGING_RETRY_COUNT
+          raise MessagingError.new(@response), 'Messaging retry failed at retry '\
+          "# #{retry_count} giving up."
+        end
 
         # Sleep more and more - maybe the communication error resolves itself
         sleep retry_count * 0.3
@@ -294,29 +312,33 @@ class Buscomm
   end
 
   def ping(slave_address)
-    (response = send_message(slave_address,PING,"PING")) == nil and return nil
-    return response[OPCODE] == ECHO
+    return nil if (response = send_message(slave_address, PING, 'PING')).nil?
+
+    response[OPCODE] == ECHO
   end
 
-  def set_host_paremeters(portnum,parity,stopbits,baud,databits)
-    @sp.modem_params=({"parity"=>parity, "stop_bits"=>stopbits, "baud"=>baud, "data_bits"=>databits})
+  def set_host_paremeters(_portnum, parity, stopbits, baud, databits)
+    @sp.modem_params = ({ 'parity' => parity, 'stop_bits' => stopbits,
+                          'baud' => baud, 'data_bits' => databits })
   end
 
   def set_host_comm_speed(baud)
-    @sp.modem_params=({"baud"=>baud})
+    @sp.modem_params = ({ 'baud' => baud })
   end
 
   def printret(ret)
     if ret[:Return_code] == :no_error
-      print "Success - Response content: [ "
+      print 'Success - Response content: [ '
       ret[:Content].each_byte do |b|
-        print b.to_s(16) , " "
+        print b.to_s(16), ' '
       end
-      print "]"
-      temp = "" << ret[:Content][PARAMETER_START] << ret[:Content][PARAMETER_START+1]
-      print "\nTemp: ", temp.unpack("s")[0]*0.0625 ," C\n"
+      print ']'
+      temp = '' << ret[:Content][PARAMETER_START] << \
+             ret[:Content][PARAMETER_START + 1]
+      print '\nTemp: ', temp.unpack('s')[0] * 0.0625, ' C\n'
     else
-      print "Comm error - Error code: #{ret[:Return_code]} - #{RESPONSE_TEXT[retval[:Return_code]]}"
+      print "Comm error - Error code: #{ret[:Return_code]} - "\
+      "#{RESPONSE_TEXT[retval[:Return_code]]}"
     end
   end
 
@@ -326,33 +348,35 @@ class Buscomm
     # Flush the serial port input buffer
     @sp.sync
     @sp.flush
-    response = ""
+    response = ''
+    train_length = 0
     byte_recieved = 0
     response_state = :waiting_for_train
-    escape_char_received = false
     timeout_start = Time.now.to_f
-    return_value = nil
 
     # Start another thread to read from the serial port as
     # all read calls to serialport are blocking
     start_serial_reader_thread
     return_value = nil
 
-    while true
-
+    loop do
       # Handle timeout
-      return_value = {:Return_code => :messaging_timeout, :Content => nil} if (Time.now.to_f - timeout_start) > COMM_DATA[@comm_speed][TIMEOUT_DATA].to_f / 1000
+      if (Time.now.to_f - timeout_start) >
+         COMM_DATA[@comm_speed][TIMEOUT_DATA].to_f / 1000
+        return_value = { Return_code: :messaging_timeout, Content: nil }
+      end
 
       # If return_value is set then return it otherwise continue receiving
-      unless return_value == nil
+      unless return_value.nil?
         stop_serial_reader_thread
         return return_value
       end
 
-      # Read a character from the serial buffer filled by the serial reader thread
+      # Read a character from the serial buffer filled
+      # by the serial reader thread
       @serial_read_mutex.synchronize { byte_recieved = @serial_response_buffer.shift }
 
-      if byte_recieved == nil
+      if byte_recieved.nil?
         # Save the processor
         sleep 0.005
         next
@@ -362,11 +386,10 @@ class Buscomm
       case response_state
 
       when :waiting_for_train
-        if byte_recieved  == TRAIN_CHR
+        if byte_recieved == TRAIN_CHR
           train_length = 1
           response_state = :receiving_train
-        else
-          # Ignore anything received
+          # else ignore anything received
         end
 
       when :receiving_train, :in_sync
@@ -376,18 +399,20 @@ class Buscomm
         if byte_recieved == TRAIN_CHR
           train_length += 1
           response_state = :in_sync if train_length == TRAIN_LENGTH_RCV
+        elsif response_state == :receiving_train
+          # Not a train character is received, not yet synced
+          # Go back to Waiting for train state
+          response_state = :waiting_for_train
         else
-          if response_state == :receiving_train
-            # Not a train character is received, not yet synced
-            # Go back to Waiting for train state
-            response_state = :waiting_for_train
-          else
-            # Got a non-train character when synced -
-            # start processig the message: change state
-            response_state = :receiving_message
-            response << byte_recieved
-            msg_size = byte_recieved
-            return_value = {:Return_code => :ill_formed_message, :Content => response} if msg_size.ord < MIN_MESSAGE_LENGTH or msg_size.ord > MAX_MESSAGE_LENGTH
+          # Got a non-train character when synced -
+          # start processig the message: change state
+          response_state = :receiving_message
+          response << byte_recieved
+          msg_size = byte_recieved
+          if msg_size.ord < MIN_MESSAGE_LENGTH ||
+             msg_size.ord > MAX_MESSAGE_LENGTH
+            return_value = { Return_code: :ill_formed_message,
+                             Content: response }
           end
         end
 
@@ -395,41 +420,47 @@ class Buscomm
         if response.size < msg_size.ord
           # Receive the next message character
           response << byte_recieved
-        elsif crc16(response[0,msg_size.ord-2]) != ((response[msg_size.ord-2].ord << 8 ) | response[msg_size.ord-1].ord) or response[OPCODE] == CRC_ERROR
-          return_value = {:Return_code => :crc_error, :Content => response}
+        elsif crc16(response[0, msg_size.ord - 2]) !=
+              ((response[msg_size.ord - 2].ord << 8) |
+              response[msg_size.ord - 1].ord) || response[OPCODE] == CRC_ERROR
+          return_value = { Return_code: :crc_error, Content: response }
+        elsif response[OPCODE].ord == COMMAND_SUCCESS ||
+              response[OPCODE].ord == ECHO ||
+              response[OPCODE].ord == MASTER_ECHO
+          return_value = { Return_code: :no_error, Content: response }
         else
-          if response[OPCODE].ord == COMMAND_SUCCESS or response[OPCODE].ord == ECHO or response[OPCODE].ord == MASTER_ECHO
-            return_value = {:Return_code => :no_error, :Content => response}
-          else
-            return_value = {:Return_code => :device_error, :Content => response, :DeviceResponseCode => response[OPCODE].ord}
-          end
+          return_value = {Return_code: :device_error, Content: response,
+                          DeviceResponseCode: response[OPCODE].ord }
         end
       end
     end
   end
 
   def start_serial_reader_thread
-    return unless @serial_reader_thread == nil
+    return unless @serial_reader_thread.nil?
+
     @serial_reader_thread = Thread.new do
-      @serial_read_mutex.synchronize { @serial_response_buffer=[] }
-      while true
+      @serial_read_mutex.synchronize { @serial_response_buffer = [] }
+      loop do
         byte_read = @sp.getc
         @serial_read_mutex.synchronize do
           @serial_response_buffer.push(byte_read)
           # Discard characers not read for a long time
-          shift @serial_response_buffer if @serial_response_buffer.size > SERIAL_RECIEVE_BUFFER_LIMIT
+          if @serial_response_buffer.size > SERIAL_RECIEVE_BUFFER_LIMIT
+            shift @serial_response_buffer
+          end
         end
       end
     end
   end
 
   def stop_serial_reader_thread
-    @serial_reader_thread.exit unless @serial_reader_thread == nil
+    @serial_reader_thread.exit unless @serial_reader_thread.nil?
     @serial_reader_thread = nil
   end
 
   def reverse_bits(char)
-    char.unpack('B*').pack('b*').unpack("C")[0]
+    char.unpack('B*').pack('b*').unpack('C')[0]
   end
 
   # CRC16 CCITT (0xFFFF) checksum
@@ -438,7 +469,7 @@ class Buscomm
     buf.each_char do |b|
       crc = ((crc << 8) & 0xffff) ^ CRC_LOOKUP[(crc >> 8) ^ reverse_bits(b) & 0xff]
     end
-    return crc
+    crc
   end
 
   CRC_LOOKUP = [
@@ -474,6 +505,5 @@ class Buscomm
     0x7c26, 0x6c07, 0x5c64, 0x4c45, 0x3ca2, 0x2c83, 0x1ce0, 0x0cc1,
     0xef1f, 0xff3e, 0xcf5d, 0xdf7c, 0xaf9b, 0xbfba, 0x8fd9, 0x9ff8,
     0x6e17, 0x7e36, 0x4e55, 0x5e74, 0x2e93, 0x3eb2, 0x0ed1, 0x1ef0
-  ]
+  ].freeze
 end
-

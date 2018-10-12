@@ -1,27 +1,29 @@
-require "/usr/local/lib/boiler_controller/Buscomm"
-require "/usr/local/lib/boiler_controller/Globals"
-require "/usr/local/lib/boiler_controller/bus_device"
-require "rubygems"
-require "finite_machine"
+require '/usr/local/lib/boiler_controller/Buscomm'
+require '/usr/local/lib/boiler_controller/Globals'
+require '/usr/local/lib/boiler_controller/bus_device'
+require 'rubygems'
+require 'finite_machine'
 
 module BoilerBase
   # The definition of the heating state machine
   class HeatingSM < FiniteMachine::Definition
-
     alias_target :controller
 
-    events {
-      event :turnon, :off  => :heating
-      event :postheat, :heating => :postheating
-      event :posthw,  :heating => :posthwing
-      event :turnoff, [:postheating, :posthwing, :heating] => :off
-      event :init, :none => :off
-    }
+    events do
+      event :turnon, off: :heating
+      event :postheat, heating: :postheating
+      event :posthw, heating: :posthwing
+      event :turnoff, %i[postheating posthwing heating] => :off
+      event :init, none: :off
+    end
 
-    callbacks {
-      on_before {|event| $app_logger.info("Heating state change from #{event.from} to #{event.to}")}
-    }
-  end # of class Heating SM
+    callbacks do
+      on_before do |event|
+        $app_logger.info "Heating state change from #{event.from} to #{event.to}"
+      end
+    end
+  end
+  # of class Heating SM
 
   # A low pass filter to filter out jitter from sensor data
   class Filter
@@ -53,21 +55,20 @@ module BoilerBase
       @filter_mutex.synchronize do
         if @dirty
           return nil if @content.empty?
+
           sum = 0
-          @content.each do
-            |element|
-            sum += element
-          end
+          @content.each { |element| sum += element }
           @value = sum.to_f / @content.size
           @dirty = false
         end
       end
-      return @value
+      @value
     end
-  end # of class Filter
+  end
+  # of class Filter
 
   # The Thermostat base class providing hysteresis behavior to a sensor
-  class Thermostat_base
+  class ThermostatBase
     attr_reader :state, :threshold
     attr_accessor :hysteresis
     def initialize(sensor,hysteresis,threshold,filtersize)
@@ -75,11 +76,11 @@ module BoilerBase
       @hysteresis = hysteresis
       @threshold = threshold
       @sample_filter = Filter.new(filtersize)
-      if @sensor.temp >= @threshold
-        @state = :off
-      else
-        @state = :on
-      end
+      @state = if @sensor.temp >= @threshold
+                 :off
+               else
+                 :on
+               end
     end
 
     def is_on?
@@ -112,37 +113,38 @@ module BoilerBase
     # End of class definition Thermostat base
   end
 
-  class Symmetric_thermostat < Thermostat_base
+  # Class of the Symmetric thermostat
+  class Symmetric_thermostat < ThermostatBase
     def determine_state
       if @state == :off
         @state = :on if @sample_filter.value < @threshold - @hysteresis
-      else
-        @state = :off if @sample_filter.value > @threshold + @hysteresis
+      elsif @sample_filter.value > @threshold + @hysteresis
+        @state = :off
       end
     end
   end
 
-  class Asymmetric_thermostat < Thermostat_base
-
+  # Class of the asymmetric thermostat
+  class Asymmetric_thermostat < ThermostatBase
     attr_accessor :up_hysteresis, :down_hysteresis
-    def initialize(sensor,down_hysteresis,up_hysteresis,threshold,filtersize)
+    def initialize(sensor, down_hysteresis, up_hysteresis, threshold, filtersize)
       @sensor = sensor
       @up_hysteresis = up_hysteresis
       @down_hysteresis = down_hysteresis
       @threshold = threshold
       @sample_filter = Filter.new(filtersize)
-      if @sensor.temp >= @threshold
-        @state = :off
-      else
-        @state = :on
-      end
+      @state = if @sensor.temp >= @threshold
+                 :off
+               else
+                 :on
+               end
     end
 
     def determine_state
       if @state == :off
         @state = :on if @sample_filter.value < @threshold - @down_hysteresis
-      else
-        @state = :off if @sample_filter.value > @threshold + @up_hysteresis
+      elsif @sample_filter.value > @threshold + @up_hysteresis
+        @state = :off
       end
     end
 
@@ -150,7 +152,6 @@ module BoilerBase
       @down_hysteresis = new_down_hysteresis
       @up_hysteresis = new_up_hysteresis
     end
-
   end
 
   # A Pulse Width Modulation (PWM) Thermostat class providing a PWM output signal
@@ -161,7 +162,7 @@ module BoilerBase
   class PwmThermostat
     attr_accessor :cycle_threshold, :state
     attr_reader :target, :name, :modification_mutex
-    def initialize(sensor,filtersize,value_proc,is_HW_or_valve,name,timebase=3600)
+    def initialize(sensor, filtersize, value_proc, is_HW_or_valve, name, timebase=3600)
       # Update the Class variables
       @@timebase = timebase
       @@is_HW_or_valve = is_HW_or_valve
@@ -179,43 +180,49 @@ module BoilerBase
 
       update
 
-      @@thermostat_instances = [] if defined?(@@thermostat_instances) == nil
+      @@thermostat_instances = [] if defined?(@@thermostat_instances).nil?
       @modification_mutex.synchronize { @@thermostat_instances << self }
 
-      start_pwm_thread if defined?(@@pwm_thread) == nil
+      start_pwm_thread if defined?(@@pwm_thread).nil?
+    end
+
+    def init_thread
+      # Wait for all instances being initialized
+      initialized = true
+      safety_loop_counter = 0
+      loop do
+        @@thermostat_instances.each do |th|
+          th.modification_mutex.synchronize do
+            initialized &= !th.target.nil?
+            $app_logger.debug(th.name + " initialized: #{!th.target.nil?}")
+            $app_logger.debug("Thermostats initialized: #{initialized}")
+          end
+        end
+        sleep 0.5
+        safety_loop_counter += 1
+        if (safety_loop_counter % 120).zero?
+          $app_logger.error("Waited #{(safety_loop_counter / 120).round(2)}\
+          seconds in vain for all PWM thermostats to receive a target.")
+        end
+        break if initialized
+      end
     end
 
     def start_pwm_thread
       @@pwm_thread = Thread.new do
-        Thread.current[:name] = "PWM thermostat"
-        #Wait for the main thread to create all PWM thermostat objects
+        Thread.current[:name] = 'PWM thermostat'
+        # Wait for the main thread to create all PWM thermostat objects
         # we may get some later but those will just skip one cycle
         sleep(10)
-
-        #Loop forever
-        while true
-
-          # Wait for all instances being initialized
-          initialized = true
-          safety_loop_counter = 0
-          begin
-            @@thermostat_instances.each do |th|
-              th.modification_mutex.synchronize {
-                initialized &= (th.target != nil)
-                $app_logger.debug(th.name+" initialized: #{th.target != nil}")
-                $app_logger.debug("Thermostats initialized: #{initialized}")
-              }
-            end
-            sleep 0.5
-            safety_loop_counter += 1
-            $app_logger.error("Waited #{(safety_loop_counter/120).round(2)} seconds in vain for all PWM thermostats to receive a target.") if safety_loop_counter % 120 == 0
-          end until initialized
-
+        init_thread
+        # Loop forever
+        loop do
           # Calculate the threshold value for each instance
           @@thermostat_instances.each do |th|
             th.modification_mutex.synchronize do
               th.cycle_threshold = @@timebase * th.value
-              $app_logger.debug(th.name+" pulse width set to: #{(th.cycle_threshold/@@timebase*100).round(0)}%")
+              $app_logger.debug(th.name + " pulse width set to: \
+                #{(th.cycle_threshold / @@timebase * 100).round(0)}%")
             end
           end
 
@@ -224,11 +231,11 @@ module BoilerBase
           while @@sec_elapsed < @@timebase do
             any_thermostats_on = false
             @@thermostat_instances.each do |th|
-              if th.cycle_threshold >= @@sec_elapsed
+              if th.cycle_threshold > @@sec_elapsed
                 th.modification_mutex.synchronize do
                   if th.state != :on
                     th.state = :on
-                    $app_logger.debug("Turning on "+th.name)
+                    $app_logger.debug('Turning on ' + th.name)
                   end
                 end
                 any_thermostats_on = true
@@ -236,7 +243,7 @@ module BoilerBase
                 th.modification_mutex.synchronize do
                   if th.state != :off
                     th.state = :off
-                    $app_logger.debug("Turning off "+th.name)
+                    $app_logger.debug('Turning off ' + th.name)
                   end
                 end
               end
@@ -247,9 +254,10 @@ module BoilerBase
             # are to be on as in this case time is spent on HW or valve movement rather
             # than heating. This actually is only good for the active thermostats as others
             # being switched off suffer an increased off time - no easy way around this...
-            (@@sec_elapsed = @@sec_elapsed + 1) unless (@@is_HW_or_valve.call and any_thermostats_on)
+            (@@sec_elapsed = @@sec_elapsed + 1) unless\
+             @@is_HW_or_valve.call && any_thermostats_on
           end
-          $app_logger.debug("End of PWM thermostat cycle")
+          $app_logger.debug('End of PWM thermostat cycle')
         end
       end
     end
@@ -265,40 +273,33 @@ module BoilerBase
     def temp
       retval = 0
       @modification_mutex.synchronize { retval = @sample_filter.value }
-      return retval
+      retval
     end
 
     def is_on?
       retval = false
       @modification_mutex.synchronize { retval = (@state == :on) }
-      return retval
+      retval
     end
 
     def is_off?
       retval = false
       @modification_mutex.synchronize { retval = (@state == :off) }
-      return retval
+      retval
     end
 
-    def set_target (target)
+    def set_target(target)
       @modification_mutex.synchronize { @target = target }
     end
 
     def value
-      retval = nil
-      begin
-        retval = @value_proc.call(@sample_filter,@target)
-      rescue
-        retval = 0
-      end
-      return retval
+      @value_proc.call(@sample_filter, @target)
     end
-    #End of class PwmThermostat
   end
+  # End of class PwmThermostat
 
   class Mixer_control
-    def initialize(mix_sensor,cw_switch,ccw_switch,initial_target_temp=34.0)
-
+    def initialize(mix_sensor, cw_switch, ccw_switch, initial_target_temp=34.0)
       # Initialize class variables
       @mix_sensor = mix_sensor
       @target_temp = initial_target_temp
@@ -325,7 +326,9 @@ module BoilerBase
       @measurement_thread = nil
 
       # Create the log rate limiter
-      @mixer_log_rate_limiter = Globals::TimerSec.new(@config[:mixer_limited_log_period],"Mixer controller log timer")
+      @mixer_log_rate_limiter =\
+        Globals::TimerSec.new(@config[:mixer_limited_log_period],\
+                              'Mixer controller log timer')
     end
 
     def init
@@ -339,36 +342,36 @@ module BoilerBase
     end
 
     def temp
-      @measurement_mutex.synchronize {value = @mix_filter.value}
-      return value
+      retval = 0
+      @measurement_mutex.synchronize { retval = @mix_filter.value }
+      retval
     end
 
     def set_target_temp(new_target_temp)
-      @target_mutex.synchronize {@target_temp = new_target_temp}
+      @target_mutex.synchronize { @target_temp = new_target_temp }
     end
 
     def start_control
       # Only start control thread if not yet started
       return unless @control_thread_mutex.try_lock
 
-      $app_logger.debug("Mixer controller starting control")
+      $app_logger.debug('Mixer controller starting control')
 
       # Clear control thread stop sugnaling mutex
       @stop_control_requested.unlock if @stop_control_requested.locked?
 
       # Start control thread
       @control_thread = Thread.new do
-        Thread.current[:name] = "Mixer controller"
+        Thread.current[:name] = 'Mixer controller'
         # Acquire lock for controlling switches
         @control_mutex.synchronize do
           # Initialize mixer variables
           init
-
           start_measurement_thread
-          $app_logger.trace("Mixer controller do_control_thread before starting control loop")
+          $app_logger.trace('Mixer controller do_control_thread before starting control loop')
 
-          # Control until if stop is requested
-          while !@stop_control_requested.locked?
+          # Control until stop is requested
+          until @stop_control_requested.locked?
             # Pause as long as pause is requested
             if @paused
               sleep 1
@@ -377,19 +380,22 @@ module BoilerBase
               do_control_thread
 
               # Delay between control actions
-              sleep @config[:mixer_control_loop_delay] unless @stop_control_requested.locked? or @paused
+              sleep @config[:mixer_control_loop_delay] unless\
+              @stop_control_requested.locked? || @paused
             end
           end
           # Stop the measurement thread before exiting
           stop_measurement_thread
-        end # of control mutex synchronize
+        end
+        # of control mutex synchronize
       end
     end
 
     def stop_control
       # Return if we do not have a control thread
-      if !@control_thread_mutex.locked? or @control_thread == nil
-        $app_logger.debug("Mixer controller not running in stop control - returning")
+      if !@control_thread_mutex.locked? || @control_thread.nil?
+        $app_logger.debug(\
+          'Mixer controller not running in stop control - returning')
         return
       end
 
@@ -397,179 +403,190 @@ module BoilerBase
       @stop_control_requested.lock
       # Wait for the control thread to exit
       @control_thread.join
-      $app_logger.debug("Mixer controller control_thread joined")
+      $app_logger.debug('Mixer controller control_thread joined')
 
       # Allow the next call to start control to create a new control thread
       @control_thread_mutex.unlock
-      $app_logger.debug("Mixer controller control_thread_mutex unlocked")
+      $app_logger.debug('Mixer controller control_thread_mutex unlocked')
     end
 
     def pause
-      if !@control_thread_mutex.locked? or @control_thread == nil
-        $app_logger.debug("Mixer controller not running in pause - returning")
+      if !@control_thread_mutex.locked? || @control_thread.nil?
+        $app_logger.debug('Mixer controller not running in pause - returning')
         return
       end
 
       if @paused
-        $app_logger.trace("Mixer controller - controller already paused - ignoring")
+        $app_logger.trace(\
+          'Mixer controller - controller already paused - ignoring')
       else
-        $app_logger.debug("Mixer controller - pausing control")
+        $app_logger.debug('Mixer controller - pausing control')
         # Signal controller to pause
         @paused = true
       end
     end
 
     def resumecheck
-      if !@control_thread_mutex.locked? or @control_thread == nil
-        $app_logger.debug("Mixer controller not running")
+      if !@control_thread_mutex.locked? || @control_thread.nil?
+        $app_logger.debug('Mixer controller not running')
         return false
       end
 
-      if !@paused
-        $app_logger.trace("Mixer controller - controller not paused")
+      unless @paused
+        $app_logger.trace('Mixer controller - controller not paused')
         return false
       end
 
       if @resuming
-        $app_logger.trace("Mixer controller - resuming active")
+        $app_logger.trace('Mixer controller - resuming active')
         return false
       end
-      return true
+      true
     end
 
     def openresume(delay=0)
-      if resumecheck
-        @resuming = true
-        openresume_thread = Thread.new do
-          Thread.current[:name] = "Mixer openresume thread"
-          $app_logger.debug("Mixer controller - opening valve")
-          @ccw_switch.pulse_block(250)
-          @ccw_switch.pulse_block(60)
-          resume(delay,true)
-          @resuming = false
-        end
+      return unless resumecheck
+
+      @resuming = true
+      Thread.new do
+        Thread.current[:name] = 'Mixer openresume thread'
+        $app_logger.debug('Mixer controller - opening valve')
+        @ccw_switch.pulse_block(250)
+        @ccw_switch.pulse_block(60)
+        resume(delay,true)
+        @resuming = false
       end
     end
 
-    def resume(delay=0,unconditional=false)
-      if resumecheck or unconditional
-        @resuming = true
-        resumethread = Thread.new do
-          Thread.current[:name] = "Mixer resume thread"
-          # Delay resuming the controller if requested
-          sleep delay if delay > 0
+    def resume(delay=0, unconditional=false)
+      return unless !resumecheck && !unconditional
 
-          # Initialize mixer variables
-          init
+      @resuming = true
+      Thread.new do
+        Thread.current[:name] = 'Mixer resume thread'
+        # Delay resuming the controller if requested
+        sleep delay if delay > 0
 
-          $app_logger.debug("Mixer controller - resuming control")
+        # Initialize mixer variables
+        init
 
-          # Signal controller to resume
-          @paused = false
-          @resuming = false
-        end
+        $app_logger.debug('Mixer controller - resuming control')
+
+        # Signal controller to resume
+        @paused = false
+        @resuming = false
       end
     end
 
     def start_measurement_thread
-      $app_logger.debug("Mixer controller - measurement thread start requested")
+      $app_logger.debug('Mixer controller - measurement thread start requested')
       return unless @measurement_thread_mutex.try_lock
 
       # Unlock the measurement thread exis signal
       @stop_measurement_requested.unlock if @stop_measurement_requested.locked?
 
-      #Create a temperature measurement thread
+      # Create a temperature measurement thread
       @measurement_thread = Thread.new do
-        Thread.current[:name] = "Mixer measurement"
-        $app_logger.debug("Mixer controller - measurement thread starting")
-        while !@stop_measurement_requested.locked?
-          @measurement_mutex.synchronize {@mix_filter.input_sample(@mix_sensor.temp) }
-          sleep @config[:mixer_sampling_delay] unless @stop_measurement_requested.locked?
+        Thread.current[:name] = 'Mixer measurement'
+        $app_logger.debug('Mixer controller - measurement thread starting')
+        until @stop_measurement_requested.locked?
+          @measurement_mutex.synchronize\
+            { @mix_filter.input_sample(@mix_sensor.temp) }
+          sleep @config[:mixer_sampling_delay] unless\
+            @stop_measurement_requested.locked?
         end
-        $app_logger.debug("Mixer controller - measurement thread exiting")
+        $app_logger.debug('Mixer controller - measurement thread exiting')
       end
     end
 
     def stop_measurement_thread
       # Return if we do not have a measurement thread
-      return if !@measurement_thread_mutex.locked? or @measurement_thread == nil
+      return if !@measurement_thread_mutex.locked? || @measurement_thread.nil?
 
       # Signal the measurement thread to exit
       @stop_measurement_requested.lock
 
       # Wait for the measurement thread to exit
-      $app_logger.debug("Mixer controller - waiting for measurement thread to exit")
+      $app_logger.debug(\
+        'Mixer controller - waiting for measurement thread to exit')
       @measurement_thread.join
-      $app_logger.debug("Mixer controller - measurement thread joined")
+      $app_logger.debug('Mixer controller - measurement thread joined')
 
       # Allow a next call to start_measurement thread to create
       # a new measurement thread
       @measurement_thread_mutex.unlock
-      $app_logger.debug("Mixer controller - measurement_thread_mutex unlocked")
+      $app_logger.debug('Mixer controller - measurement_thread_mutex unlocked')
+    end
+
+    def copy_config
+      # Copy the config for updates
+      $config_mutex.synchronize {@config = $config.dup}
+      $app_logger.debug("Mixer forward temp: #{value.round(2)}")
+      $app_logger.debug("Mixer controller error: #{error.round(2)}")
+      @mixer_log_rate_limiter.set_timer(@config[:mixer_limited_log_period])
+      @mixer_log_rate_limiter.reset
     end
 
     # The actual control thread
     def do_control_thread
       # Init local variables
       target = 0
-      error = 0
       value = 0
 
       # Read target temp thread safely
       @target_mutex.synchronize { target = @target_temp }
-      @measurement_mutex.synchronize do
-        value = @mix_filter.value
-      end
+      @measurement_mutex.synchronize { value = @mix_filter.value }
 
-      error = target-value
+      error = target - value
       adjustment_time = calculate_adjustment_time(error)
 
-      if @mixer_log_rate_limiter.expired?
-        # Copy the config for updates
-        $config_mutex.synchronize {@config = $config.dup}
-        $app_logger.debug("Mixer forward temp: #{value.round(2)}")
-        $app_logger.debug("Mixer controller error: #{error.round(2)}")
-        @mixer_log_rate_limiter.set_timer(@config[:mixer_limited_log_period])
-        @mixer_log_rate_limiter.reset
-      end
+      copy_config if @mixer_log_rate_limiter.expired?
 
       # Adjust mixing motor if it is needed
-      if adjustment_time.abs > 0
+      return if adjustment_time.abs.zero?
 
-        $app_logger.trace("Mixer controller target: #{target.round(2)}")
-        $app_logger.trace("Mixer controller value: #{value.round(2)}")
-        $app_logger.trace("Mixer controller adjustment time: #{adjustment_time.round(2)}")
-        $app_logger.trace("Mixer controller int. cw time: #{@integrated_cw_movement_time.round(2)}")
-        $app_logger.trace("Mixer controller int. ccw time: #{@integrated_ccw_movement_time.round(2)}")
+      $app_logger.trace("Mixer controller target: #{target.round(2)}")
+      $app_logger.trace("Mixer controller value: #{value.round(2)}")
+      $app_logger.trace(\
+        "Mixer controller adjustment time: #{adjustment_time.round(2)}")
+      $app_logger.trace(\
+        "Mixer controller int. cw time: #{@integrated_cw_movement_time.round(2)}")
+      $app_logger.trace(\
+        "Mixer controller int. ccw time: #{@integrated_ccw_movement_time.round(2)}")
 
-        # Move CCW
-        if adjustment_time > 0 and @integrated_ccw_movement_time < @config[:mixer_unidirectional_movement_time_limit]
-          $app_logger.trace("Mixer controller adjusting ccw")
-          @ccw_switch.pulse_block((adjustment_time*10).to_i)
+      # Move CCW
+      if adjustment_time > 0 && \
+         @integrated_ccw_movement_time < \
+         @config[:mixer_unidirectional_movement_time_limit]
+        $app_logger.trace('Mixer controller adjusting ccw')
+        @ccw_switch.pulse_block((adjustment_time * 10).to_i)
 
-          # Keep track of movement time for limiting movement
-          @integrated_ccw_movement_time += adjustment_time
+        # Keep track of movement time for limiting movement
+        @integrated_ccw_movement_time += adjustment_time
 
-          # Adjust available movement time for the other direction
-          @integrated_cw_movement_time -= adjustment_time
-          @integrated_cw_movement_time = 0 if @integrated_cw_movement_time < 0
+        # Adjust available movement time for the other direction
+        @integrated_cw_movement_time -= adjustment_time
+        @integrated_cw_movement_time = 0 if @integrated_cw_movement_time < 0
 
-          # Move CW
-        elsif adjustment_time < 0 and @integrated_cw_movement_time < @config[:mixer_unidirectional_movement_time_limit]
-          adjustment_time = -adjustment_time
-          $app_logger.trace("Mixer controller adjusting cw")
-          @cw_switch.pulse_block((adjustment_time*10).to_i)
+        # Move CW
+      elsif adjustment_time < 0 && \
+            @integrated_cw_movement_time < \
+            @config[:mixer_unidirectional_movement_time_limit]
+        adjustment_time = -adjustment_time
+        $app_logger.trace('Mixer controller adjusting cw')
+        @cw_switch.pulse_block((adjustment_time * 10).to_i)
 
-          # Keep track of movement time for limiting movement
-          @integrated_cw_movement_time += adjustment_time
+        # Keep track of movement time for limiting movement
+        @integrated_cw_movement_time += adjustment_time
 
-          # Adjust available movement time for the other direction
-          @integrated_ccw_movement_time -= adjustment_time
-          @integrated_ccw_movement_time = 0 if @integrated_ccw_movement_time < 0
-        else
-          $app_logger.trace("Mixer controller not moving. Adj:#{adjustment_time.round(2)}"+\
-          " CW: #{@integrated_cw_movement_time} CCW: #{@integrated_ccw_movement_time}")
-        end
+        # Adjust available movement time for the other direction
+        @integrated_ccw_movement_time -= adjustment_time
+        @integrated_ccw_movement_time = 0 if @integrated_ccw_movement_time < 0
+      else
+        $app_logger.trace\
+          ("Mixer controller not moving. Adj:#{adjustment_time.round(2)}"\
+          " CW: #{@integrated_cw_movement_time} CCW: " + \
+          @integrated_ccw_movement_time.to_s)
       end
     end
 
@@ -582,69 +599,74 @@ module BoilerBase
       if error.abs > @config[:mixer_motor_integrate_error_limit]
 
       if @int_err_sum.abs > @config[:mixer_motor_ival_limit]
-        @int_err_sum>0 ? @int_err_sum =  @config[:mixer_motor_ival_limit] :\
-        @int_err_sum = -@config[:mixer_motor_ival_limit]
+        @int_err_sum = if @int_err_sum > 0
+                         @config[:mixer_motor_ival_limit]
+                       else
+                         -@config[:mixer_motor_ival_limit]
+                       end
       end
 
       # Calculate the controller putput
       retval = @config[:mixer_motor_kp_parameter] * error + @int_err_sum
 
-      $app_logger.trace("Adjustments Pval: #{(@config[:mixer_motor_kp_parameter] * error).round(2)}"+\
-      " Ival: #{@int_err_sum.round(2)}")
+      $app_logger.trace\
+        ("Adjustments Pval: #{(@config[:mixer_motor_kp_parameter] * error).round(2)}"+\
+        " Ival: #{@int_err_sum.round(2)}")
 
       return 0 if retval.abs < @config[:min_mixer_motor_movement_time]
 
       if retval.abs > @config[:max_mixer_motor_movement_time]
         if retval > 0
-          $app_logger.trace("Calculated value: #{retval.round(2)} returning: #{@config[:max_mixer_motor_movement_time]}")
+          $app_logger.trace("Calculated value: #{retval.round(2)} "\
+            "returning: #{@config[:max_mixer_motor_movement_time]}")
           return @config[:max_mixer_motor_movement_time]
         else
-          $app_logger.trace("Calculated value: #{retval.round(2)} returning: -#{@config[:max_mixer_motor_movement_time]}")
+          $app_logger.trace("Calculated value: #{retval.round(2)} "\
+            "returning: -#{@config[:max_mixer_motor_movement_time]}")
           return -@config[:max_mixer_motor_movement_time]
         end
       end
       $app_logger.trace("Returning: #{retval.round(2)}")
-      return retval
+      retval
     end
-  end # of class MixerControl
+  end
+  # of class MixerControl
 
   # The definition of the heating state machine
   class BufferSM < FiniteMachine::Definition
-
     alias_target :buffer
 
-    events {
-      event :turnoff, :any => :off
-      event :hydrshift, :any => :hydrshift
-      event :bufferfill, :any  => :bufferfill
-      event :frombuffer, :any => :frombuffer
-      event :HW, :any => :HW
-
-      event :init, :none => :off
-    }
-  end # of class BufferSM
+    events do
+      event :turnoff, any: :off
+      event :hydrshift, any: :hydrshift
+      event :bufferfill, any: :bufferfill
+      event :frombuffer, any: :frombuffer
+      event :HW, any: :HW
+      event :init, none: :off
+    end
+  end
+  # of class BufferSM
 
   class BufferHeat
-
     attr_reader :forward_sensor, :upper_sensor, :lower_sensor, :return_sensor
     attr_reader :hw_thermostat
     attr_reader :forward_valve, :return_valve,  :bypass_valve
     attr_reader :heater_relay, :hydr_shift_pump, :hw_pump
     attr_reader :hw_wiper, :heat_wiper
     attr_reader :config
-    attr_reader :relax_timer
+    attr_reader :heater_relax_timer
     attr_reader :heat_in_buffer, :target_temp
     attr_accessor :prev_sm_state
     # Initialize the buffer taking its sensors and control valves
     def initialize(forward_sensor, upper_sensor, lower_sensor, return_sensor,
-      hw_thermostat,
-      forward_valve, return_valve, bypass_valve,
-      heater_relay, hydr_shift_pump, hw_pump,
-      hw_wiper, heat_wiper)
+                   hw_thermostat,
+                   forward_valve, return_valve, bypass_valve,
+                   heater_relay, hydr_shift_pump, hw_pump,
+                   hw_wiper, heat_wiper)
 
       # Buffer Sensors
       @forward_sensor = forward_sensor
-      @upper_sensor =  upper_sensor
+      @upper_sensor = upper_sensor
       @lower_sensor = lower_sensor
       @return_sensor = return_sensor
 
@@ -677,11 +699,19 @@ module BoilerBase
       # This one is used to ensure atomicity of mode setting
       @modesetting_mutex = Mutex.new
 
-      @control_log_rate_limiter = Globals::TimerSec.new(@config[:buffer_control_log_period],"Buffer heater controller log timer")
-      @heater_log_rate_limiter = Globals::TimerSec.new(@config[:buffer_heater_log_period],"Buffer heater log period timer")
+      @control_log_rate_limiter = Globals::TimerSec.new(\
+        @config[:buffer_control_log_period],
+        'Buffer heater controller log timer'\
+      )
+      @heater_log_rate_limiter = Globals::TimerSec.new(\
+        @config[:buffer_heater_log_period],'Buffer heater log period timer'\
+      )
 
       # Create the state change relaxation timer
-      @relax_timer = Globals::TimerSec.new(@config[:buffer_heater_state_change_relaxation_time],"Buffer heater state change relaxation timer")
+      @heater_relax_timer = Globals::TimerSec.new(\
+        @config[:buffer_heater_state_change_relaxation_time],
+        'Buffer heater state change relaxation timer'\
+      )
 
       # Set the initial state
       @mode = @prev_mode = :off
@@ -695,7 +725,10 @@ module BoilerBase
       set_sm_actions
       @buffer_sm.init
 
-      @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>((@upper_sensor.temp - @config[:buffer_base_temp])*100)/(@lower_sensor.temp - @config[:buffer_base_temp])}
+      @heat_in_buffer =
+        { temp: @upper_sensor.temp,
+          percentage: ((@upper_sensor.temp - @config[:buffer_base_temp]) * 100) / \
+                      (@lower_sensor.temp - @config[:buffer_base_temp]) }
       @target_temp = 7.0
       @forward_temp = 7.0
       @delta_t = 0.0
@@ -704,24 +737,28 @@ module BoilerBase
 
     # Update classes upon config_change
     def update_config_items
-      @relax_timer.set_timer(@config[:buffer_heater_state_change_relaxation_time])
+      @heater_relax_timer.set_timer(@config[:buffer_heater_state_change_relaxation_time])
       @control_log_rate_limiter.set_timer(@config[:buffer_control_log_period])
       @heater_log_rate_limiter.set_timer(@config[:buffer_heater_log_period])
     end
 
-    # Set the operation mode of the buffer. This can take the below values as a parameter:
+    # Set the operation mode of the buffer. This can take
+    # the below values as a parameter:
     #
-    # :heat - The system is configured for heating. Heat is provided by the boiler or by the buffer.
-    #         The logic actively decides what to do and how the valves/heating relays
-    #         need to be configured
+    # :heat - The system is configured for heating. Heat is provided
+    #         by the boiler or by the buffer. The logic actively decides
+    #         what to do and how the valves/heating relays need to be configured
     #
-    # :off - The system is configured for being turned off. The remaining heat from the boiler - if any - is transferred to the buffer.
+    # :off - The system is configured for being turned off. The remaining heat
+    #        from the boiler - if any - is transferred to the buffer.
     #
-    # :HW - The system is configured for HW - Boiler relays are switched off  - this now does not take the solar option into account.
+    # :HW - The system is configured for HW - Boiler relays are switched off
+    #       this now does not take the solar option into account.
 
     def set_mode(new_mode)
       # Check validity of the parameter
-      raise "Invalid mode parameter '#{new_mode}' passed to set_mode(mode)" unless [:floorheat,:radheat,:off,:HW].include? new_mode
+      raise "Invalid mode parameter '#{new_mode}' passed to set_mode(mode)"\
+            unless %i[floorheat radheat off HW].include? new_mode
 
       # Take action only if the mode is changing
       return if @mode == new_mode
@@ -743,12 +780,13 @@ module BoilerBase
         @prev_mode = @mode
         @mode = new_mode
         @mode_changed = true
-      end # of modesetting mutex sync
+      end
+      # of modesetting mutex sync
 
       # Start ontrol thread according to the new mode
       start_control_thread
-
-    end #of set_mode
+    end
+    # of set_mode
 
     # Set the required forward water temperature
     def set_target(new_target_temp)
@@ -759,8 +797,8 @@ module BoilerBase
     # Configure the relays for a certain purpose
     def set_relays(config)
       # Check validity of the parameter
-      raise "Invalid relay config parameter '#{config}' passed to set_relays(config)" unless
-      [:hydr_shifted,:buffer_passthrough,:feed_from_buffer,:HW].include? config
+      raise "Invalid relay config parameter '#{config}' passed to set_relays(config)"\
+      unless %i[hydr_shifted buffer_passthrough feed_from_buffer HW].include? config
 
       return if @relay_state == config
 
@@ -791,22 +829,24 @@ module BoilerBase
       end
 
       if moved
-        $app_logger.debug("Waiting for relays to move into new position")
+        $app_logger.debug('Waiting for relays to move into new position')
 
         # Wait until valve movement is complete
         sleep @config[:three_way_movement_time]
         return :delayed
       else
-        $app_logger.debug("Relays not moved - not waiting")
+        $app_logger.debug('Relays not moved - not waiting')
         return :immediate
       end
     end
 
     # Calculate limited boiler target watertemp taking overshoot into account
-    def limit_watertemp(watertemp,overshoot=0)
-      watertemp + overshoot < @config[:minimum_heating_watertemp] ? \
-      @config[:minimum_heating_watertemp] : \
-      watertemp + overshoot
+    def limit_watertemp(watertemp, overshoot = 0)
+      if watertemp + overshoot < @config[:minimum_heating_watertemp]
+        @config[:minimum_heating_watertemp]
+      else
+        watertemp + overshoot
+      end
     end
 
     private
@@ -815,11 +855,12 @@ module BoilerBase
     def set_sm_actions
       # :off, :hydrshift, :bufferfill, :frombuffer, :HW
 
-      # Log state transitions and set the state change relaxation timer
+      # Log state transitions and arm the state change relaxation timer
       @buffer_sm.on_before do |event|
-        $app_logger.debug("Bufferheater state change from #{event.from} to #{event.to}")
+        $app_logger.debug('Bufferheater state change from '\
+                          "#{event.from} to #{event.to}")
         buffer.prev_sm_state = event.from
-        buffer.relax_timer.reset
+        buffer.heater_relax_timer.reset
       end
 
       # On turning off the controller will take care of pumps
@@ -827,118 +868,125 @@ module BoilerBase
       # - Turn off the heater relay
       @buffer_sm.on_enter_off do |event|
         if event.name == :init
-          $app_logger.debug("Bufferheater initializing")
+          $app_logger.debug('Bufferheater initializing')
           buffer.hw_wiper.set_water_temp(65.0)
           buffer.set_relays(:hydr_shifted)
           if  buffer.heater_relay.state == :on
-            $app_logger.debug("Turning off heater relay")
+            $app_logger.debug('Turning off heater relay')
             buffer.heater_relay.off
             sleep buffer.config[:circulation_maintenance_delay]
           else
-            $app_logger.debug("Heater relay already off")
+            $app_logger.debug('Heater relay already off')
           end
         else
-          $app_logger.debug("Bufferheater turning off")
+          $app_logger.debug('Bufferheater turning off')
           if  buffer.heater_relay.state == :on
-            $app_logger.debug("Turning off heater relay")
+            $app_logger.debug('Turning off heater relay')
             buffer.heater_relay.off
             sleep buffer.config[:circulation_maintenance_delay]
           else
-            $app_logger.debug("Heater relay already off")
+            $app_logger.debug('Heater relay already off')
           end
           buffer.set_relays(:hydr_shifted)
         end
-      end  # of enter off action
+      end
+      # of enter off action
 
       # On entering heat through hydr shifter
       # - Turn off HW production of boiler
       # - move relays to boiler hydr shifted
       # - start the boiler
       # - Start the hydr shift pump
-      @buffer_sm.on_enter_hydrshift do |event|
-        buffer.heat_wiper.set_water_temp( \
-        buffer.limit_watertemp(buffer.target_temp))
+      @buffer_sm.on_enter_hydrshift do
+        buffer.heat_wiper.set_water_temp(\
+          buffer.limit_watertemp(buffer.target_temp))
         if buffer.hydr_shift_pump.state != :on
-          $app_logger.debug("Turning on hydr shift pump")
+          $app_logger.debug('Turning on hydr shift pump')
           buffer.hydr_shift_pump.on
           sleep buffer.config[:circulation_maintenance_delay] \
           if buffer.set_relays(:hydr_shifted) == :immediate
         else
-          $app_logger.debug("Hydr shift pump already on")
+          $app_logger.debug('Hydr shift pump already on')
           buffer.set_relays(:hydr_shifted)
         end
         if buffer.heater_relay.state != :on
-          $app_logger.debug("Turning on heater relay")
+          $app_logger.debug('Turning on heater relay')
           buffer.heater_relay.on
         else
-          $app_logger.debug("Heater relay already on")
+          $app_logger.debug('Heater relay already on')
         end
-      end # of enter hydrshift action
+      end
+      # of enter hydrshift action
 
       # On entering heating from buffer set relays and turn off heating
       # - Turn off HW production of boiler
-      @buffer_sm.on_enter_frombuffer do |event|
+      @buffer_sm.on_enter_frombuffer do
         if buffer.heater_relay.state != :off
-          $app_logger.debug("Turning off heater relay")
+          $app_logger.debug('Turning off heater relay')
           buffer.heater_relay.off
 
           # Wait for boiler tu turn off safely
-          $app_logger.debug("Waiting for boiler to stop before cutting it off from circulation")
+          $app_logger.debug('Waiting for boiler to stop before cutting it off from circulation')
           sleep buffer.config[:circulation_maintenance_delay]
         else
-          $app_logger.debug("Heater relay already off")
+          $app_logger.debug('Heater relay already off')
         end
         # Turn off hydr shift pump
         if buffer.hydr_shift_pump.state != :off
-          $app_logger.debug("Turning off hydr shift pump")
+          $app_logger.debug('Turning off hydr shift pump')
           buffer.hydr_shift_pump.off
         end
         # Setup the relays
         buffer.set_relays(:feed_from_buffer)
-      end # of enter frombuffer action
+      end 
+      # of enter frombuffer action
 
       # On entering heating bufferfill
       # - Turn off HW production of boiler
       # - Set relays to buffer passthrough
       # - turn on heating
       # - turn on hydr shift pump
-      @buffer_sm.on_enter_bufferfill do |event|
-        buffer.heat_wiper.set_water_temp( \
-        buffer.limit_watertemp(buffer.target_temp,buffer.config[:buffer_passthrough_overshoot]))
+      @buffer_sm.on_enter_bufferfill do
+        buffer.heat_wiper.set_water_temp\
+          buffer.limit_watertemp(buffer.target_temp,\
+                                 buffer.config[:buffer_passthrough_overshoot])
         if buffer.hydr_shift_pump.state != :on
-          $app_logger.debug("Turning on hydr shift pump")
+          $app_logger.debug('Turning on hydr shift pump')
           buffer.hydr_shift_pump.on
           sleep buffer.config[:circulation_maintenance_delay] \
           if buffer.set_relays(:buffer_passthrough) == :immediate
         else
-          $app_logger.debug("Hydr shift pump already on")
+          $app_logger.debug('Hydr shift pump already on')
           buffer.set_relays(:buffer_passthrough)
         end
         if buffer.heater_relay.state != :on
-          $app_logger.debug("Turning on heater relay")
+          $app_logger.debug('Turning on heater relay')
           buffer.heater_relay.on
         else
-          $app_logger.debug("Heater relay already on")
+          $app_logger.debug('Heater relay already on')
         end
-      end # of enter bufferfill action
+      end
+      # of enter bufferfill action
 
       # On entering HW
       # - Set relays to HW
       # - turn on HW pump
       # - start HW production
       # - turn off hydr shift pump
-      @buffer_sm.on_enter_HW do |event|
-        $app_logger.debug("Turning on HW pump")
+      @buffer_sm.on_enter_HW do
+        $app_logger.debug('Turning on HW pump')
         buffer.hw_pump.on
-        sleep buffer.config[:circulation_maintenance_delay] if (buffer.set_relays(:HW) != :delayed)
+        sleep buffer.config[:circulation_maintenance_delay] if\
+        buffer.set_relays(:HW) != :delayed
         if buffer.hydr_shift_pump.state != :off
-          $app_logger.debug("Turning off hydr shift pump")
+          $app_logger.debug('Turning off hydr shift pump')
           buffer.hydr_shift_pump.off
         else
-          $app_logger.debug("Hydr shift pump already off")
+          $app_logger.debug('Hydr shift pump already off')
         end
         buffer.hw_wiper.set_water_temp(buffer.hw_thermostat.temp)
-      end # of enter HW action
+      end
+      # of enter HW action
 
       # On exiting HW
       # - stop HW production
@@ -946,12 +994,15 @@ module BoilerBase
       @buffer_sm.on_exit_HW do
         buffer.hw_wiper.set_water_temp(65.0)
         Thread.new do
-          Thread.current[:name] = "HW exit"
+          Thread.current[:name] = 'HW exit'
           sleep buffer.config[:circulation_maintenance_delay]
           buffer.hw_pump.off
-        end # of hw pump stopper delayed thread
-      end # of exit HW action
-    end # of setting up state machine callbacks - set_sm_actions
+        end
+        # of hw pump stopper delayed thread
+      end
+      # of exit HW action
+    end
+    # of setting up state machine callbacks - set_sm_actions
 
     #
     # Evaluate heating conditions and
@@ -960,7 +1011,11 @@ module BoilerBase
     # circulation is expected to be stable when called
     #
     def evaluate_heater_state_change
-      @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>((@upper_sensor.temp - @config[:buffer_base_temp])*100)/(@lower_sensor.temp - @config[:buffer_base_temp])}
+      @heat_in_buffer = {\
+        temp: @upper_sensor.temp,
+        percentage: ((@upper_sensor.temp - @config[:buffer_base_temp]) * 100) / \
+                    (@lower_sensor.temp - @config[:buffer_base_temp])
+      }
 
       @forward_temp = @forward_sensor.temp
       @delta_t = @forward_sensor.temp - @return_sensor.temp
@@ -978,22 +1033,28 @@ module BoilerBase
       when :hydrshift
 
         # Hydr shift Boiler - State change condition evaluation
-        if (@forward_temp > limit_watertemp(@target_temp) + @config[:forward_above_target]) and
-        @boiler_on and
-        # Stay in hydr shift anyway if target is above limit for buffering logic
-        limit_watertemp(@target_temp,@config[:buffer_passthrough_overshoot]) <= @config[:buffer_passthrough_fwd_temp_limit] and
-        @relax_timer.expired?
+        if (@forward_temp > limit_watertemp(@target_temp) + @config[:forward_above_target])\
+           && @boiler_on && \
+           # Stay in hydr shift anyway if target is above limit for buffering logic
+           limit_watertemp(@target_temp,@config[:buffer_passthrough_overshoot])\
+           <= @config[:buffer_passthrough_fwd_temp_limit] &&
+           @heater_relax_timer.expired?
 
           # Too much heat with hydr shift heat - let's either feed from buffer or fill the buffer
           # based on how much heat is stored in the buffer
-          $app_logger.debug("Boiler overheating - state will change from #{@buffer_sm.current}")
-          $app_logger.debug("Heat in buffer: #{@heat_in_buffer[:temp]} Percentage: #{@heat_in_buffer[:percentage]}")
+          $app_logger.debug('Boiler overheating '\
+                            " - state will change from #{@buffer_sm.current}")
+          $app_logger.debug("Heat in buffer: #{@heat_in_buffer[:temp]} "\
+                            " Percentage: #{@heat_in_buffer[:percentage]}")
 
-          if @heat_in_buffer[:temp] > @target_temp - @config[:buffer_expiry_threshold]
-            $app_logger.debug("Decision: Buffer contains enough heat - feed from buffer")
+          if @heat_in_buffer[:temp] > \
+             @target_temp - @config[:buffer_expiry_threshold]
+            $app_logger.debug('Decision: Buffer contains enough heat'\
+                              ' - feed from buffer')
             @buffer_sm.frombuffer
           else
-            $app_logger.debug("Decision: Buffer contains not much heat - fill buffer through the hydr shifter")
+            $app_logger.debug('Decision: Buffer contains not much heat'\
+                              '- fill buffer through the hydr shifter')
             @buffer_sm.bufferfill
           end
 
@@ -1008,30 +1069,39 @@ module BoilerBase
         # Buffer Fill - State change evaluation conditions
 
         # Move out of buffer fill if the required temperature rose above the limit
-        # This logic is here to try forcing the heating back to hydr shift heating in cases where
-        # the heat generated can be dissipated. This a safety escrow
+        # This logic is here to try forcing the heating back to hydr shift heating
+        # in cases where the heat generated can be dissipated. This a safety escrow
         # to try avoiding unnecessary buffer filling
-        if limit_watertemp(@target_temp,@config[:buffer_passthrough_overshoot]) > @config[:buffer_passthrough_fwd_temp_limit] and @relax_timer.expired?
-          $app_logger.debug("Target set above buffer_passthrough_fwd_temp_limit. State will change from buffer passthrough")
-          $app_logger.debug("Decision: hydr shifted")
+        if limit_watertemp(@target_temp,@config[:buffer_passthrough_overshoot]) > \
+           @config[:buffer_passthrough_fwd_temp_limit] && @heater_relax_timer.expired?
+          $app_logger.debug('Target set above buffer_passthrough_fwd_temp_limit.'\
+                            'State will change from buffer passthrough')
+          $app_logger.debug('Decision: hydr shifted')
           @buffer_sm.hydrshift
 
           # If the buffer is nearly full - too low delta T or
           # too hot then start feeding from the buffer.
-          # As of now we assume that the boiler is able to generate the output temp requred
-          # therefore it is enough to monitor the deltaT to find out if the above condition is met
-        elsif @forward_temp > (limit_watertemp(@target_temp,@config[:buffer_passthrough_overshoot]) + @config[:forward_above_target]) and
-        @boiler_on and
-        @relax_timer.expired?
-          $app_logger.debug("Overheating - buffer full. State will change from buffer passthrough")
-          $app_logger.debug("Decision: Feed from buffer")
+          # As of now we assume that the boiler is able to generate the
+          # output temp requred therefore it is enough to monitor the
+          # deltaT to find out if the above condition is met
+        elsif @forward_temp > \
+              (limit_watertemp(@target_temp,\
+                               @config[:buffer_passthrough_overshoot]) + \
+              @config[:forward_above_target]) && @boiler_on &&
+              @heater_relax_timer.expired?
+          $app_logger.debug('Overheating - buffer full.'\
+                            ' State will change from buffer passthrough')
+          $app_logger.debug('Decision: Feed from buffer')
           @buffer_sm.frombuffer
 
           # Buffer Fill - State maintenance operations
           # Set the required water temperature raised with the buffer filling offset
           # Decide how ot set relays based on boiler state
         else
-          @heat_wiper.set_water_temp(limit_watertemp(@target_temp,@config[:buffer_passthrough_overshoot]))
+          @heat_wiper.set_water_temp(limit_watertemp(\
+                                       @target_temp,
+                                       @config[:buffer_passthrough_overshoot]
+                                     ))
           @boiler_on ? set_relays(:buffer_passthrough) : set_relays(:hydr_shifted)
         end
 
@@ -1043,40 +1113,44 @@ module BoilerBase
         # then it needs re-filling. This will ensure an operation of filling the buffer with
         # target+@config[:buffer_passthrough_overshoot] and consuming until target-@config[:buffer_expiry_threshold]
         # The effective hysteresis is therefore @config[:buffer_passthrough_overshoot]+@config[:buffer_expiry_threshold]
-        if @forward_temp < @target_temp - @config[:buffer_expiry_threshold]  and @relax_timer.expired?
-          $app_logger.debug("Buffer empty - state will change from buffer feed")
+        if @forward_temp < @target_temp - @config[:buffer_expiry_threshold] && \
+           @heater_relax_timer.expired?
+          $app_logger.debug('Buffer empty - state will change from buffer feed')
 
           # If in radheat mode then go back to hydr shift heat
           if @mode == :radheat
-            $app_logger.debug("Radheat mode - Decision: Hydr shift")
+            $app_logger.debug('Radheat mode - Decision: Hydr shift')
             @buffer_sm.hydrshift
 
             # Else evaluate going back to bufferfill or hydr shift
           else
             # If we are below the exit limit then go for filling the buffer
-            if limit_watertemp(@target_temp) < @config[:buffer_passthrough_fwd_temp_limit]
-              $app_logger.debug("Decision: fill buffer in buffer passthrough")
+            if limit_watertemp(@target_temp) <
+               @config[:buffer_passthrough_fwd_temp_limit]
+              $app_logger.debug('Decision: fill buffer in buffer passthrough')
               @buffer_sm.bufferfill
 
               # If the target is above the exit limit then go for hydrshift mode
             else
-              $app_logger.debug("Decision: target temp higher than passthrough limit - hydr shift heat")
+              $app_logger.debug('Decision: target temp higher than passthrough'\
+                                'limit - hydr shift heat')
               @buffer_sm.hydrshift
             end
-          end # of state evaluation
-        else
-          # Well nothing needs to be done here at the moment but the block is
-        end # of exit criterium evaluation
-        # Raise an exception - no matching state
+          end
+          # of state evaluation
+        end
+        # of exit criterium evaluation
 
         # HW state
       when :HW
         # Just set the HW temp
         @hw_wiper.set_water_temp(@hw_thermostat.temp)
       else
-        raise "Unexpected state in evaluate_heater_state_change: #{@buffer_sm.current}"
+        raise 'Unexpected state in '\
+              "evaluate_heater_state_change: #{@buffer_sm.current}"
       end
-    end # of evaluate_heater_state_change
+    end
+    # of evaluate_heater_state_change
 
     # Perform mode change of the boiler
     def perform_mode_change
@@ -1085,14 +1159,18 @@ module BoilerBase
       # @prev_mode contains the prevoius mode
       $app_logger.debug("Heater control mode changed, got new mode: #{@mode}")
 
-      @heat_in_buffer = {:temp=>@upper_sensor.temp,:percentage=>((@upper_sensor.temp - @config[:buffer_base_temp])*100)/(@lower_sensor.temp - @config[:buffer_base_temp])}
+      @heat_in_buffer = { temp: @upper_sensor.temp,
+                          percentage: ((@upper_sensor.temp -
+                                        @config[:buffer_base_temp]) * 100) / \
+                                      (@lower_sensor.temp -
+                                        @config[:buffer_base_temp]) }
 
       case @mode
       when :HW
         @buffer_sm.HW
       when :floorheat, :radheat
         # Resume if in a heating mode before HW
-        if @prev_mode == :HW and @prev_sm_state != :off
+        if @prev_mode == :HW && @prev_sm_state != :off
           $app_logger.debug("Ending HW - resuming state to: #{@prev_sm_state}")
           @buffer_sm.trigger(@prev_sm_state)
 
@@ -1100,23 +1178,24 @@ module BoilerBase
         else
           # Do hydrshift if radheat is specified
           if @mode == :radheat
-            $app_logger.debug("Setting heating to hydr shift")
+            $app_logger.debug('Setting heating to hydr shift')
             @buffer_sm.hydrshift
 
             # Do oscillating bufferfill mode heatinh
             # starti it either in bufferfill or frombuffer based on heat available in the buffer
           else # @mode == :floorheat
             if @heat_in_buffer[:temp] > @target_temp - @config[:buffer_expiry_threshold]
-              $app_logger.debug("Setting heating to frombuffer")
+              $app_logger.debug('Setting heating to frombuffer')
               @buffer_sm.frombuffer
             else
-              $app_logger.debug("Setting heating to bufferfill")
+              $app_logger.debug('Setting heating to bufferfill')
               @buffer_sm.bufferfill
             end
           end
         end
       else
-        raise "Invalid mode in do_control after mode change. Expecting either ':HW', ':radheat' or ':floorheat' got: '#{@mode}'"
+        raise 'Invalid mode in do_control after mode change. Expecting either '\
+              "':HW', ':radheat' or ':floorheat' got: '#{@mode}'"
       end
     end
 
@@ -1127,8 +1206,9 @@ module BoilerBase
       # Only a single control thread may exist
       #      return unless @control_mutex.try_lock
 
-      if !@control_mutex.try_lock
-        $app_logger.debug("Heater thread active - control mutex locked returning")
+      unless @control_mutex.try_lock
+        $app_logger.debug('Heater thread active - '\
+          'control mutex locked returning')
         return
       end
 
@@ -1137,15 +1217,16 @@ module BoilerBase
 
       # The controller thread
       @control_thread = Thread.new do
-        Thread.current[:name] = "Heater control"
-        $app_logger.debug("Heater control thread created")
+        Thread.current[:name] = 'Heater control'
+        $app_logger.debug('Heater control thread created')
 
         # Loop until signalled to exit
-        while !@stop_control.locked?
+        until @stop_control.locked?
           $config_mutex.synchronize {@config = $config.dup}
           # Make sure mode only changes outside of the block
           @modesetting_mutex.synchronize do
-            # Update any objects that may use parameters from the newly copied config
+            # Update any objects that may use parameters from
+            # the newly copied config
             update_config_items
 
             # Perform the actual periodic control loop actions
@@ -1156,42 +1237,43 @@ module BoilerBase
               controller_log
               evaluate_heater_state_change
             end
-
           end
-          sleep @config[:buffer_heat_control_loop_delay] unless @stop_control.locked?
+          sleep @config[:buffer_heat_control_loop_delay] unless\
+                @stop_control.locked?
         end
         # Stop heat production of the boiler
-        $app_logger.debug("Heater control turning off")
+        $app_logger.debug('Heater control turning off')
         @buffer_sm.turnoff
-        $app_logger.debug("Heater control thread exiting")
-      end # Of control Thread
-
-    end # Of start_control_thread
+        $app_logger.debug('Heater control thread exiting')
+      end
+      # Of control Thread
+    end
+    # Of start_control_thread
 
     # Signal the control thread to stop
     def stop_control_thread
-
-      $app_logger.debug("Heater stop_control_thread called")
+      $app_logger.debug('Heater stop_control_thread called')
 
       # Only stop the control therad if it is alive
-      return if !@control_mutex.locked? or @control_thread == nil
+      return if !@control_mutex.locked? || @control_thread.nil?
 
-      $app_logger.debug("Control thread running: signalling it to stop")
+      $app_logger.debug('Control thread running: signalling it to stop')
 
       # Signal control thread to exit
       @stop_control.lock
 
       # Wait for the thread to exit
-      $app_logger.debug("Waiting control thread to exit")
+      $app_logger.debug('Waiting control thread to exit')
       @control_thread.join
 
-      $app_logger.debug("Unlocking control mutex")
+      $app_logger.debug('Unlocking control mutex')
       # Unlock the thread lock so a new call to start_control_thread
       # can create the control thread
       @control_mutex.unlock
 
-      $app_logger.debug("Control thread stopped")
-    end # of stop_control_thread
+      $app_logger.debug('Control thread stopped')
+    end
+    # of stop_control_thread
 
     def controller_log
       do_limited_logging = false
@@ -1202,9 +1284,7 @@ module BoilerBase
         do_limited_logging = false
       end
 
-      if do_limited_logging
-        $app_logger.debug("Heater mode: #{@mode}")
-      end
+      $app_logger.debug("Heater mode: #{@mode}") if do_limited_logging
     end
 
     # Feed logging
@@ -1217,11 +1297,12 @@ module BoilerBase
         do_limited_logging = false
       end
 
-      $app_logger.trace("--------------------------------")
-      $app_logger.trace("Relax timer active: #{@relax_timer.sec_left}") if !@relax_timer.expired?
+      $app_logger.trace('--------------------------------')
+      $app_logger.trace("Relax timer active: #{@heater_relax_timer.sec_left}") unless
+        @heater_relax_timer.expired?
       $app_logger.trace("Relay state: #{@relay_state}")
       $app_logger.trace("SM state: #{@buffer_sm.current}")
-      $app_logger.trace("Boiler state: "+(@boiler_on ? "on" : "off"))
+      $app_logger.trace('Boiler state: ' + (@boiler_on ? 'on' : 'off'))
 
       #      $app_logger.debug("Forward temp: #{@forward_temp}")
       #      $app_logger.debug("Delta_t: #{@delta_t}")
@@ -1231,24 +1312,37 @@ module BoilerBase
       when :hydrshift
         $app_logger.trace("Forward temp: #{@forward_temp}")
         $app_logger.trace("Target temp: #{@target_temp.round(2)}")
-        $app_logger.trace("Threshold forward_above_target: #{@config[:forward_above_target]}")
+        $app_logger.trace('Threshold forward_above_target: '\
+          "#{@config[:forward_above_target]}")
         $app_logger.trace("Delta_t: #{@delta_t}")
         if do_limited_logging
-          $app_logger.debug("HydrShift heating. Not limited target: #{@target_temp.round(2)}")
+          $app_logger.debug('HydrShift heating. Not limited target: '\
+            "#{@target_temp.round(2)}")
           $app_logger.debug("Forward temp: #{@forward_temp}")
           $app_logger.debug("Delta_t: #{@delta_t}")
-          @boiler_on ? $app_logger.debug("Boiler detected : on") : $app_logger.debug("Boiler detected : off")
+          if @boiler_on
+            $app_logger.debug('Boiler detected : on')
+          else
+            $app_logger.debug('Boiler detected : off')
+          end
         end
       when :bufferfill
         $app_logger.trace("Forward temp: #{@forward_temp}")
-        $app_logger.trace("Reqd./effective target temps: #{@target_temp.round(2)}/#{@heat_wiper.get_target}")
-        $app_logger.trace("buffer_passthrough_fwd_temp_limit: #{@config[:buffer_passthrough_fwd_temp_limit]}")
+        $app_logger.trace('Reqd./effective target temps: '\
+          "#{@target_temp.round(2)}/#{@heat_wiper.get_target}")
+        $app_logger.trace('buffer_passthrough_fwd_temp_limit: '\
+          "#{@config[:buffer_passthrough_fwd_temp_limit]}")
         $app_logger.trace("Delta_t: #{@delta_t}")
         if do_limited_logging
-          $app_logger.debug("Buffer Passthrough. Not limited target: #{(@target_temp + @config[:buffer_passthrough_overshoot]).round(2)}")
+          $app_logger.debug('Buffer Passthrough. Not limited target: '\
+            "#{(@target_temp + @config[:buffer_passthrough_overshoot]).round(2)}")
           $app_logger.debug("Forward temp: #{@forward_temp}")
           $app_logger.debug("Delta_t: #{@delta_t}")
-          @boiler_on ? $app_logger.debug("Boiler detected : on") : $app_logger.debug("Boiler detected : off")
+          if @boiler_on
+            $app_logger.debug('Boiler detected : on')
+          else
+            $app_logger.debug('Boiler detected : off')
+          end
         end
       when :frombuffer
         if do_limited_logging
@@ -1263,6 +1357,7 @@ module BoilerBase
         end
       end
     end
-
-  end # of class Bufferheat
-end # of module BoilerBase
+  end
+  # of class Bufferheat
+end
+# of module BoilerBase
