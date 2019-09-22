@@ -844,7 +844,8 @@ class HeatingController
       @external_sensor.mock_temp = $config[:external_mock_temp]\
        unless (defined? @external_sensor).nil?
 
-      @sm_relax_timer.set_timer(@config[:heating_sm_state_change_relaxation_time])
+      @sm_relax_timer.set_timer\
+        ($config[:heating_sm_state_change_relaxation_time])
     end
   end
 
