@@ -240,7 +240,7 @@ class HeatingController
            DRY_RUN)
 
     # Create buffer direction shift valves
-    @forward_valve = \
+    @hw_valve = \
       BusDevice::Switch\
       .new('Forward three-way valve',
            'After the boiler+buffer joint - Contact 2 on main board',
