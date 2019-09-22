@@ -149,12 +149,12 @@ class HeatingController
                                 $config[:main_controller_dev_addr],
                                 $config[:upper_buffer_sensor_reg_addr],
                                 DRY_RUN, $config[:upper_buffer_mock_temp])
-    @lower_buffer_sensor =
-      BusDevice::TempSensor.new('Lower Buffer temperature',
-                                'Inside the buffer - lower section',
+    @buffer_output_sensor =
+      BusDevice::TempSensor.new('Buffer output temperature',
+                                'On top of the buffer',
                                 $config[:main_controller_dev_addr],
-                                $config[:lower_buffer_sensor_reg_addr],
-                                DRY_RUN, $config[:lower_buffer_mock_temp])
+                                $config[:buffer_output_sensor_reg_addr],
+                                DRY_RUN, $config[:buffer_output_mock_temp])
     @hw_sensor =
       BusDevice::TempSensor.new('Hot Water temperature',
                                 'Inside the Hot water container main sensing tube',
@@ -297,7 +297,7 @@ class HeatingController
     @buffer_heater = \
       BoilerBase::BufferHeat\
       .new(@forward_sensor, @upper_buffer_sensor,
-           @lower_buffer_sensor, @return_sensor,
+           @buffer_output_sensor, @return_sensor,
            @hw_sensor, @forward_valve, @return_valve,
            @bypass_valve, @heater_relay, @hydr_shift_pump,
            @hot_water_pump, @hw_watertemp, @heating_watertemp)

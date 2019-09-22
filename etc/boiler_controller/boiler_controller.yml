@@ -89,7 +89,7 @@
 :forward_mock_temp: 37.0
 :return_mock_temp: 31.0
 :upper_buffer_mock_temp: 31.0
-:lower_buffer_mock_temp: 31.0
+:buffer_output_mock_temp: 31.0
 :HW_mock_temp: 55.0
 :living_mock_temp: 19.0
 :upstairs_mock_temp: 23.0
@@ -182,7 +182,7 @@
 :hw_sensor_reg_addr: 1
 :basement_sensor_reg_addr: 2
 :upper_buffer_sensor_reg_addr: 3
-:lower_buffer_sensor_reg_addr: 4
+:buffer_output_sensor_reg_addr: 4
 :return_valve_reg_addr: 5
 :forward_valve_reg_addr: 6
 :radiator_pump_reg_addr: 7

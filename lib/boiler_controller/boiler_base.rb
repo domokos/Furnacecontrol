@@ -649,17 +649,17 @@ module BoilerBase
   # of class BufferSM
 
   class BufferHeat
-    attr_reader :forward_sensor, :upper_sensor, :lower_sensor, :return_sensor
+    attr_reader :forward_sensor, :upper_sensor, :buf_output_sensor, :return_sensor
     attr_reader :hw_thermostat
     attr_reader :forward_valve, :return_valve,  :bypass_valve
     attr_reader :heater_relay, :hydr_shift_pump, :hw_pump
     attr_reader :hw_wiper, :heat_wiper
     attr_reader :config
     attr_reader :heater_relax_timer
-    attr_reader :heat_in_buffer, :target_temp
+    attr_reader :target_temp
     attr_accessor :prev_sm_state
     # Initialize the buffer taking its sensors and control valves
-    def initialize(forward_sensor, upper_sensor, lower_sensor, return_sensor,
+    def initialize(forward_sensor, upper_sensor, buf_output_sensor, return_sensor,
                    hw_thermostat,
                    forward_valve, return_valve, bypass_valve,
                    heater_relay, hydr_shift_pump, hw_pump,
@@ -668,7 +668,7 @@ module BoilerBase
       # Buffer Sensors
       @forward_sensor = forward_sensor
       @upper_sensor = upper_sensor
-      @lower_sensor = lower_sensor
+      @buf_output_sensor = buf_output_sensor
       @return_sensor = return_sensor
 
       # HW_thermostat for filtered value
@@ -727,10 +727,6 @@ module BoilerBase
       set_sm_actions
       @buffer_sm.init
 
-      @heat_in_buffer =
-        { temp: @upper_sensor.temp,
-          percentage: ((@upper_sensor.temp - @config[:buffer_base_temp]) * 100) / \
-                      (@lower_sensor.temp - @config[:buffer_base_temp]) }
       @target_temp = 7.0
       @forward_temp = 7.0
       @delta_t = 0.0
@@ -1012,12 +1008,6 @@ module BoilerBase
     # circulation is expected to be stable when called
     #
     def evaluate_heater_state_change
-      @heat_in_buffer = {\
-        temp: @upper_sensor.temp,
-        percentage: ((@upper_sensor.temp - @config[:buffer_base_temp]) * 100) / \
-                    (@lower_sensor.temp - @config[:buffer_base_temp])
-      }
-
       @forward_temp = @forward_sensor.temp
       @delta_t = @forward_sensor.temp - @return_sensor.temp
 
@@ -1039,10 +1029,9 @@ module BoilerBase
           # based on how much heat is stored in the buffer
           $app_logger.debug('Boiler overheating '\
                             " - state will change from #{@buffer_sm.current}")
-          $app_logger.debug("Heat in buffer: #{@heat_in_buffer[:temp]} "\
-                            " Percentage: #{@heat_in_buffer[:percentage]}")
+          $app_logger.debug("Heat in buffer: #{@upper_sensor.temp} ")
 
-          if @heat_in_buffer[:temp] > \
+          if @upper_sensor.temp > \
              @target_temp - @config[:buffer_expiry_threshold]
             $app_logger.debug('Decision: Buffer contains enough heat'\
                               ' - feed from buffer')
@@ -1155,12 +1144,6 @@ module BoilerBase
       # @prev_mode contains the prevoius mode
       $app_logger.debug("Heater control mode changed, got new mode: #{@mode}")
 
-      @heat_in_buffer = { temp: @upper_sensor.temp,
-                          percentage: ((@upper_sensor.temp -
-                                        @config[:buffer_base_temp]) * 100) / \
-                                      (@lower_sensor.temp -
-                                        @config[:buffer_base_temp]) }
-
       case @mode
       when :HW
         @buffer_sm.HW
@@ -1180,7 +1163,7 @@ module BoilerBase
         # start it either in bufferfill or frombuffer based on
         # heat available in the buffer
         # @mode == :floorheat
-        elsif @heat_in_buffer[:temp] > @target_temp - @config[:buffer_expiry_threshold]
+        elsif @upper_sensor.temp > @target_temp - @config[:buffer_expiry_threshold]
           $app_logger.debug('Setting heating to frombuffer')
           @buffer_sm.frombuffer
         else
