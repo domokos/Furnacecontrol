@@ -295,8 +295,9 @@ class HeatingController
            @hot_water_pump, @hw_watertemp, @heating_watertemp)
 
     # Create the Mixer controller
-    @mixer_controller = BoilerBase\
-      ::MixerControl.new(@mixer_sensor, @cw_switch, @ccw_switch)
+    @mixer_controller = \
+      BoilerBase::MixerControl\
+      .new(@mixer_sensor, @cw_switch, @ccw_switch)
   end
 
   # Prefill sensors and thermostats to ensure smooth startup operation
