@@ -381,7 +381,7 @@ class HeatingController
       controller.mixer_controller.stop_control
 
       # Set the buffer for direct connection
-      controller.buffer_heater.set_relays(:hydr_shifted)
+      controller.buffer_heater.set_relays(:normal)
 
       # All radiator valves open
       controller.basement_radiator_valve.open
@@ -414,7 +414,7 @@ class HeatingController
       controller.buffer_heater.set_mode(:off)
 
       # Set the buffer for direct connection
-      controller.buffer_heater.set_relays(:hydr_shifted)
+      controller.buffer_heater.set_relays(:HW)
 
       # Stop the mixer controller
       controller.mixer_controller.stop_control
@@ -901,11 +901,9 @@ class HeatingController
     relay_movement_thread = Thread.new do
       Thread.current[:name] = 'Relay movement thread'
       5.times do
-        @buffer_heater.set_relays(:hydr_shifted)
+        @buffer_heater.set_relays(:normal)
         sleep 10
-        @buffer_heater.set_relays(:buffer_passthrough)
-        sleep 10
-        @buffer_heater.set_relays(:feed_from_buffer)
+        @buffer_heater.set_relays(:HW)
       end
     end
 
@@ -932,21 +930,14 @@ class HeatingController
       @living_floor_valve.open
       @upstairs_floor_valve.open
 
-      @buffer_heater.set_relays(:hydr_shifted)
+      @buffer_heater.set_relays(:normal)
 
       @radiator_pump.on
       @floor_pump.on
       @hydr_shift_pump.on
 
       sleep 10
-      @buffer_heater.set_relays(:buffer_passthrough)
-      sleep 10
-      @hydr_shift_pump.off
-      @buffer_heater.set_relays(:feed_from_buffer)
-      sleep 10
-      @radiator_pump.off
-      @floor_pump.off
-      sleep 2
+
       @basement_floor_valve.close
       @basement_radiator_valve.close
       @living_floor_valve.close
@@ -954,7 +945,7 @@ class HeatingController
       sleep 2
     end
 
-    @buffer_heater.set_relays(:hydr_shifted)
+    @buffer_heater.set_relays(:normal)
 
     # Activate the hot water pump
     @hot_water_pump.on
