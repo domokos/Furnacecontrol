@@ -70,7 +70,7 @@ class HeatingController
   def create_valueprocs
     # Create the is_HW or valve movement proc for the floor PWM thermostats
     @is_hw_or_valve_proc = proc {
-      determine_power_needed == 'HW' || @moving_valves_required == true
+      determine_power_needed == :HW || @moving_valves_required == true
     }
 
     # Create the value proc for the basement thermostat. Lambda is used because
@@ -1012,6 +1012,7 @@ class HeatingController
     $heating_logger.debug("Target boiler temp: #{@target_boiler_temp.round(2)}")
 
     $heating_logger.debug("\nHW temperature: #{@hw_thermostat.temp.round(2)}")
+    $heating_logger.debug("\nHW target: #{@hw_thermostat.threshold.round(2)}")
 
     $heating_logger.debug("\nExternal temperature: #{@living_floor_thermostat.temp.round(2)}")
     $heating_logger.debug("Mode thermostat status: #{@mode_thermostat.state}")
