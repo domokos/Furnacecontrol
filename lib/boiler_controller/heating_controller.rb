@@ -11,6 +11,7 @@ class HeatingController
   attr_reader :forward_temp, :HW_thermostat, :return_temp, :living_thermostat
   attr_reader :upstairs_thermostat, :basement_thermostat
   attr_reader :living_floor_thermostat, :mode_thermostat, :target_boiler_temp
+  attr_reader :sm_relax_timer
 
   def initialize(_initial_state, initial_mode)
     # Init instance variables
