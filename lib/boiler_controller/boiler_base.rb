@@ -639,8 +639,7 @@ module BoilerBase
 
     events do
       event :turnoff, any: :off
-      event :hydrshift, any: :hydrshift
-      event :bufferfill, any: :bufferfill
+      event :normal, any: :normal
       event :frombuffer, any: :frombuffer
       event :HW, any: :HW
       event :init, none: :off
@@ -651,7 +650,7 @@ module BoilerBase
   class BufferHeat
     attr_reader :forward_sensor, :upper_sensor, :buf_output_sensor, :return_sensor
     attr_reader :hw_thermostat
-    attr_reader :forward_valve, :return_valve,  :bypass_valve
+    attr_reader :hw_valve
     attr_reader :heater_relay, :hydr_shift_pump, :hw_pump
     attr_reader :hw_wiper, :heat_wiper
     attr_reader :config
@@ -661,7 +660,7 @@ module BoilerBase
     # Initialize the buffer taking its sensors and control valves
     def initialize(forward_sensor, upper_sensor, buf_output_sensor, return_sensor,
                    hw_thermostat,
-                   forward_valve, return_valve, bypass_valve,
+                   hw_valve,
                    heater_relay, hydr_shift_pump, hw_pump,
                    hw_wiper, heat_wiper)
 
@@ -675,9 +674,7 @@ module BoilerBase
       @hw_thermostat = hw_thermostat
 
       # Valves
-      @forward_valve = forward_valve
-      @return_valve = return_valve
-      @bypass_valve = bypass_valve
+      @hw_valve = hw_valve
 
       # Pump, heat relay
       @heater_relay = heater_relay
@@ -728,7 +725,10 @@ module BoilerBase
       @buffer_sm.init
 
       @target_temp = 7.0
-      @forward_temp = 7.0
+      @overshoot_required = false
+      @forward_temp = @forward_sensor.temp
+      @upper_temp = @upper_sensor.temp
+      @return_temp = @return_sensor.temp
       @delta_t = 0.0
     end
 
@@ -786,54 +786,35 @@ module BoilerBase
     # of set_mode
 
     # Set the required forward water temperature
-    def set_target(new_target_temp)
+    def set_target(new_target_temp, overshoot_required)
       @target_temp = new_target_temp
+      @overshoot_required = overshoot_required
     end
 
     # Configure the relays for a certain purpose
     def set_relays(config)
       # Check validity of the parameter
       raise "Invalid relay config parameter '#{config}' passed to set_relays(config)"\
-      unless %i[hydr_shifted buffer_passthrough feed_from_buffer HW].include? config
+        unless %i[normal HW].include? config
 
-      return if @relay_state == config
+      return :immediate if @relay_state == config
 
       $app_logger.info("Changing relay state: '#{@relay_state}' => '#{config}'")
-      moved = false
 
       case config
-      when :hydr_shifted
-        moved |= @forward_valve.off
-        moved |= @return_valve.off
-        moved |= @bypass_valve.off
-        @relay_state = :hydr_shifted
-      when :buffer_passthrough
-        moved |= @forward_valve.off
-        moved |= @return_valve.on
-        moved |= @bypass_valve.off
-        @relay_state = :buffer_passthrough
-      when :feed_from_buffer
-        moved |= @forward_valve.on
-        moved |= @return_valve.off
-        moved |= @bypass_valve.on
-        @relay_state = :feed_from_buffer
       when :HW
-        $app_logger.debug("Don't care bypass valve is: #{@bypass_valve.state}")
-        moved |= @forward_valve.off
-        moved |= @return_valve.off
+        @hw_valve.on
         @relay_state = :HW
+      when :normal
+        @hw_valve.off
+        @relay_state = :normal
       end
 
-      if moved
-        $app_logger.debug('Waiting for relays to move into new position')
+      $app_logger.debug('Waiting for relays to move into new position')
 
-        # Wait until valve movement is complete
-        sleep @config[:three_way_movement_time]
-        return :delayed
-      else
-        $app_logger.debug('Relays not moved - not waiting')
-        return :immediate
-      end
+      # Wait until valve movement is complete
+      sleep @config[:three_way_movement_time]
+      :delayed
     end
 
     # Calculate limited boiler target watertemp taking overshoot into account
@@ -849,7 +830,7 @@ module BoilerBase
 
     # Define  the state transition actions
     def set_sm_actions
-      # :off, :hydrshift, :bufferfill, :frombuffer, :HW
+      # :off, :normal, :frombuffer, :HW
 
       # Log state transitions and arm the state change relaxation timer
       @buffer_sm.on_before do |event|
@@ -866,7 +847,7 @@ module BoilerBase
         if event.name == :init
           $app_logger.debug('Bufferheater initializing')
           buffer.hw_wiper.set_water_temp(65.0)
-          buffer.set_relays(:hydr_shifted)
+          buffer.set_relays(:normal)
           if buffer.heater_relay.state == :on
             $app_logger.debug('Turning off heater relay')
             buffer.heater_relay.off
@@ -876,34 +857,34 @@ module BoilerBase
           end
         else
           $app_logger.debug('Bufferheater turning off')
-          if  buffer.heater_relay.state == :on
+          if buffer.heater_relay.state == :on
             $app_logger.debug('Turning off heater relay')
             buffer.heater_relay.off
             sleep buffer.config[:circulation_maintenance_delay]
           else
             $app_logger.debug('Heater relay already off')
           end
-          buffer.set_relays(:hydr_shifted)
+          buffer.set_relays(:normal)
         end
       end
       # of enter off action
 
-      # On entering heat through hydr shifter
+      # On entering heat through buffer shifter
       # - Turn off HW production of boiler
-      # - move relays to boiler hydr shifted
+      # - move relay to normal
       # - start the boiler
       # - Start the hydr shift pump
-      @buffer_sm.on_enter_hydrshift do
+      @buffer_sm.on_enter_normal do
         buffer.heat_wiper.set_water_temp(\
           buffer.limit_watertemp(buffer.target_temp))
         if buffer.hydr_shift_pump.state != :on
           $app_logger.debug('Turning on hydr shift pump')
           buffer.hydr_shift_pump.on
           sleep buffer.config[:circulation_maintenance_delay] \
-          if buffer.set_relays(:hydr_shifted) == :immediate
+          if buffer.set_relays(:normal) == :immediate
         else
           $app_logger.debug('Hydr shift pump already on')
-          buffer.set_relays(:hydr_shifted)
+          buffer.set_relays(:normal)
         end
         if buffer.heater_relay.state != :on
           $app_logger.debug('Turning on heater relay')
@@ -912,7 +893,7 @@ module BoilerBase
           $app_logger.debug('Heater relay already on')
         end
       end
-      # of enter hydrshift action
+      # of enter normal action
 
       # On entering heating from buffer set relays and turn off heating
       # - Turn off HW production of boiler
@@ -934,36 +915,9 @@ module BoilerBase
           buffer.hydr_shift_pump.off
         end
         # Setup the relays
-        buffer.set_relays(:feed_from_buffer)
+        buffer.set_relays(:normal)
       end
       # of enter frombuffer action
-
-      # On entering heating bufferfill
-      # - Turn off HW production of boiler
-      # - Set relays to buffer passthrough
-      # - turn on heating
-      # - turn on hydr shift pump
-      @buffer_sm.on_enter_bufferfill do
-        buffer.heat_wiper.set_water_temp\
-          buffer.limit_watertemp(buffer.target_temp,\
-                                 buffer.config[:buffer_passthrough_overshoot])
-        if buffer.hydr_shift_pump.state != :on
-          $app_logger.debug('Turning on hydr shift pump')
-          buffer.hydr_shift_pump.on
-          sleep buffer.config[:circulation_maintenance_delay] \
-          if buffer.set_relays(:buffer_passthrough) == :immediate
-        else
-          $app_logger.debug('Hydr shift pump already on')
-          buffer.set_relays(:buffer_passthrough)
-        end
-        if buffer.heater_relay.state != :on
-          $app_logger.debug('Turning on heater relay')
-          buffer.heater_relay.on
-        else
-          $app_logger.debug('Heater relay already on')
-        end
-      end
-      # of enter bufferfill action
 
       # On entering HW
       # - Set relays to HW
@@ -990,12 +944,8 @@ module BoilerBase
       # - Turn off hw pump in a delayed manner
       @buffer_sm.on_exit_HW do
         buffer.hw_wiper.set_water_temp(65.0)
-        Thread.new do
-          Thread.current[:name] = 'HW exit'
-          sleep buffer.config[:circulation_maintenance_delay]
-          buffer.hw_pump.off
-        end
-        # of hw pump stopper delayed thread
+        sleep buffer.config[:circulation_maintenance_delay]
+        buffer.hw_pump.off
       end
       # of exit HW action
     end
@@ -1009,73 +959,35 @@ module BoilerBase
     #
     def evaluate_heater_state_change
       @forward_temp = @forward_sensor.temp
-      @delta_t = @forward_sensor.temp - @return_sensor.temp
-
-      feed_log
+      @upper_temp = @upper_sensor.temp
+      @return_temp = @return_sensor.temp
 
       # Evaluate Hydr shift Boiler states
       case @buffer_sm.current
-      when :hydrshift
-
-        # Hydr shift Boiler - State change condition evaluation
-        # Stay in hydr shift anyway if target is above limit for buffering logic
-        if (@forward_temp > limit_watertemp(@target_temp) + @config[:forward_above_target]) && \
-           limit_watertemp(@target_temp,@config[:buffer_passthrough_overshoot])\
-           <= @config[:buffer_passthrough_fwd_temp_limit] &&
-           @heater_relax_timer.expired?
-
-          # Too much heat with hydr shift heat - let's either feed from buffer
-          # or fill the buffer
-          # based on how much heat is stored in the buffer
-          $app_logger.debug('Boiler overheating '\
-                            " - state will change from #{@buffer_sm.current}")
-          $app_logger.debug("Heat in buffer: #{@upper_sensor.temp} ")
-
-          if @upper_sensor.temp > \
-             @target_temp - @config[:buffer_expiry_threshold]
-            $app_logger.debug('Decision: Buffer contains enough heat'\
-                              ' - feed from buffer')
-            @buffer_sm.frombuffer
-          else
-            $app_logger.debug('Decision: Buffer contains not much heat'\
-                              '- fill buffer through the hydr shifter')
-            @buffer_sm.bufferfill
-          end
-
-          # Hydr_shift - State maintenance operations
-          # Just set the required water temperature
-        else
-          @heat_wiper.set_water_temp(limit_watertemp(@target_temp))
-        end
-
         # Evaluate Buffer Fill state
-      when :bufferfill
-        # Buffer Fill - State change evaluation conditions
+      when :normal
+        # Normal - State change evaluation conditions
 
-        # Move out of buffer fill if the required temperature rose above the limit
-        # This logic is here to try to force the heating back to hydr shift heating
-        # in cases where the heat generated can be dissipated. This a safety procedure
-        # to try avoiding unnecessary buffer filling
-        if limit_watertemp(@target_temp, @config[:buffer_passthrough_overshoot]) > \
-           @config[:buffer_passthrough_fwd_temp_limit] && @heater_relax_timer.expired?
+        # If the buffer is nearly full - too low delta T or
+        # too hot then start feeding from the buffer.
+        # As of now we assume that the boiler is able to generate the
+        # output temp requred therefore it is enough to monitor the
+        # deltaT to find out if the above condition is met
 
-          $app_logger.debug('Target set above buffer_passthrough_fwd_temp_limit.'\
-                            'State will change from buffer passthrough')
-          $app_logger.debug('Decision: hydr shifted')
-          @buffer_sm.hydrshift
+        @delta_t = @forward_temp - @return_temp
 
-          # If the buffer is nearly full - too low delta T or
-          # too hot then start feeding from the buffer.
-          # As of now we assume that the boiler is able to generate the
-          # output temp requred therefore it is enough to monitor the
-          # deltaT to find out if the above condition is met
-        elsif @forward_temp > \
-              (limit_watertemp(@target_temp,\
-                               @config[:buffer_passthrough_overshoot]) + \
+        overshoot = if @overshoot_required
+                      @config[:buffer_passthrough_overshoot]
+                    else
+                      0
+                    end
+
+        if @forward_temp > \
+           (limit_watertemp(@target_temp, overshoot) + \
               @config[:forward_above_target]) &&
-              @heater_relax_timer.expired?
+           @heater_relax_timer.expired?
           $app_logger.debug('Overheating - buffer full.'\
-                            ' State will change from buffer passthrough')
+                            ' State will change from buffer normal')
           $app_logger.debug('Decision: Feed from buffer')
           @buffer_sm.frombuffer
 
@@ -1083,45 +995,30 @@ module BoilerBase
           # Set the required water temperature raised with the buffer filling
           # offset Decide how ot set relays based on boiler state
         else
-          @heat_wiper.set_water_temp(limit_watertemp(\
-                                       @target_temp,
-                                       @config[:buffer_passthrough_overshoot]
-                                     ))
-          set_relays(:buffer_passthrough)
+          @heat_wiper\
+            .set_water_temp(limit_watertemp(@target_temp, overshoot))
+          set_relays(:normal)
         end
 
         # Evaluate feed from Buffer state
       when :frombuffer
 
-        # Feeed from Buffer - - State change evaluation conditions
-        # If the buffer is empty: unable to provide at least the target temp minus the hysteresis
-        # then it needs re-filling. This will ensure an operation of filling the buffer with
-        # target+@config[:buffer_passthrough_overshoot] and consuming until target-@config[:buffer_expiry_threshold]
-        # The effective hysteresis is therefore @config[:buffer_passthrough_overshoot]+@config[:buffer_expiry_threshold]
-        if @forward_temp < @target_temp - @config[:buffer_expiry_threshold] && \
+        # Feeed from Buffer - State change evaluation conditions
+        # If the buffer is empty: unable to provide at least the target temp
+        # minus the hysteresis then it needs re-filling. This will ensure an
+        # operation of filling the buffer with
+        # target+@config[:buffer_passthrough_overshoot] and consuming until
+        # target-@config[:buffer_expiry_threshold]. The effective hysteresis
+        # is therefore
+        # @config[:buffer_passthrough_overshoot]+@config[:buffer_expiry_threshold]
+
+        @delta_t = @upper_temp - @return_temp
+
+        if @upper_temp < @target_temp - @config[:buffer_expiry_threshold] && \
            @heater_relax_timer.expired?
           $app_logger.debug('Buffer empty - state will change from buffer feed')
-
-          # If in radheat mode then go back to hydr shift heat
-          if @mode == :radheat
-            $app_logger.debug('Radheat mode - Decision: Hydr shift')
-            @buffer_sm.hydrshift
-
-            # Else evaluate going back to bufferfill or hydr shift
-          else
-            # If we are below the exit limit then go for filling the buffer
-            if limit_watertemp(@target_temp) <
-               @config[:buffer_passthrough_fwd_temp_limit]
-              $app_logger.debug('Decision: fill buffer in buffer passthrough')
-              @buffer_sm.bufferfill
-
-              # If the target is above the exit limit then go for hydrshift mode
-            else
-              $app_logger.debug('Decision: target temp higher than passthrough'\
-                                'limit - hydr shift heat')
-              @buffer_sm.hydrshift
-            end
-          end
+          $app_logger.debug('Decision: normal')
+          @buffer_sm.normal
           # of state evaluation
         end
         # of exit criteria evaluation
@@ -1134,6 +1031,8 @@ module BoilerBase
         raise 'Unexpected state in '\
               "evaluate_heater_state_change: #{@buffer_sm.current}"
       end
+
+      feed_log
     end
     # of evaluate_heater_state_change
 
@@ -1153,22 +1052,16 @@ module BoilerBase
           $app_logger.debug("Ending HW - resuming state to: #{@prev_sm_state}")
           @buffer_sm.trigger(@prev_sm_state)
 
-          # Start/continue in either of the three states based on conditions
-        elsif @mode == :radheat
-          # Do hydrshift if radheat is specified
-          $app_logger.debug('Setting heating to hydr shift')
-          @buffer_sm.hydrshift
-
-        # Do oscillating bufferfill mode heating
-        # start it either in bufferfill or frombuffer based on
+        # Start/continue in either of the two states based on conditions
+        # Do oscillating buffer heating
+        # start it either in normal or frombuffer based on
         # heat available in the buffer
-        # @mode == :floorheat
         elsif @upper_sensor.temp > @target_temp - @config[:buffer_expiry_threshold]
           $app_logger.debug('Setting heating to frombuffer')
           @buffer_sm.frombuffer
         else
-          $app_logger.debug('Setting heating to bufferfill')
-          @buffer_sm.bufferfill
+          $app_logger.debug('Setting heating to normal')
+          @buffer_sm.normal
         end
       else
         raise 'Invalid mode in perform_mode_change. Expecting either '\
@@ -1284,35 +1177,24 @@ module BoilerBase
       #      $app_logger.debug("Delta_t: #{@delta_t}")
 
       case @buffer_sm.current
-      when :hydrshift
-        $app_logger.trace("Forward temp: #{@forward_temp}")
-        $app_logger.trace("Target temp: #{@target_temp.round(2)}")
-        $app_logger.trace('Threshold forward_above_target: '\
-          "#{@config[:forward_above_target]}")
-        $app_logger.trace("Delta_t: #{@delta_t}")
-        if do_limited_logging
-          $app_logger.debug('HydrShift heating. Not limited target: '\
-            "#{@target_temp.round(2)}")
-          $app_logger.debug("Forward temp: #{@forward_temp}")
-          $app_logger.debug("Delta_t: #{@delta_t}")
-        end
-      when :bufferfill
+      when :normal
         $app_logger.trace("Forward temp: #{@forward_temp}")
         $app_logger.trace('Reqd./effective target temps: '\
           "#{@target_temp.round(2)}/#{@heat_wiper.get_target}")
-        $app_logger.trace('buffer_passthrough_fwd_temp_limit: '\
-          "#{@config[:buffer_passthrough_fwd_temp_limit]}")
         $app_logger.trace("Delta_t: #{@delta_t}")
         if do_limited_logging
-          $app_logger.debug('Buffer Passthrough. Not limited target: '\
+          $app_logger.debug('Normal. Not limited target: '\
             "#{(@target_temp + @config[:buffer_passthrough_overshoot]).round(2)}")
           $app_logger.debug("Forward temp: #{@forward_temp}")
+          $app_logger.debug("Buffer output temp: #{@upper_temp}")
+          $app_logger.debug('Heat dissipation into the buffer: '\
+                            "#{@forward_temp - @upper_temp}")
           $app_logger.debug("Delta_t: #{@delta_t}")
         end
       when :frombuffer
         if do_limited_logging
           $app_logger.debug("Not limited target temp: #{@target_temp.round(2)}")
-          $app_logger.debug("Feed from buffer. Forward temp: #{@forward_temp}")
+          $app_logger.debug("Feed from buffer. Buffer output temp: #{@upper_temp}")
           $app_logger.debug("Delta_t: #{@delta_t}")
         end
       when :HW
