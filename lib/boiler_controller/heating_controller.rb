@@ -36,6 +36,8 @@ class HeatingController
 
     create_sm_with_actions
 
+    prefill_sensors
+
     # Set the initial state
     @heating_sm.init
 
@@ -317,8 +319,6 @@ class HeatingController
     # Set initial HW target
     @hw_thermostat.set_threshold(@hw_watertemp_polycurve\
       .float_value(@living_floor_thermostat.temp))
-
-    $app_logger.info("Living temp: #{@living_floor_thermostat.temp}")
   end
 
   # Define the activating actions of the statemachine
