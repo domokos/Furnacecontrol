@@ -358,6 +358,7 @@ class Buscomm
     # all read calls to serialport are blocking
     start_serial_reader_thread
     return_value = nil
+    msg_size = 0
 
     loop do
       # Handle timeout
