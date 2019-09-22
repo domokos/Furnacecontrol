@@ -61,6 +61,10 @@ class HeatingController
     @hw_watertemp_polycurve = \
       Globals::Polycurve.new($config[:HW_watertemp_polycurve])
 
+    # Set initial HW target
+    @hw_thermostat.set_threshold(@hw_watertemp_polycurve\
+      .float_value(@living_floor_thermostat.temp))
+
     $app_logger.debug('Boiler controller initialized initial state '\
                       "set to: #{@heating_sm.current}, "\
                       "Initial mode set to: #{@mode}")
@@ -315,10 +319,6 @@ class HeatingController
       sleep 0.5
       $shutdown_reason != Globals::NO_SHUTDOWN && break
     end
-
-    # Set initial HW target
-    @hw_thermostat.set_threshold(@hw_watertemp_polycurve\
-      .float_value(@living_floor_thermostat.temp))
   end
 
   # Define the activating actions of the statemachine
