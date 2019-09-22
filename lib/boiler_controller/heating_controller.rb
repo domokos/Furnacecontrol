@@ -1020,11 +1020,13 @@ class HeatingController
     $heating_logger.debug("Basement PWM value: #{(@basement_thermostat.value * \
                           100).round(0)}%")
     $heating_logger.debug("Basement floor valve: #{@basement_floor_valve.state}")
-    $heating_logger.debug("Basement thermostat status: #{@basement_thermostat.state}")
+    $heating_logger.debug('Basement thermostat status: '\
+                          "#{@basement_thermostat.state}")
 
     $heating_logger.debug("\nBoiler relay: #{@heater_relay.state}")
-    $heating_logger.debug("Boiler required temperature: #{@heating_watertemp.temp_required.round(2)}")
-    $heating_logger.debug('LOGITEM END\n')
+    $heating_logger.debug('Boiler required temperature: '\
+                          "#{@heating_watertemp.temp_required.round(2)}")
+    $heating_logger.debug("LOGITEM END\n")
   end
 
   # Walk through states to test the state machine
