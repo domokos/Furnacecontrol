@@ -307,12 +307,12 @@ class HeatingController
   # Prefill sensors and thermostats to ensure smooth startup operation
   def prefill_sensors
     6.times do |i|
-      $app_logger.debug("Prefilling sensors. Round: #{i} of 6")
+      $app_logger.info("Prefilling sensors. Round: #{i} of 6")
       read_sensors
       temp_power_needed = { state: @heating_sm.current,
                             power: determine_power_needed }
       determine_targets(temp_power_needed)
-      sleep 0.5
+      sleep 0.25
       $shutdown_reason != Globals::NO_SHUTDOWN && break
     end
 
