@@ -65,7 +65,7 @@ module BusDevice
               $app_logger.error('Bus device consistency checker process: '\
                 'Check method not defined for: '\
                 "'#{element.inspect}' Deleting from list")
-              @@check_process_mutex.synchronize {@@check_list.delete(element)}
+              @@check_process_mutex.synchronize { @@check_list.delete(element) }
             end
 
             # Just log the result - the checker process itself is expected
@@ -146,7 +146,7 @@ module BusDevice
     def write_device(value)
       if !@dry_run
         begin
-          retval = @@comm_interface.send_message(\
+          @@comm_interface.send_message(\
             @slave_address, Buscomm::SET_REGISTER,
             @register_address.chr + value.chr
           )
@@ -335,7 +335,8 @@ module BusDevice
       if !@dry_run
         begin
           @@comm_interface.send_message(@slave_address,
-            Buscomm::READ_REGISTER, @register_address.chr)
+                                        Buscomm::READ_REGISTER,
+                                        @register_address.chr)
           $app_logger.trace('Sucessfully read device '\
             "'#{@name}' address #{@register_address}")
         rescue MessagingError => e
@@ -362,7 +363,8 @@ module BusDevice
       if !@dry_run
         begin
           @@comm_interface.send_message(@slave_address,
-            Buscomm::SET_REGISTER, @register_address.chr + value.chr)
+                                        Buscomm::SET_REGISTER,
+                                        @register_address.chr + value.chr)
           $app_logger.trace("Sucessfully written #{value} to "\
             "pulse switch '#{@name}'")
         rescue MessagingError => e
@@ -393,7 +395,7 @@ module BusDevice
     ONEWIRE_TEMP_FAIL = -1295.0625
     DEFAULT_TEMP = 85.0
     UNREALISTIC_TEMP_DIFF_THRESHOLD = 15
-    
+
     def initialize(name, location, slave_address, register_address, dry_run, mock_temp, debug=false)
       @name = name
       @slave_address = slave_address
@@ -427,7 +429,7 @@ module BusDevice
           temp_tmp = read_temp
           # Skip out of bounds and sudden power-on reset values
           if temp_tmp < -55 || temp_tmp > 125 ||
-             ((temp_tmp-@lasttemp).abs > UNREALISTIC_TEMP_DIFF_THRESHOLD &&
+             ((temp_tmp - @lasttemp).abs > UNREALISTIC_TEMP_DIFF_THRESHOLD &&
              temp_tmp == DEFAULT_TEMP)
             @skipped_temp_values += 1
           else
@@ -454,13 +456,14 @@ module BusDevice
       begin
         # Reat the register on the bus
         retval = @@comm_interface.send_message(@slave_address,
-          Buscomm::READ_REGISTER, @register_address.chr)
+                                               Buscomm::READ_REGISTER,
+                                               @register_address.chr)
         $app_logger.trace('Succesful read from temp register'\
           " of '" + @name + "'")
 
         # Calculate temperature value from the data returned
         temp = '' << retval[:Content][Buscomm::PARAMETER_START] <<
-               retval[:Content][Buscomm::PARAMETER_START+1]
+               retval[:Content][Buscomm::PARAMETER_START + 1]
         $app_logger.info('Low level HW ' + @name + ' value: ' + temp.unpack('H*')[0]) if @debug
         return temp.unpack('s')[0] * ONE_BIT_TEMP_VALUE
       rescue MessagingError => e
@@ -628,7 +631,7 @@ module BusDevice
           $shutdown_reason = Globals::FATAL_SHUTDOWN
           check_result = :Failure
         end
-      rescue Exception => e
+      rescue StandardError => e
         # Log the messaging error
         if e.class == MessagingError
           retval = e.return_message

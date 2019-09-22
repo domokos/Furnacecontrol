@@ -93,13 +93,11 @@ module Globals
   $config = []
 
   def self.read_global_config
-    begin
-      $config_mutex.synchronize { $config = YAML.load_file(CONFIG_FILE_PATH) }
-    rescue e
-      $app_logger.fatal('Cannot open config file: ' + CONFIG_FILE_PATH + \
-                        ' Shutting down.')
-      $shutdown_reason = Globals::FATAL_SHUTDOWN
-    end
+    $config_mutex.synchronize { $config = YAML.load_file(CONFIG_FILE_PATH) }
+  rescue StandardError
+    $app_logger.fatal('Cannot open config file: ' + CONFIG_FILE_PATH + \
+                      ' Shutting down.')
+    $shutdown_reason = Globals::FATAL_SHUTDOWN
   end
 
   read_global_config
@@ -121,7 +119,7 @@ module Globals
       @start_ts = Time.now if expired?
     end
 
-    def sec_left()
+    def sec_left
       expired? ? 0 : (Time.now - @start_ts).to_i
     end
 
@@ -145,8 +143,9 @@ module Globals
     end
   end
 
-  # A class that approximates a curve by returning the value of the linear function
-  # defined by two neighbour points. Points' X values are expected to be sorted and monotonously increasig.
+  # A class that approximates a curve by returning the value of the linear
+  # function defined by two neighbour points. Points' X values are expected
+  # to be sorted and monotonously increasig.
   class Polycurve
     def initialize(pointlist, shift = 0)
       load(pointlist, shift)
@@ -160,7 +159,7 @@ module Globals
 
       @pointlist = Array.new(pointlist)
       @pointlist.each_index do |i|
-        if @pointlist[i].size !=2
+        if @pointlist[i].size != 2
           raise 'Invalid array size at index ' + i.to_s + \
                 ' must be 2 it is: ' + @pointlist[i].size.to_s
         end
@@ -173,14 +172,14 @@ module Globals
       float_value(x_in, constrainted).round
     end
 
-    def float_value(x_in, constrainted=true)
+    def float_value(x_in, constrainted = true)
       index = 0
       @pointlist.each_index do |n|
         index = n
         break if @pointlist[n][0] >= x_in
       end
 
-      #pc = Polycurve.new([[1,10],[2,20],[5,500],[6,600]])
+      # pc = Polycurve.new([[1,10],[2,20],[5,500],[6,600]])
 
       # Check boundaries
       if constrainted
@@ -191,7 +190,8 @@ module Globals
         index = 1
       end
 
-      # point value on linear curve between the two neighbouring or extrapolated points
+      # point value on linear curve between the two neighbouring
+      # or extrapolated points
       ((@pointlist[index - 1][1] - @pointlist[index][1])\
       / (@pointlist[index - 1][0] - @pointlist[index][0]).to_f\
       * (x_in - @pointlist[index - 1][0].to_f) + @pointlist[index - 1][1])
@@ -204,12 +204,13 @@ module Globals
     attr_accessor :slope, :offset
     def initialize(dx, dy = nil)
       @size = dx.size
-      dy,dx = dx,axis() unless dy  # make 2D if given 1D
+      dy,dx = dx,axis() unless dy # make 2D if given 1D
       raise 'Arguments not same length!' unless @size == dy.size
+
       sxx = sxy = sx = sy = 0
-      dx.zip(dy).each do |x,y|
-        sxy += x*y
-        sxx += x*x
+      dx.zip(dy).each do |x, y|
+        sxy += x * y
+        sxx += x * x
         sx  += x
         sy  += y
       end
@@ -218,7 +219,7 @@ module Globals
     end
 
     def fit
-      axis.map{ |data| predict(data) }
+      axis.map { |data| predict(data) }
     end
 
     def predict(x)

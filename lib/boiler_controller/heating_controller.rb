@@ -2,7 +2,7 @@ require '/usr/local/lib/boiler_controller/boiler_base'
 require 'rubygems'
 
 # Class of the heating controller
-class Heating_controller
+class HeatingController
   attr_reader :mixer_controller, :buffer_heater, :heating_watertemp
   attr_reader :radiator_pump, :floor_pump, :HW_watertemp, :heater_relay
   attr_reader :hydr_shift_pump, :hot_water_pump, :basement_floor_valve
@@ -183,19 +183,19 @@ class Heating_controller
   def create_devices
     # Create thermostats, with default threshold values and hysteresis values
     @living_thermostat =
-      BoilerBase::Symmetric_thermostat.new(@living_sensor, 0.3, 0.0, 15)
+      BoilerBase::SymmetricThermostat.new(@living_sensor, 0.3, 0.0, 15)
     @hw_thermostat =
-      BoilerBase::Asymmetric_thermostat.new(@hw_sensor, 2, 0, 0.0, 8)
+      BoilerBase::ASymmetricThermostat.new(@hw_sensor, 2, 0, 0.0, 8)
     @living_floor_thermostat =
-      BoilerBase::Symmetric_thermostat.new(@external_sensor,
+      BoilerBase::SymmetricThermostat.new(@external_sensor,
                                            $config[:living_floor_hysteresis],
                                            $config[:floor_heating_threshold], 30)
     @mode_thermostat =
-      BoilerBase::Symmetric_thermostat.new(@external_sensor,
+      BoilerBase::SymmetricThermostat.new(@external_sensor,
                                            $config[:mode_hysteresis],
                                            $config[:mode_threshold], 50)
     @upstairs_thermostat =
-      BoilerBase::Symmetric_thermostat.new(@upstairs_sensor, 0.3, 5.0, 15)
+      BoilerBase::SymmetricThermostat.new(@upstairs_sensor, 0.3, 5.0, 15)
     @basement_thermostat =
       BoilerBase::PwmThermostat.new(@basement_sensor, 30,
                                     @basement_thermostat_valueproc,
@@ -283,7 +283,7 @@ class Heating_controller
 
     # Create the Mixer controller
     @mixer_controller = BoilerBase\
-      ::Mixer_control.new(@mixer_sensor, @cw_switch, @ccw_switch)
+      ::MixerControl.new(@mixer_sensor, @cw_switch, @ccw_switch)
   end
 
   # Prefill sensors and thermostats to ensure smooth startup operation
@@ -404,8 +404,8 @@ class Heating_controller
     end
 
     # Activation actions for Post circulation heating
-    @heating_sm.on_enter_posthwing do |event|
-      $app_logger.debug("Activating \"PostHW\" state")
+    @heating_sm.on_enter_posthwing do
+      $app_logger.debug('Activating \"PostHW\" state')
 
       # Signal heater to turn off
       controller.buffer_heater.set_mode(:off)
@@ -623,7 +623,7 @@ class Heating_controller
     @floor_watertemp_polycurve.load($config[:floor_watertemp_polycurve])
     @hw_watertemp_polycurve.load($config[:HW_watertemp_polycurve])
 
-    @mode = @mode_thermostat.is_on? ? :mode_Heat_HW : :mode_HW
+    @mode = @mode_thermostat.on? ? :mode_Heat_HW : :mode_HW
 
     case power_needed[:power]
     when :HW
@@ -722,14 +722,14 @@ class Heating_controller
       end
     when :RAD # Only Radiator pumps on
       #  decide on basement radiator valve
-      if @basement_thermostat.is_on?
+      if @basement_thermostat.on?
         @basement_radiator_valve.open
       else
         @basement_radiator_valve.delayed_close
       end
 
       if changed
-        $app_logger.info("Setting valves and pumps for RAD")
+        $app_logger.info('Setting valves and pumps for RAD')
         @basement_floor_valve.delayed_close
         @living_floor_valve.delayed_close
         @upstairs_floor_valve.delayed_close
@@ -742,7 +742,7 @@ class Heating_controller
 
     when :RADFLOOR
       # decide on basement valves based on basement temperature
-      if @basement_thermostat.is_on?
+      if @basement_thermostat.on?
         @basement_radiator_valve.open
         @basement_floor_valve.open
       else
@@ -751,7 +751,7 @@ class Heating_controller
       end
 
       # decide on floor valves based on external temperature
-      if @living_floor_thermostat.is_on?
+      if @living_floor_thermostat.on?
         @living_floor_valve.open
         @upstairs_floor_valve.open
       else
@@ -760,7 +760,7 @@ class Heating_controller
       end
 
       if changed
-        $app_logger.info("Setting valves and pumps for RADFLOOR")
+        $app_logger.info('Setting valves and pumps for RADFLOOR')
 
         # Floor heating on
         @floor_pump.on
@@ -769,14 +769,14 @@ class Heating_controller
       end
     when :FLOOR
       # decide on basement valve based on basement temperature
-      if @basement_thermostat.is_on?
+      if @basement_thermostat.on?
         @basement_floor_valve.open
       else
         @basement_floor_valve.delayed_close
       end
 
       # decide on floor valves based on external temperature
-      if @living_floor_thermostat.is_on?
+      if @living_floor_thermostat.on?
         @living_floor_valve.open
         @upstairs_floor_valve.open
       else
@@ -785,7 +785,7 @@ class Heating_controller
       end
 
       if changed
-        $app_logger.info("Setting valves and pumps for FLOOR")
+        $app_logger.info('Setting valves and pumps for FLOOR')
         @basement_radiator_valve.delayed_close
 
         # Floor heating on
@@ -798,86 +798,95 @@ class Heating_controller
   # This function tells what kind of  power is needed
   def determine_power_needed
     if @moving_valves_required
-      return :NONE
-    elsif @mode != :mode_Off and @hw_thermostat.is_on?
+      :NONE
+    elsif @mode != :mode_Off && @hw_thermostat.on?
       # Power needed for hot water - overrides Heat power need
-      return :HW
-    elsif @mode == :mode_Heat_HW and (@upstairs_thermostat.is_on? or \
-    @living_thermostat.is_on? ) and \
-    @living_floor_thermostat.is_off? and \
-    @basement_thermostat.is_off?
+      :HW
+    elsif @mode == :mode_Heat_HW && (@upstairs_thermostat.on? || \
+          @living_thermostat.on?) && \
+          @living_floor_thermostat.off? && \
+          @basement_thermostat.off?
       # Power needed for heating
-      return :RAD
-    elsif @mode == :mode_Heat_HW and (@upstairs_thermostat.is_on? or \
-    @living_thermostat.is_on? ) and \
-    (@living_floor_thermostat.is_on? or \
-    @basement_thermostat.is_on?)
+      :RAD
+    elsif @mode == :mode_Heat_HW && (@upstairs_thermostat.on? || \
+          @living_thermostat.on?) && \
+          (@living_floor_thermostat.on? || \
+          @basement_thermostat.on?)
       # Power needed for heating and floor heating
-      return :RADFLOOR
-    elsif @mode == :mode_Heat_HW and (@living_floor_thermostat.is_on? or \
-    @basement_thermostat.is_on?)
+      :RADFLOOR
+    elsif @mode == :mode_Heat_HW && (@living_floor_thermostat.on? || \
+          @basement_thermostat.on?)
       # Power needed for floor heating only
-      return :FLOOR
+      :FLOOR
     else
       # No power needed
-      return :NONE
+      :NONE
     end
   end
 
   def read_config
-    Globals::read_global_config
+    Globals.read_global_config
 
     $config_mutex.synchronize do
-      @forward_sensor.mock_temp = $config[:forward_mock_temp] if (defined? @forward_sensor != nil)
-      @return_sensor.mock_temp = $config[:return_mock_temp] if (defined? @return_sensor != nil)
-      @hw_sensor.mock_temp = $config[:HW_mock_temp] if (defined? @hw_sensor != nil)
+      @forward_sensor.mock_temp = $config[:forward_mock_temp]\
+       unless (defined? @forward_sensor).nil?
+      @return_sensor.mock_temp = $config[:return_mock_temp]\
+       unless (defined? @return_sensor).nil?
+      @hw_sensor.mock_temp = $config[:HW_mock_temp]\
+       unless (defined? @hw_sensor).nil?
 
-      @living_sensor.mock_temp = $config[:living_mock_temp] if (defined? @living_sensor != nil)
-      @upstairs_sensor.mock_temp = $config[:upstairs_mock_temp] if (defined? @upstairs_sensor != nil)
-      @basement_sensor.mock_temp = $config[:basement_mock_temp] if (defined? @basement_sensor != nil)
-      @external_sensor.mock_temp = $config[:external_mock_temp] if (defined? @external_sensor != nil)
+      @living_sensor.mock_temp = $config[:living_mock_temp]\
+       unless (defined? @living_sensor).nil?
+      @upstairs_sensor.mock_temp = $config[:upstairs_mock_temp]\
+       unless (defined? @upstairs_sensor).nil?
+      @basement_sensor.mock_temp = $config[:basement_mock_temp]\
+       unless (defined? @basement_sensor).nil?
+      @external_sensor.mock_temp = $config[:external_mock_temp]\
+       unless (defined? @external_sensor).nil?
 
-      @sm_relax_timer.set_timer(@config[:heating_sm_state_change_relaxation_time])
+      @sm_relax_timer.set_timer\
+        (@config[:heating_sm_state_change_relaxation_time])
     end
   end
 
   def valve_move_evaluation
 
-    # Only perform real check if time is between 11:00 and 11:15 in the morning
-    return unless (((Time.now.to_i % (24*60*60))+ 60*60) > (10*60*60)) and
-    (((Time.now.to_i % (24*60*60))+ 60*60) < (10.25*60*60))
+    # Only perform real check if time is between 10:00 and 10:15 in the morning
+    return unless\
+    (((Time.now.to_i % (24 * 60 * 60)) + 60 * 60) > (10 * 60 * 60)) &&
+    (((Time.now.to_i % (24 * 60 * 60)) + 60 * 60) < (10.25 * 60 * 60))
 
     # If moving already scheduled then return
     return if @moving_valves_required
 
     # If there is no logfile we need to move
-    if !File.exists?($config[:magnetic_valve_movement_logfile])
+    unless File.exist?($config[:magnetic_valve_movement_logfile])
       @moving_valves_required = true
-      $app_logger.info("No movement log file found - Setting moving_valves_required to true for the first time")
+      $app_logger.info('No movement log file found - '\
+        'Setting moving_valves_required to true for the first time')
       return
     end
 
     # If there is a logfile we need to read it and evaluate movement need based on last log entry
-    @move_logfile = File.new($config[:magnetic_valve_movement_logfile],"a+")
-    @move_logfile.seek(0,IO::SEEK_SET)
-    while (!@move_logfile.eof)
-      lastline = @move_logfile.readline
-    end
+    @move_logfile = File.new($config[:magnetic_valve_movement_logfile], 'a+')
+    @move_logfile.seek(0, IO::SEEK_SET)
 
-    seconds_between_move = $config[:magnetic_valve_movement_days] * 24*60*60
+    lastline = @move_logfile.readline until @move_logfile.eof
+
+    seconds_between_move = $config[:magnetic_valve_movement_days] * 24 * 60 * 60
 
     # Move if moved later than the parameter read
-    if lastline.to_i+seconds_between_move < Time.now.to_i and
-    # And we are just after 10 o'clock
-    ((Time.now.to_i % (24*60*60))+ 60*60) > (10*60*60)
+    if lastline.to_i + seconds_between_move < Time.now.to_i &&
+       # And we are just after 10 o'clock
+       ((Time.now.to_i % (24 * 60 * 60)) + 60 * 60) > (10 * 60 * 60)
       @moving_valves_required = true
-      $app_logger.info("Setting moving_valves_required to true")
+      $app_logger.info('Setting moving_valves_required to true')
     end
     @move_logfile.close
   end
 
   def do_magnetic_valve_movement
-    $app_logger.info("Start moving valves")
+    $app_logger.info('Start moving valves')
 
     @radiator_pump.off
     @floor_pump.off
@@ -886,7 +895,7 @@ class Heating_controller
 
     # First move without water circulation
     relay_movement_thread = Thread.new do
-      Thread.current[:name] = "Relay movement thread"
+      Thread.current[:name] = 'Relay movement thread'
       5.times do
         @buffer_heater.set_relays(:hydr_shifted)
         sleep 10
@@ -948,13 +957,13 @@ class Heating_controller
     sleep 15
     @hot_water_pump.off
 
-    @move_logfile = File.new($config[:magnetic_valve_movement_logfile],"a+")
+    @move_logfile = File.new($config[:magnetic_valve_movement_logfile], 'a+')
     @move_logfile.write(Time.now.to_s)
     @move_logfile.write("\n")
     @move_logfile.write(Time.now.to_i.to_s)
     @move_logfile.write("\n")
     @move_logfile.close
-    $app_logger.info("Moving valves finished")
+    $app_logger.info('Moving valves finished')
   end
 
   # Perform app cycle logging
@@ -968,17 +977,21 @@ class Heating_controller
   # Perform heating cycle logging
   def heating_cycle_logging(power_needed)
     return unless @logger_timer.expired?
+
     @logger_timer.reset
 
     $heating_logger.debug("LOGITEM BEGIN @ #{Time.now.asctime}")
     $heating_logger.debug("Active state: #{@heating_sm.current}")
 
-    sth=""
-    @state_history.each {|e| sth+= ") => (#{e[:state]},#{e[:power]},"+(Time.now.getlocal(0)-e[:timestamp].to_i).strftime("%T")+" ago"}
-    $heating_logger.debug("State and power_needed history : #{sth[5,1000]})")
+    sth = ''
+    @state_history.each do |e|
+      sth += ") => (#{e[:state]},#{e[:power]}," + \
+             (Time.now.getlocal(0) - e[:timestamp].to_i).strftime('%T') + ' ago'
+    end
+    $heating_logger.debug("State and power_needed history : #{sth[5, 1000]})")
     $heating_logger.debug("Forward temperature: #{@forward_temp.round(2)}")
     $heating_logger.debug("Return water temperature: #{@return_temp.round(2)}")
-    $heating_logger.debug("Delta T on the Boiler: #{(@forward_temp-@return_temp).round(2)}")
+    $heating_logger.debug("Delta T on the Boiler: #{(@forward_temp - @return_temp).round(2)}")
     $heating_logger.debug("Target boiler temp: #{@target_boiler_temp.round(2)}")
 
     $heating_logger.debug("\nHW temperature: #{@hw_thermostat.temp.round(2)}")
@@ -993,37 +1006,41 @@ class Heating_controller
     $heating_logger.debug("Floor pump: #{@floor_pump.state}")
     $heating_logger.debug("Hydr shift pump: #{@hydr_shift_pump.state}")
 
-    $heating_logger.debug("\nLiving target/temperature: #{@living_thermostat.threshold}/#{@living_thermostat.temp.round(2)}")
+    $heating_logger.debug("\nLiving target/temperature: #{@living_thermostat.threshold} / \
+                          #{@living_thermostat.temp.round(2)}")
     $heating_logger.debug("Living thermostat state: #{@living_thermostat.state}")
 
-    $heating_logger.debug("\nUpstairs target/temperature: #{@upstairs_thermostat.threshold}/#{@upstairs_thermostat.temp.round(2)}")
+    $heating_logger.debug("\nUpstairs target/temperature: #{@upstairs_thermostat.threshold} / \
+                          #{@upstairs_thermostat.temp.round(2)}")
     $heating_logger.debug("Upstairs thermostat state: #{@upstairs_thermostat.state}")
 
     $heating_logger.debug("Living floor thermostat status: #{@living_floor_thermostat.state}")
     $heating_logger.debug("Living floor valve: #{@living_floor_valve.state}")
     $heating_logger.debug("Upstairs floor valve: #{@upstairs_floor_valve.state}")
 
-    $heating_logger.debug("\nBasement target/temperature: #{@basement_thermostat.target}/#{@basement_thermostat.temp.round(2)}")
-    $heating_logger.debug("Basement PWM value: #{(@basement_thermostat.value*100).round(0)}%")
+    $heating_logger.debug("\nBasement target/temperature: #{@basement_thermostat.target} / \
+                          #{@basement_thermostat.temp.round(2)}")
+    $heating_logger.debug("Basement PWM value: #{(@basement_thermostat.value * \
+                          100).round(0)}%")
     $heating_logger.debug("Basement floor valve: #{@basement_floor_valve.state}")
     $heating_logger.debug("Basement thermostat status: #{@basement_thermostat.state}")
 
     $heating_logger.debug("\nBoiler relay: #{@heater_relay.state}")
     $heating_logger.debug("Boiler required temperature: #{@heating_watertemp.temp_required.round(2)}")
-    $heating_logger.debug("LOGITEM END\n")
+    $heating_logger.debug('LOGITEM END\n')
   end
 
   # Walk through states to test the state machine
   def apply_test_control()
-
     Thread.pass
 
     sleep(0.5)
 
     begin
       @test_controls = YAML.load_file(Globals::TEST_CONTROL_FILE_PATH)
-    rescue
-      $app_logger.fatal("Cannot open config file: "+Globals::TEST_CONTROL_FILE_PATH+" Shutting down.")
+    rescue StandardError
+      $app_logger.fatal('Cannot open config file: ' + \
+                        Globals::TEST_CONTROL_FILE_PATH + ' Shutting down.')
       $shutdown_reason = Globals::FATAL_SHUTDOWN
     end
 
@@ -1049,7 +1066,6 @@ class Heating_controller
     $app_logger.debug("Living floor PWM thermostat state: #{@living_floor_thermostat.state}")
     $app_logger.debug("Power needed: #{determine_power_needed}")
     @test_cycle_cnt += 1
-
   end
 
   public
@@ -1061,8 +1077,9 @@ class Heating_controller
   def shutdown
     # Turn off the heater
     @heating_sm.turnoff
-    $app_logger.info("Shutdown complete. Shutdown reason: "+$shutdown_reason)
-    command="rm -f "+$pidpath
+    $app_logger.info('Shutdown complete. Shutdown reason: ' + $shutdown_reason)
+    command = 'rm -f ' + $pidpath
     system(command)
   end
-end # of Class Heating_controller
+end
+# of Class HeatingController

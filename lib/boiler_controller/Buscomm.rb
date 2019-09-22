@@ -123,7 +123,7 @@ class Buscomm
       [28_800, 121], # COMM_SPEED_28800_H
       [57_600, 110], # COMM_SPEED_57600_H
       [115_200, 100] # COMM_SPEED_115200_H
-    ]
+    ].freeze
   #
   # Response opcodes
   #
@@ -206,7 +206,7 @@ class Buscomm
     @train = ''
 
     i = TRAIN_LENGTH_SND
-    while i > 0
+    while i.positive?
       @train << TRAIN_CHR.chr
       i -= 1
     end
@@ -255,15 +255,15 @@ class Buscomm
       loop do
         @message_send_buffer.clear
 
-        #Create the message
+        # Create the message
         @message_send_buffer << @master_address.chr << slave_address.chr << \
           @message_seq.chr << opcode.chr << parameter
 
-        #Increment message seq
+        # Increment message seq
         @message_seq < 255 ? @message_seq += 1 : @message_seq = 0
 
         @message_send_buffer = (@message_send_buffer.length + 3).chr + \
-        @message_send_buffer
+                                @message_send_buffer
 
         crc = crc16(@message_send_buffer)
 
@@ -291,7 +291,7 @@ class Buscomm
         retry_count += 1
 
         # Print response history if already retried once
-        if retry_count > 0
+        if retry_count.positive?
           ret_c = 1
           response_history.each do |resp|
             $app_logger.warn("Messaging retry ##{ret_c} Error code: "\
@@ -455,7 +455,7 @@ class Buscomm
   end
 
   def stop_serial_reader_thread
-    @serial_reader_thread.exit unless @serial_reader_thread.nil?
+    @serial_reader_thread&.exit
     @serial_reader_thread = nil
   end
 
