@@ -324,7 +324,7 @@ class HeatingController
     @heating_sm.target self
 
     @sm_relax_timer = Globals::TimerSec.new(\
-      @config[:heating_sm_state_change_relaxation_time],
+      $config[:heating_sm_state_change_relaxation_time],
       'Buffer SM state change relaxation timer'\
     )
 
