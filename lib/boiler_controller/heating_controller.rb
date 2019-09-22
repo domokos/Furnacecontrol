@@ -209,78 +209,90 @@ class HeatingController
            $config[:main_controller_dev_addr],
            $config[:basement_radiator_valve_reg_addr],
            DRY_RUN)
-    @basement_floor_valve = BusDevice\
-      ::DelayedCloseMagneticValve.new('Basement floor valve',
-                                      'Contact 9 on main board',
-                                      $config[:main_controller_dev_addr],
-                                      $config[:basement_floor_valve_reg_addr],
-                                      DRY_RUN)
-    @living_floor_valve = BusDevice\
-      ::DelayedCloseMagneticValve.new('Living level floor valve',
-                                      'In the living floor water distributor',
-                                      $config[:six_owbus_dev_addr],
-                                      $config[:living_floor_valve_reg_addr],
-                                      DRY_RUN)
-    @upstairs_floor_valve = BusDevice\
-      ::DelayedCloseMagneticValve.new('Upstairs floor valve',
-                                      'In the upstairs water distributor',
-                                      $config[:six_owbus_dev_addr],
-                                      $config[:upstairs_floor_valve_reg_addr],
-                                      DRY_RUN)
+    @basement_floor_valve = \
+      BusDevice::DelayedCloseMagneticValve\
+      .new('Basement floor valve',
+           'Contact 9 on main board',
+            $config[:main_controller_dev_addr],
+            $config[:basement_floor_valve_reg_addr],
+            DRY_RUN)
+    @living_floor_valve = \
+     BusDevice::DelayedCloseMagneticValve\
+     .new('Living level floor valve',
+          'In the living floor water distributor',
+          $config[:six_owbus_dev_addr],
+          $config[:living_floor_valve_reg_addr],
+          DRY_RUN)
+    @upstairs_floor_valve = \
+      BusDevice::DelayedCloseMagneticValve\
+      .new('Upstairs floor valve',
+           'In the upstairs water distributor',
+           $config[:six_owbus_dev_addr],
+           $config[:upstairs_floor_valve_reg_addr],
+           DRY_RUN)
 
     # Create buffer direction shift valves
-    @forward_valve = BusDevice\
-      ::Switch.new('Forward three-way valve',
-                   'After the boiler+buffer joint - Contact 2 on main board',
-                   $config[:main_controller_dev_addr],
-                   $config[:forward_valve_reg_addr], DRY_RUN)
-    @return_valve = BusDevice\
-      ::Switch.new('Return valve',
-                   'Before the buffer cold entry point - Contact 3 on main board',
-                   $config[:main_controller_dev_addr],
-                   $config[:return_valve_reg_addr], DRY_RUN)
-    @bypass_valve = BusDevice\
-      ::Switch.new('Hydraulic shifter bypass valve',
-                   'After the hydraulic shift - Contact 4 on mixer controller',
-                   $config[:mixer_controller_dev_addr],
-                   $config[:mixer_hydr_shift_bypass_valve_reg_addr], DRY_RUN)
+    @forward_valve = \
+      BusDevice::Switch\
+      .new('Forward three-way valve',
+           'After the boiler+buffer joint - Contact 2 on main board',
+           $config[:main_controller_dev_addr],
+           $config[:forward_valve_reg_addr], DRY_RUN)
+    @return_valve = \
+      BusDevice::Switch\
+      .new('Return valve',
+           'Before the buffer cold entry point - Contact 3 on main board',
+           $config[:main_controller_dev_addr],
+           $config[:return_valve_reg_addr], DRY_RUN)
+    @bypass_valve = \
+      BusDevice::Switch\
+      .new('Hydraulic shifter bypass valve',
+           'After the hydraulic shift - Contact 4 on mixer controller',
+           $config[:mixer_controller_dev_addr],
+           $config[:mixer_hydr_shift_bypass_valve_reg_addr], DRY_RUN)
 
     # Create heater relay switch
-    @heater_relay = BusDevice\
-      ::Switch.new('Heater relay','Heater contact on main panel',
-                   $config[:main_controller_dev_addr],
-                   $config[:heater_relay_reg_addr], DRY_RUN)
+    @heater_relay = \
+      BusDevice::Switch\
+      .new('Heater relay', 'Heater contact on main panel',
+           $config[:main_controller_dev_addr],
+           $config[:heater_relay_reg_addr], DRY_RUN)
 
     # Create mixer pulsing switches
-    @cw_switch = BusDevice\
-      ::PulseSwitch.new('CW mixer switch','In the mixer controller box',
-                        $config[:mixer_controller_dev_addr],
-                        $config[:mixer_cw_reg_addr], DRY_RUN)
-    @ccw_switch = BusDevice\
-      ::PulseSwitch.new('CCW mixer switch','In the mixer controller box',
-                        $config[:mixer_controller_dev_addr],
-                        $config[:mixer_ccw_reg_addr], DRY_RUN)
+    @cw_switch = \
+      BusDevice::PulseSwitch\
+      .new('CW mixer switch', 'In the mixer controller box',
+           $config[:mixer_controller_dev_addr],
+           $config[:mixer_cw_reg_addr], DRY_RUN)
+    @ccw_switch = \
+      BusDevice::PulseSwitch\
+      .new('CCW mixer switch', 'In the mixer controller box',
+           $config[:mixer_controller_dev_addr],
+           $config[:mixer_ccw_reg_addr], DRY_RUN)
 
     # Create water temp wipers
-    @heating_watertemp = BusDevice\
-      ::HeatingWaterTemp.new('Heating temp wiper',
-                             'Heating wiper contact on main panel',
-                             $config[:main_controller_dev_addr],
-                             $config[:heating_wiper_reg_addr], DRY_RUN)
-    @hw_watertemp = BusDevice\
-      ::HWWaterTemp.new('HW temp wiper',
-                        'HW wiper contact on main panel',
-                        $config[:main_controller_dev_addr],
-                        $config[:hw_wiper_reg_addr], DRY_RUN,
-                        $config[:hw_temp_shift])
+    @heating_watertemp = \
+      BusDevice::HeatingWaterTemp\
+      .new('Heating temp wiper',
+           'Heating wiper contact on main panel',
+           $config[:main_controller_dev_addr],
+           $config[:heating_wiper_reg_addr], DRY_RUN)
+    @hw_watertemp = \
+      BusDevice::HWWaterTemp\
+      .new('HW temp wiper',
+           'HW wiper contact on main panel',
+           $config[:main_controller_dev_addr],
+           $config[:hw_wiper_reg_addr], DRY_RUN,
+           $config[:hw_temp_shift])
 
     # Create the BufferHeat controller
-    @buffer_heater = BoilerBase\
-      ::BufferHeat.new(@forward_sensor, @upper_buffer_sensor,
-                       @lower_buffer_sensor, @return_sensor,
-                       @hw_sensor, @forward_valve, @return_valve,
-                       @bypass_valve, @heater_relay, @hydr_shift_pump,
-                       @hot_water_pump, @hw_watertemp, @heating_watertemp)
+    @buffer_heater = \
+      BoilerBase::BufferHeat\
+      .new(@forward_sensor, @upper_buffer_sensor,
+           @lower_buffer_sensor, @return_sensor,
+           @hw_sensor, @forward_valve, @return_valve,
+           @bypass_valve, @heater_relay, @hydr_shift_pump,
+           @hot_water_pump, @hw_watertemp, @heating_watertemp)
 
     # Create the Mixer controller
     @mixer_controller = BoilerBase\
