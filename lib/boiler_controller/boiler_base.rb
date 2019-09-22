@@ -189,14 +189,14 @@ module BoilerBase
 
     def init_thread
       # Wait for all instances being initialized
-      initialized = true
       safety_loop_counter = 0
       loop do
+        initialized = true
         @@thermostat_instances.each do |th|
           th.modification_mutex.synchronize do
             initialized &= !th.target.nil?
-            $app_logger.trace(th.name + " initialized: #{!th.target.nil?}")
-            $app_logger.trace("Thermostats initialized: #{initialized}")
+            $app_logger.debug(th.name + " initialized: #{!th.target.nil?}")
+            $app_logger.debug("Thermostats initialized: #{initialized}")
           end
         end
         sleep 0.5
