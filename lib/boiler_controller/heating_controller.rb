@@ -321,12 +321,13 @@ class HeatingController
   def create_sm_with_actions
     # Create the heating state machine
     @heating_sm = BoilerBase::HeatingSM.new
-    @heating_sm.target self
 
     @sm_relax_timer = Globals::TimerSec.new(\
       $config[:heating_sm_state_change_relaxation_time],
       'Buffer SM state change relaxation timer'\
     )
+
+    @heating_sm.target self
 
     # Log state transitions and arm the state change relaxation timer
     @heating_sm.on_before do |event|
