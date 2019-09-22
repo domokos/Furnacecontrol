@@ -309,10 +309,7 @@ class HeatingController
     6.times do |i|
       $app_logger.info("Prefilling sensors. Round: #{i} of 6")
       read_sensors
-      temp_power_needed = { state: @heating_sm.current,
-                            power: determine_power_needed }
-      determine_targets(temp_power_needed)
-      sleep 0.25
+      sleep 0.5
       $shutdown_reason != Globals::NO_SHUTDOWN && break
     end
 
