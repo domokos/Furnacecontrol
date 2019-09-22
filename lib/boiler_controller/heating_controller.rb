@@ -317,6 +317,8 @@ class HeatingController
     # Set initial HW target
     @hw_thermostat.set_threshold(@hw_watertemp_polycurve\
       .float_value(@living_floor_thermostat.temp))
+
+    $app_logger.info("Living temp: #{@living_floor_thermostat.temp}")
   end
 
   # Define the activating actions of the statemachine
@@ -1011,8 +1013,8 @@ class HeatingController
     $heating_logger.debug("Delta T on the Boiler: #{(@forward_temp - @return_temp).round(2)}")
     $heating_logger.debug("Target boiler temp: #{@target_boiler_temp.round(2)}")
 
-    $heating_logger.debug("\nHW target/temperature: #{@hw_thermostat.temp.round(2)}/"\
-                          "#{@hw_thermostat.threshold.round(2)}")
+    $heating_logger.debug("\nHW target/temperature: #{@hw_thermostat.threshold.round(2)}/"\
+                          "#{@hw_thermostat.temp.round(2)}")
 
     $heating_logger.debug("\nExternal temperature: "\
                           "#{@living_floor_thermostat.temp.round(2)}")
