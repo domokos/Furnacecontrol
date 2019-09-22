@@ -202,12 +202,13 @@ class HeatingController
                                     @is_hw_or_valve_proc, 'Basement thermostat')
 
     # Create magnetic valves
-    @basement_radiator_valve = BusDevice\
-      ::DelayedCloseMagneticValve.new('Basement radiator valve',
-                                      'Contact 8 on main board',
-                                      $config[:main_controller_dev_addr],
-                                      $config[:basement_radiator_valve_reg_addr],
-                                      DRY_RUN)
+    @basement_radiator_valve = \
+      BusDevice::DelayedCloseMagneticValve\
+      .new('Basement radiator valve',
+           'Contact 8 on main board',
+           $config[:main_controller_dev_addr],
+           $config[:basement_radiator_valve_reg_addr],
+           DRY_RUN)
     @basement_floor_valve = BusDevice\
       ::DelayedCloseMagneticValve.new('Basement floor valve',
                                       'Contact 9 on main board',
