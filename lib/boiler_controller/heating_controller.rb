@@ -1011,10 +1011,11 @@ class HeatingController
     $heating_logger.debug("Delta T on the Boiler: #{(@forward_temp - @return_temp).round(2)}")
     $heating_logger.debug("Target boiler temp: #{@target_boiler_temp.round(2)}")
 
-    $heating_logger.debug("\nHW temperature: #{@hw_thermostat.temp.round(2)}")
-    $heating_logger.debug("\nHW target: #{@hw_thermostat.threshold.round(2)}")
+    $heating_logger.debug("\nHW target/temperature: #{@hw_thermostat.temp.round(2)}/"\
+                          "#{@hw_thermostat.threshold.round(2)}")
 
-    $heating_logger.debug("\nExternal temperature: #{@living_floor_thermostat.temp.round(2)}")
+    $heating_logger.debug("\nExternal temperature: "\
+                          "#{@living_floor_thermostat.temp.round(2)}")
     $heating_logger.debug("Mode thermostat status: #{@mode_thermostat.state}")
     $heating_logger.debug("Operating mode: #{@mode}")
     $heating_logger.debug("Need power: #{power_needed[:power]}")
@@ -1024,20 +1025,20 @@ class HeatingController
     $heating_logger.debug("Floor pump: #{@floor_pump.state}")
     $heating_logger.debug("Hydr shift pump: #{@hydr_shift_pump.state}")
 
-    $heating_logger.debug("\nLiving target/temperature: #{@living_thermostat.threshold} / \
-                          #{@living_thermostat.temp.round(2)}")
+    $heating_logger.debug("\nLiving target/temperature: #{@living_thermostat.threshold} / "\
+                          "#{@living_thermostat.temp.round(2)}")
     $heating_logger.debug("Living thermostat state: #{@living_thermostat.state}")
 
-    $heating_logger.debug("\nUpstairs target/temperature: #{@upstairs_thermostat.threshold} / \
-                          #{@upstairs_thermostat.temp.round(2)}")
+    $heating_logger.debug("\nUpstairs target/temperature: #{@upstairs_thermostat.threshold} / "\
+                          "#{@upstairs_thermostat.temp.round(2)}")
     $heating_logger.debug("Upstairs thermostat state: #{@upstairs_thermostat.state}")
 
     $heating_logger.debug("Living floor thermostat status: #{@living_floor_thermostat.state}")
     $heating_logger.debug("Living floor valve: #{@living_floor_valve.state}")
     $heating_logger.debug("Upstairs floor valve: #{@upstairs_floor_valve.state}")
 
-    $heating_logger.debug("\nBasement target/temperature: #{@basement_thermostat.target} / \
-                          #{@basement_thermostat.temp.round(2)}")
+    $heating_logger.debug("\nBasement target/temperature: #{@basement_thermostat.target} / "\
+                          "#{@basement_thermostat.temp.round(2)}")
     $heating_logger.debug("Basement PWM value: #{(@basement_thermostat.value * \
                           100).round(0)}%")
     $heating_logger.debug("Basement floor valve: #{@basement_floor_valve.state}")
