@@ -1025,6 +1025,7 @@ module BoilerBase
 
         # HW state
       when :HW
+        @delta_t = @forward_temp - @return_temp
         # Just set the HW temp
         @hw_wiper.set_water_temp(@hw_thermostat.temp)
       else
