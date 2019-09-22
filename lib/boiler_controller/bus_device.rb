@@ -334,9 +334,10 @@ module BusDevice
     def read_device
       if !@dry_run
         begin
-          @@comm_interface.send_message(@slave_address,
-                                        Buscomm::READ_REGISTER,
-                                        @register_address.chr)
+          retval = \
+            @@comm_interface.send_message(@slave_address,
+                                          Buscomm::READ_REGISTER,
+                                          @register_address.chr)
           $app_logger.trace('Sucessfully read device '\
             "'#{@name}' address #{@register_address}")
         rescue MessagingError => e
