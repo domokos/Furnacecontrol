@@ -4,12 +4,12 @@ require 'rubygems'
 # Class of the heating controller
 class HeatingController
   attr_reader :mixer_controller, :buffer_heater, :heating_watertemp
-  attr_reader :radiator_pump, :floor_pump, :HW_watertemp, :heater_relay
+  attr_reader :radiator_pump, :floor_pump, :hw_watertemp, :heater_relay
   attr_reader :hydr_shift_pump, :hot_water_pump, :basement_floor_valve
   attr_reader :basement_radiator_valve
   attr_reader :living_floor_valve, :upstairs_floor_valve
 
-  attr_reader :forward_temp, :HW_thermostat, :return_temp, :living_thermostat
+  attr_reader :forward_temp, :hw_thermostat, :return_temp, :living_thermostat
   attr_reader :upstairs_thermostat, :basement_thermostat
   attr_reader :living_floor_thermostat, :mode_thermostat, :target_boiler_temp
   attr_reader :sm_relax_timer
