@@ -52,12 +52,12 @@ class HeatingController
     end
 
     # Create watertemp Polycurves
-    @heating_watertemp_polycurve = Globals\
-      ::Polycurve.new($config[:heating_watertemp_polycurve])
-    @floor_watertemp_polycurve = Globals\
-      ::Polycurve.new($config[:floor_watertemp_polycurve])
-    @hw_watertemp_polycurve = Globals\
-      ::Polycurve.new($config[:HW_watertemp_polycurve])
+    @heating_watertemp_polycurve = \
+      Globals::Polycurve.new($config[:heating_watertemp_polycurve])
+    @floor_watertemp_polycurve = \
+      Globals::Polycurve.new($config[:floor_watertemp_polycurve])
+    @hw_watertemp_polycurve = \
+      Globals::Polycurve.new($config[:HW_watertemp_polycurve])
 
     $app_logger.debug('Boiler controller initialized initial state '\
                       "set to: #{@heating_sm.current}, "\
