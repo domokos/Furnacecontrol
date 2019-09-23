@@ -695,7 +695,9 @@ class HeatingController
         @mixer_controller.resume($config[:mixer_start_delay_after_HW])
       end
     else
-      raise 'Unexpected power_needed encountered in heating state: '\
+      $app_logger.fatal('Unexpected power_needed encountered '\
+      "in control_heat: #{power_needed[:power]}")
+      raise 'Unexpected power_needed encountered in control_heat: '\
       "#{power_needed[:power]}"
     end
   end
