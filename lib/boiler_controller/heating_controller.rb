@@ -443,7 +443,7 @@ class HeatingController
   # The function evaluating states and performing necessary
   # transitions basd on the current value of sensors
   def evaluate_state_change(power_needed)
-    unless @sm_relax_timer.expired?
+    if !@sm_relax_timer.expired? && power_needed[:power] != :NONE
       $app_logger.trace('SM relax timer not expired - not changing state')
       return
     end
@@ -453,8 +453,6 @@ class HeatingController
     when :off
       # Evaluating Off state:
       # If need power then -> heating
-      # If forward temp increases and forward temp above HW temp + 7 C in HW mode then -> posthwing
-      # If forward temp increases and forward temp above HW temp + 7 C not in HW mode then -> postheating
       # Else: Stay in off state
 
       if power_needed[:power] != :NONE
