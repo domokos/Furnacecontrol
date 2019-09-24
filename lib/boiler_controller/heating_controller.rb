@@ -442,7 +442,7 @@ class HeatingController
 
   # The function evaluating states and performing necessary
   # transitions basd on the current value of sensors
-  def evaluate_state_change(power_needed)
+  def evaluate_state_change(prev_power_needed, power_needed)
     if !@sm_relax_timer.expired? && power_needed[:power] != :NONE
       $app_logger.trace('SM relax timer not expired - not changing state')
       return
@@ -468,12 +468,12 @@ class HeatingController
       # Control boiler wipers to maintain target boiler temperature
       # If not need power anymore then -> postheating or posthw based on operating mode
 
-      if power_needed[:power] == :NONE && @mode == :mode_HW
-        $app_logger.debug('Need power is: NONE')
+      if power_needed[:power] == :NONE && prev_power_needed[:power] == :HW
+        $app_logger.debug('Need power is: NONE coming from HW')
         # Turn off the heater
         @heating_sm.posthw
       elsif power_needed[:power] == :NONE
-        $app_logger.debug('Need power is: NONE')
+        $app_logger.debug('Need power is: NONE coming from not HW')
         # Turn off the heater
         @heating_sm.postheat
       end
@@ -576,7 +576,7 @@ class HeatingController
       end
 
       # Call the state machine state transition decision method
-      evaluate_state_change(power_needed)
+      evaluate_state_change(prev_power_needed, power_needed)
 
       # Conrtol heating when in heating state
       if @heating_sm.current == :heating
