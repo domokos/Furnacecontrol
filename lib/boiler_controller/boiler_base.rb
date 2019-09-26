@@ -885,11 +885,11 @@ module BoilerBase
         # Wait for boiler to turn off safely
         $app_logger.debug('Waiting for boiler to stop before cutting it off'\
                             'from circulation')
-        sleep buffer.config[:circulation_maintenance_delay]
         # Turn off hydr shift pump
-        buffer.hydr_shift_pump.off if buffer.hydr_shift_pump.on?
-        # Setup the relays
-        buffer.set_relays(:normal)
+        if buffer.hydr_shift_pump.on?
+          sleep buffer.config[:circulation_maintenance_delay]
+          buffer.hydr_shift_pump.off
+        end
       end
       # of enter frombuffer action
 
