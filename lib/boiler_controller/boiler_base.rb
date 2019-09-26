@@ -848,23 +848,15 @@ module BoilerBase
           $app_logger.debug('Bufferheater initializing')
           buffer.hw_wiper.set_water_temp(65.0)
           buffer.set_relays(:normal)
-          if buffer.heater_relay.state == :on
-            $app_logger.debug('Turning off heater relay')
-            buffer.heater_relay.off
-            sleep buffer.config[:circulation_maintenance_delay]
-          else
-            $app_logger.debug('Heater relay already off')
-          end
+          buffer.heater_relay.off if buffer.heater_relay.on?
         else
           $app_logger.debug('Bufferheater turning off')
-          if buffer.heater_relay.state == :on
-            $app_logger.debug('Turning off heater relay')
+          if buffer.heater_relay.on?
             buffer.heater_relay.off
             sleep buffer.config[:circulation_maintenance_delay]
           else
             $app_logger.debug('Heater relay already off')
           end
-          buffer.set_relays(:normal)
         end
       end
       # of enter off action
@@ -875,45 +867,27 @@ module BoilerBase
       # - start the boiler
       # - Start the hydr shift pump
       @buffer_sm.on_enter_normal do
+        buffer.hw_pump.off if buffer.hw_pump.on?
         buffer.heat_wiper.set_water_temp(\
           buffer.limit_watertemp(buffer.target_temp))
-        if buffer.hydr_shift_pump.state != :on
-          $app_logger.debug('Turning on hydr shift pump')
-          buffer.hydr_shift_pump.on
-          sleep buffer.config[:circulation_maintenance_delay] \
+        buffer.hydr_shift_pump.on
+        sleep buffer.config[:circulation_maintenance_delay] \
           if buffer.set_relays(:normal) == :immediate
-        else
-          $app_logger.debug('Hydr shift pump already on')
-          buffer.set_relays(:normal)
-        end
-        if buffer.heater_relay.state != :on
-          $app_logger.debug('Turning on heater relay')
-          buffer.heater_relay.on
-        else
-          $app_logger.debug('Heater relay already on')
-        end
+        buffer.heater_relay.on
       end
       # of enter normal action
 
       # On entering heating from buffer set relays and turn off heating
       # - Turn off HW production of boiler
       @buffer_sm.on_enter_frombuffer do
-        if buffer.heater_relay.state != :off
-          $app_logger.debug('Turning off heater relay')
-          buffer.heater_relay.off
-
-          # Wait for boiler to turn off safely
-          $app_logger.debug('Waiting for boiler to stop before cutting it off'\
+        buffer.hw_pump.off if buffer.hw_pump.on?
+        buffer.heater_relay.off if buffer.heater_relay.on?
+        # Wait for boiler to turn off safely
+        $app_logger.debug('Waiting for boiler to stop before cutting it off'\
                             'from circulation')
-          sleep buffer.config[:circulation_maintenance_delay]
-        else
-          $app_logger.debug('Heater relay already off')
-        end
+        sleep buffer.config[:circulation_maintenance_delay]
         # Turn off hydr shift pump
-        if buffer.hydr_shift_pump.state != :off
-          $app_logger.debug('Turning off hydr shift pump')
-          buffer.hydr_shift_pump.off
-        end
+        buffer.hydr_shift_pump.off if buffer.hydr_shift_pump.on?
         # Setup the relays
         buffer.set_relays(:normal)
       end
@@ -925,12 +899,10 @@ module BoilerBase
       # - start HW production
       # - turn off hydr shift pump
       @buffer_sm.on_enter_HW do
-        $app_logger.debug('Turning on HW pump')
         buffer.hw_pump.on
         sleep buffer.config[:circulation_maintenance_delay] if\
-        buffer.set_relays(:HW) != :delayed
-        if buffer.hydr_shift_pump.state != :off
-          $app_logger.debug('Turning off hydr shift pump')
+          buffer.set_relays(:HW) != :delayed
+        if buffer.hydr_shift_pump.on?
           buffer.hydr_shift_pump.off
         else
           $app_logger.debug('Hydr shift pump already off')
@@ -945,7 +917,6 @@ module BoilerBase
       @buffer_sm.on_exit_HW do
         buffer.hw_wiper.set_water_temp(65.0)
         sleep buffer.config[:circulation_maintenance_delay]
-        buffer.hw_pump.off
       end
       # of exit HW action
     end

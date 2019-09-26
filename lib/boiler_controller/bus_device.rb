@@ -82,7 +82,7 @@ module BusDevice
   # The class of a binary switch
   class Switch < DeviceBase
     attr_accessor :dry_run
-    attr_reader :state, :name, :slave_address, :location
+    attr_reader :name, :slave_address, :location
 
     CHECK_RETRY_COUNT = 5
     def initialize(name, location, slave_address, register_address, dry_run)
@@ -109,6 +109,14 @@ module BusDevice
       on
     end
 
+    def on?
+      @state == :on
+    end
+
+    def off?
+      @state == :off
+    end
+
     # Turn the device on
     def on
       retval = false
@@ -116,7 +124,7 @@ module BusDevice
         if @state != :on
           @state = :on
           write_device(1) == :Success &&
-            $app_logger.trace("Succesfully turned Switch '#{@name}' on.")
+            $app_logger.debug("'#{@name}' turned on.")
           retval = true
         end
       end
@@ -131,7 +139,7 @@ module BusDevice
         if @state != :off
           @state = :off
           write_device(0) == :Success &&
-            $app_logger.trace("Succesfully turned Switch '#{@name}' off.")
+            $app_logger.debug("'#{@name}' turned off.")
           retval = true
         end
       end
