@@ -82,7 +82,7 @@ module BusDevice
   # The class of a binary switch
   class Switch < DeviceBase
     attr_accessor :dry_run
-    attr_reader :name, :slave_address, :location
+    attr_reader :name, :slave_address, :location, :state
 
     CHECK_RETRY_COUNT = 5
     def initialize(name, location, slave_address, register_address, dry_run)
