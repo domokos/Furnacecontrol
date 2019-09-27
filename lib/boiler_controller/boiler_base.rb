@@ -461,7 +461,7 @@ module BoilerBase
     end
 
     def resume(delay = 0, unconditional = false)
-      return unless !resumecheck && !unconditional
+      return unless resumecheck || unconditional
 
       @resuming = true
       Thread.new do
