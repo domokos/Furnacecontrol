@@ -370,7 +370,8 @@ module BoilerBase
           # Initialize mixer variables
           init
           start_measurement_thread
-          $app_logger.trace('Mixer controller do_control_thread before starting control loop')
+          $app_logger.trace('Mixer controller do_control_thread before '\
+          'starting control loop')
 
           # Control until stop is requested
           until @stop_control_requested.locked?
@@ -382,7 +383,7 @@ module BoilerBase
               do_control_thread
 
               # Delay between control actions
-              sleep @config[:MixerControl_loop_delay] unless\
+              sleep @config[:mixer_control_loop_delay] unless\
               @stop_control_requested.locked? || @paused
             end
           end
