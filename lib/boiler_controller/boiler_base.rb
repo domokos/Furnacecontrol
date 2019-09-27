@@ -520,9 +520,9 @@ module BoilerBase
       $app_logger.debug('Mixer controller - measurement_thread_mutex unlocked')
     end
 
-    def copy_config
+    def log_and_copy_config(value, error)
       # Copy the config for updates
-      $config_mutex.synchronize {@config = $config.dup}
+      $config_mutex.synchronize { @config = $config.dup }
       $app_logger.debug("Mixer forward temp: #{value.round(2)}")
       $app_logger.debug("Mixer controller error: #{error.round(2)}")
       @mixer_log_rate_limiter.set_timer(@config[:mixer_limited_log_period])
@@ -542,7 +542,7 @@ module BoilerBase
       error = target - value
       adjustment_time = calculate_adjustment_time(error)
 
-      copy_config if @mixer_log_rate_limiter.expired?
+      log_and_copy_config(value, error) if @mixer_log_rate_limiter.expired?
 
       # Adjust mixing motor if it is needed
       return if adjustment_time.abs.zero?
