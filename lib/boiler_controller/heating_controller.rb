@@ -692,7 +692,7 @@ class HeatingController
       if power_needed[:power] == :RAD
         @mixer_controller.pause
       else
-        @mixer_controller.resume($config[:mixer_start_delay_after_HW])
+        @mixer_controller.resume
       end
     else
       $app_logger.fatal('Unexpected power_needed encountered '\
@@ -854,7 +854,6 @@ class HeatingController
   end
 
   def valve_move_evaluation
-
     # Only perform real check if time is between 10:00 and 10:15 in the morning
     return unless\
     (((Time.now.to_i % (24 * 60 * 60)) + 60 * 60) > (10 * 60 * 60)) &&

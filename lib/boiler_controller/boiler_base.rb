@@ -446,29 +446,12 @@ module BoilerBase
       true
     end
 
-    def openresume(delay = 0)
+    def resume
       return unless resumecheck
 
       @resuming = true
       Thread.new do
-        Thread.current[:name] = 'Mixer openresume thread'
-        $app_logger.debug('Mixer controller - opening valve')
-        @ccw_switch.pulse_block(250)
-        @ccw_switch.pulse_block(60)
-        resume(delay, true)
-        @resuming = false
-      end
-    end
-
-    def resume(delay = 0, unconditional = false)
-      return unless resumecheck || unconditional
-
-      @resuming = true
-      Thread.new do
         Thread.current[:name] = 'Mixer resume thread'
-        # Delay resuming the controller if requested
-        sleep delay if delay.positive?
-
         # Initialize mixer variables
         init
 
