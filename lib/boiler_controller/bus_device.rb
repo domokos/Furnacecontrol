@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require '/usr/local/lib/boiler_controller/Buscomm'
-require '/usr/local/lib/boiler_controller/Globals'
+require '/usr/local/lib/boiler_controller/buscomm'
+require '/usr/local/lib/boiler_controller/globals'
 require 'rubygems'
 require 'robustthread'
 

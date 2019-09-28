@@ -17,7 +17,7 @@ class HeatingController
   attr_reader :sm_relax_timer
   attr_reader :logger
 
-  def initialize(logger)
+  def initialize(logger, config)
     # Init instance variables
     @target_boiler_temp = 0.0
     @forward_temp = 0.0
@@ -25,11 +25,12 @@ class HeatingController
     @test_cycle_cnt = 0
     @moving_valves_required = false
     @logger = logger
+    @config = config
 
     read_config
 
     @logger_timer =
-      Globals::TimerSec.new($config[:logger_delay_whole_sec],
+      Globals::TimerSec.new(@config[:logger_delay_whole_sec],
                             'Logging Delay Timer')
 
     create_pumps_and_sensors
@@ -49,11 +50,11 @@ class HeatingController
 
     # Create watertemp Polycurves
     @heating_watertemp_polycurve = \
-      Globals::Polycurve.new($config[:heating_watertemp_polycurve])
+      Globals::Polycurve.new(@config[:heating_watertemp_polycurve])
     @floor_watertemp_polycurve = \
-      Globals::Polycurve.new($config[:floor_watertemp_polycurve])
+      Globals::Polycurve.new(@config[:floor_watertemp_polycurve])
     @hw_watertemp_polycurve = \
-      Globals::Polycurve.new($config[:HW_watertemp_polycurve])
+      Globals::Polycurve.new(@config[:HW_watertemp_polycurve])
 
     # Set initial HW target
     @hw_thermostat.set_threshold(@hw_watertemp_polycurve\
@@ -100,85 +101,85 @@ class HeatingController
     @radiator_pump =
       BusDevice::Switch.new('Radiator pump',
                             'In the basement boiler room - Contact 4 on Main Panel',
-                            $config[:main_controller_dev_addr],
-                            $config[:radiator_pump_reg_addr], DRY_RUN)
+                            @config[:main_controller_dev_addr],
+                            @config[:radiator_pump_reg_addr], DRY_RUN)
     @floor_pump =
       BusDevice::Switch.new('Floor pump',
                             'In the basement boiler room - Contact 5 on Main Panel',
-                            $config[:main_controller_dev_addr],
-                            $config[:floor_pump_reg_addr], DRY_RUN)
+                            @config[:main_controller_dev_addr],
+                            @config[:floor_pump_reg_addr], DRY_RUN)
     @hydr_shift_pump =
       BusDevice::Switch.new('Hydraulic shift pump',
                             'In the basement boiler room - Contact 6 on Main Panel',
-                            $config[:main_controller_dev_addr],
-                            $config[:hydr_shift_pump_reg_addr], DRY_RUN)
+                            @config[:main_controller_dev_addr],
+                            @config[:hydr_shift_pump_reg_addr], DRY_RUN)
     @hot_water_pump =
       BusDevice::Switch.new('Hot water pump',
                             'In the basement boiler room - Contact 7 on Main Panel',
-                            $config[:main_controller_dev_addr],
-                            $config[:hot_water_pump_reg_addr], DRY_RUN)
+                            @config[:main_controller_dev_addr],
+                            @config[:hot_water_pump_reg_addr], DRY_RUN)
 
     # Create temp sensors
     @mixer_sensor =
       BusDevice::TempSensor.new('Forward floor temperature',
                                 'On the forward piping after the mixer valve',
-                                $config[:mixer_controller_dev_addr],
-                                $config[:mixer_fwd_sensor_reg_addr],
-                                DRY_RUN, $config[:mixer_forward_mock_temp])
+                                @config[:mixer_controller_dev_addr],
+                                @config[:mixer_fwd_sensor_reg_addr],
+                                DRY_RUN, @config[:mixer_forward_mock_temp])
     @forward_sensor =
       BusDevice::TempSensor.new('Forward boiler temperature',
                                 'On the forward piping of the boiler',
-                                $config[:mixer_controller_dev_addr],
-                                $config[:forward_sensor_reg_addr],
-                                DRY_RUN, $config[:forward_mock_temp])
+                                @config[:mixer_controller_dev_addr],
+                                @config[:forward_sensor_reg_addr],
+                                DRY_RUN, @config[:forward_mock_temp])
     @return_sensor =
       BusDevice::TempSensor.new('Return water temperature',
                                 'On the return piping of the boiler',
-                                $config[:mixer_controller_dev_addr],
-                                $config[:return_sensor_reg_addr],
-                                DRY_RUN, $config[:return_mock_temp])
+                                @config[:mixer_controller_dev_addr],
+                                @config[:return_sensor_reg_addr],
+                                DRY_RUN, @config[:return_mock_temp])
     @upper_buffer_sensor =
       BusDevice::TempSensor.new('Upper Buffer temperature',
                                 'Inside the buffer - upper section',
-                                $config[:main_controller_dev_addr],
-                                $config[:upper_buffer_sensor_reg_addr],
-                                DRY_RUN, $config[:upper_buffer_mock_temp])
+                                @config[:main_controller_dev_addr],
+                                @config[:upper_buffer_sensor_reg_addr],
+                                DRY_RUN, @config[:upper_buffer_mock_temp])
     @buffer_output_sensor =
       BusDevice::TempSensor.new('Buffer output temperature',
                                 'On top of the buffer',
-                                $config[:main_controller_dev_addr],
-                                $config[:buffer_output_sensor_reg_addr],
-                                DRY_RUN, $config[:buffer_output_mock_temp])
+                                @config[:main_controller_dev_addr],
+                                @config[:buffer_output_sensor_reg_addr],
+                                DRY_RUN, @config[:buffer_output_mock_temp])
     @hw_sensor =
       BusDevice::TempSensor.new('Hot Water temperature',
                                 'Inside the Hot water container main sensing tube',
-                                $config[:main_controller_dev_addr],
-                                $config[:hw_sensor_reg_addr],
-                                DRY_RUN, $config[:HW_mock_temp])
+                                @config[:main_controller_dev_addr],
+                                @config[:hw_sensor_reg_addr],
+                                DRY_RUN, @config[:HW_mock_temp])
     @living_sensor =
       BusDevice::TempSensor.new('Living room temperature',
                                 'Temperature in the living room',
-                                $config[:six_owbus_dev_addr],
-                                $config[:living_sensor_reg_addr],
-                                DRY_RUN, $config[:living_mock_temp])
+                                @config[:six_owbus_dev_addr],
+                                @config[:living_sensor_reg_addr],
+                                DRY_RUN, @config[:living_mock_temp])
     @upstairs_sensor =
       BusDevice::TempSensor.new('Upstairs temperature',
                                 'Upstairs forest room',
-                                $config[:six_owbus_dev_addr],
-                                $config[:upstairs_sensor_reg_addr],
-                                DRY_RUN, $config[:upstairs_mock_temp])
+                                @config[:six_owbus_dev_addr],
+                                @config[:upstairs_sensor_reg_addr],
+                                DRY_RUN, @config[:upstairs_mock_temp])
     @basement_sensor =
       BusDevice::TempSensor.new('Basement temperature',
                                 'In the sauna rest area',
-                                $config[:main_controller_dev_addr],
-                                $config[:basement_sensor_reg_addr],
-                                DRY_RUN, $config[:basement_mock_temp])
+                                @config[:main_controller_dev_addr],
+                                @config[:basement_sensor_reg_addr],
+                                DRY_RUN, @config[:basement_mock_temp])
     @external_sensor =
       BusDevice::TempSensor.new('External temperature',
                                 'On the northwestern external wall',
-                                $config[:six_owbus_dev_addr],
-                                $config[:external_sensor_reg_addr],
-                                DRY_RUN, $config[:external_mock_temp])
+                                @config[:six_owbus_dev_addr],
+                                @config[:external_sensor_reg_addr],
+                                DRY_RUN, @config[:external_mock_temp])
   end
 
   # Create devices
@@ -190,12 +191,12 @@ class HeatingController
       BoilerBase::ASymmetricThermostat.new(@hw_sensor, 2, 0, 0.0, 8)
     @living_floor_thermostat =
       BoilerBase::SymmetricThermostat.new(@external_sensor,
-                                          $config[:living_floor_hysteresis],
-                                          $config[:floor_heating_threshold], 30)
+                                          @config[:living_floor_hysteresis],
+                                          @config[:floor_heating_threshold], 30)
     @mode_thermostat =
       BoilerBase::SymmetricThermostat.new(@external_sensor,
-                                          $config[:mode_hysteresis],
-                                          $config[:mode_threshold], 50)
+                                          @config[:mode_hysteresis],
+                                          @config[:mode_threshold], 50)
     @upstairs_thermostat =
       BoilerBase::SymmetricThermostat.new(@upstairs_sensor, 0.3, 5.0, 15)
     @basement_thermostat =
@@ -208,29 +209,29 @@ class HeatingController
       BusDevice::DelayedCloseMagneticValve\
       .new('Basement radiator valve',
            'Contact 8 on main board',
-           $config[:main_controller_dev_addr],
-           $config[:basement_radiator_valve_reg_addr],
+           @config[:main_controller_dev_addr],
+           @config[:basement_radiator_valve_reg_addr],
            DRY_RUN)
     @basement_floor_valve = \
       BusDevice::DelayedCloseMagneticValve\
       .new('Basement floor valve',
            'Contact 9 on main board',
-           $config[:main_controller_dev_addr],
-           $config[:basement_floor_valve_reg_addr],
+           @config[:main_controller_dev_addr],
+           @config[:basement_floor_valve_reg_addr],
            DRY_RUN)
     @living_floor_valve = \
       BusDevice::DelayedCloseMagneticValve\
       .new('Living level floor valve',
            'In the living floor water distributor',
-           $config[:six_owbus_dev_addr],
-           $config[:living_floor_valve_reg_addr],
+           @config[:six_owbus_dev_addr],
+           @config[:living_floor_valve_reg_addr],
            DRY_RUN)
     @upstairs_floor_valve = \
       BusDevice::DelayedCloseMagneticValve\
       .new('Upstairs floor valve',
            'In the upstairs water distributor',
-           $config[:six_owbus_dev_addr],
-           $config[:upstairs_floor_valve_reg_addr],
+           @config[:six_owbus_dev_addr],
+           @config[:upstairs_floor_valve_reg_addr],
            DRY_RUN)
 
     # Create buffer direction shift valves
@@ -238,42 +239,42 @@ class HeatingController
       BusDevice::Switch\
       .new('Forward three-way valve',
            'After the boiler+buffer joint - Contact 2 on main board',
-           $config[:main_controller_dev_addr],
-           $config[:hw_valve_reg_addr], DRY_RUN)
+           @config[:main_controller_dev_addr],
+           @config[:hw_valve_reg_addr], DRY_RUN)
 
     # Create heater relay switch
     @heater_relay = \
       BusDevice::Switch\
       .new('Heater relay', 'Heater contact on main panel',
-           $config[:main_controller_dev_addr],
-           $config[:heater_relay_reg_addr], DRY_RUN)
+           @config[:main_controller_dev_addr],
+           @config[:heater_relay_reg_addr], DRY_RUN)
 
     # Create mixer pulsing switches
     @cw_switch = \
       BusDevice::PulseSwitch\
       .new('CW mixer switch', 'In the mixer controller box',
-           $config[:mixer_controller_dev_addr],
-           $config[:mixer_cw_reg_addr], DRY_RUN)
+           @config[:mixer_controller_dev_addr],
+           @config[:mixer_cw_reg_addr], DRY_RUN)
     @ccw_switch = \
       BusDevice::PulseSwitch\
       .new('CCW mixer switch', 'In the mixer controller box',
-           $config[:mixer_controller_dev_addr],
-           $config[:mixer_ccw_reg_addr], DRY_RUN)
+           @config[:mixer_controller_dev_addr],
+           @config[:mixer_ccw_reg_addr], DRY_RUN)
 
     # Create water temp wipers
     @heating_watertemp = \
       BusDevice::HeatingWaterTemp\
       .new('Heating temp wiper',
            'Heating wiper contact on main panel',
-           $config[:main_controller_dev_addr],
-           $config[:heating_wiper_reg_addr], DRY_RUN)
+           @config[:main_controller_dev_addr],
+           @config[:heating_wiper_reg_addr], DRY_RUN)
     @hw_watertemp = \
       BusDevice::HWWaterTemp\
       .new('HW temp wiper',
            'HW wiper contact on main panel',
-           $config[:main_controller_dev_addr],
-           $config[:hw_wiper_reg_addr], DRY_RUN,
-           $config[:hw_temp_shift])
+           @config[:main_controller_dev_addr],
+           @config[:hw_wiper_reg_addr], DRY_RUN,
+           @config[:hw_temp_shift])
 
     # Create the BufferHeat controller
     @buffer_heater = \
@@ -305,7 +306,7 @@ class HeatingController
     @heating_sm = BoilerBase::HeatingSM.new
 
     @sm_relax_timer = Globals::TimerSec.new(\
-      $config[:heating_sm_state_change_relaxation_time],
+      @config[:heating_sm_state_change_relaxation_time],
       'Buffer SM state change relaxation timer'\
     )
 
@@ -338,7 +339,7 @@ class HeatingController
 
         # Wait before turning pumps off to make sure we do not lose circulation
         controller.logger.debug('Waiting shutdown delay')
-        sleep $config[:shutdown_delay]
+        sleep @config[:shutdown_delay]
       end
       # Turn off all pumps
       controller.radiator_pump.off
@@ -411,7 +412,7 @@ class HeatingController
 
       controller.hot_water_pump.on
       # Wait before turning pumps off to make sure we do not lose circulation
-      sleep $config[:circulation_maintenance_delay]
+      sleep @config[:circulation_maintenance_delay]
 
       # Only HW pump on
       controller.radiator_pump.off
@@ -432,7 +433,7 @@ class HeatingController
 
   # The function evaluating states and performing necessary
   # transitions basd on the current value of sensors
-  def evaluate_state_change(prev_power_needed, power_needed)
+  def evaluate_state_change(power_needed)
     if !@sm_relax_timer.expired? && power_needed[:power] != :NONE
       @logger.trace('SM relax timer not expired - not changing state')
       return
@@ -555,7 +556,7 @@ class HeatingController
       @logger.trace('Main boiler loop cycle start')
 
       # Sleep to spare processor time
-      sleep $config[:main_loop_delay]
+      sleep @config[:main_loop_delay]
 
       # Apply the test conrol if in dry run
       apply_test_control if DRY_RUN
@@ -581,7 +582,7 @@ class HeatingController
       end
 
       # Call the state machine state transition decision method
-      evaluate_state_change(prev_power_needed, power_needed)
+      evaluate_state_change(power_needed)
 
       # Conrtol heating when in heating state
       if @heating_sm.current == :heating
@@ -616,18 +617,18 @@ class HeatingController
   # Read the target temperatures, determine targets and operating mode
   def determine_targets(power_needed)
     # Update thermostat targets
-    @living_thermostat.set_threshold($config[:target_living_temp])
-    @upstairs_thermostat.set_threshold($config[:target_upstairs_temp])
-    @basement_thermostat.set_target($config[:target_basement_temp])
-    @mode_thermostat.set_threshold($config[:mode_threshold])
-    @mode_thermostat.hysteresis = $config[:mode_hysteresis]
+    @living_thermostat.set_threshold(@config[:target_living_temp])
+    @upstairs_thermostat.set_threshold(@config[:target_upstairs_temp])
+    @basement_thermostat.set_target(@config[:target_basement_temp])
+    @mode_thermostat.set_threshold(@config[:mode_threshold])
+    @mode_thermostat.hysteresis = @config[:mode_hysteresis]
 
-    @living_floor_thermostat.set_threshold($config[:floor_heating_threshold])
+    @living_floor_thermostat.set_threshold(@config[:floor_heating_threshold])
 
     # Update watertemp Polycurves
-    @heating_watertemp_polycurve.load($config[:heating_watertemp_polycurve])
-    @floor_watertemp_polycurve.load($config[:floor_watertemp_polycurve])
-    @hw_watertemp_polycurve.load($config[:HW_watertemp_polycurve])
+    @heating_watertemp_polycurve.load(@config[:heating_watertemp_polycurve])
+    @floor_watertemp_polycurve.load(@config[:floor_watertemp_polycurve])
+    @hw_watertemp_polycurve.load(@config[:HW_watertemp_polycurve])
 
     @mode = @mode_thermostat.on? ? :mode_Heat_HW : :mode_HW
 
@@ -837,24 +838,24 @@ class HeatingController
     Globals.read_global_config
 
     $config_mutex.synchronize do
-      @forward_sensor.mock_temp = $config[:forward_mock_temp]\
+      @forward_sensor.mock_temp = @config[:forward_mock_temp]\
        unless (defined? @forward_sensor).nil?
-      @return_sensor.mock_temp = $config[:return_mock_temp]\
+      @return_sensor.mock_temp = @config[:return_mock_temp]\
        unless (defined? @return_sensor).nil?
-      @hw_sensor.mock_temp = $config[:HW_mock_temp]\
+      @hw_sensor.mock_temp = @config[:HW_mock_temp]\
        unless (defined? @hw_sensor).nil?
 
-      @living_sensor.mock_temp = $config[:living_mock_temp]\
+      @living_sensor.mock_temp = @config[:living_mock_temp]\
        unless (defined? @living_sensor).nil?
-      @upstairs_sensor.mock_temp = $config[:upstairs_mock_temp]\
+      @upstairs_sensor.mock_temp = @config[:upstairs_mock_temp]\
        unless (defined? @upstairs_sensor).nil?
-      @basement_sensor.mock_temp = $config[:basement_mock_temp]\
+      @basement_sensor.mock_temp = @config[:basement_mock_temp]\
        unless (defined? @basement_sensor).nil?
-      @external_sensor.mock_temp = $config[:external_mock_temp]\
+      @external_sensor.mock_temp = @config[:external_mock_temp]\
        unless (defined? @external_sensor).nil?
 
       @sm_relax_timer&.set_timer\
-        ($config[:heating_sm_state_change_relaxation_time])
+        (@config[:heating_sm_state_change_relaxation_time])
     end
   end
 
@@ -868,7 +869,7 @@ class HeatingController
     return if @moving_valves_required
 
     # If there is no logfile we need to move
-    unless File.exist?($config[:magnetic_valve_movement_logfile])
+    unless File.exist?(@config[:magnetic_valve_movement_logfile])
       @moving_valves_required = true
       @logger.info('No movement log file found - '\
         'Setting moving_valves_required to true for the first time')
@@ -876,12 +877,12 @@ class HeatingController
     end
 
     # If there is a logfile we need to read it and evaluate movement need based on last log entry
-    @move_logfile = File.new($config[:magnetic_valve_movement_logfile], 'a+')
+    @move_logfile = File.new(@config[:magnetic_valve_movement_logfile], 'a+')
     @move_logfile.seek(0, IO::SEEK_SET)
 
     lastline = @move_logfile.readline until @move_logfile.eof
 
-    seconds_between_move = $config[:magnetic_valve_movement_days] * 24 * 60 * 60
+    seconds_between_move = @config[:magnetic_valve_movement_days] * 24 * 60 * 60
 
     # Move if moved later than the parameter read
     if lastline.to_i + seconds_between_move < Time.now.to_i &&
@@ -956,7 +957,7 @@ class HeatingController
     sleep 15
     @hot_water_pump.off
 
-    @move_logfile = File.new($config[:magnetic_valve_movement_logfile], 'a+')
+    @move_logfile = File.new(@config[:magnetic_valve_movement_logfile], 'a+')
     @move_logfile.write(Time.now.to_s)
     @move_logfile.write("\n")
     @move_logfile.write(Time.now.to_i.to_s)

@@ -1,9 +1,15 @@
 #!/usr/local/rvm/rubies/ruby-2.3.0/bin/ruby
+# frozen_string_literal: true
+
 # Boiler control softvare
 
 require '/usr/local/lib/boiler_controller/heating_controller'
 require '/usr/local/lib/boiler_controller/restapi'
 require 'robustthread'
+
+# Config file paths
+CONFIG_FILE_PATH = '/etc/boiler_controller/boiler_controller.yml'
+TEST_CONTROL_FILE_PATH = '/etc/boiler_controller/boiler_test_controls.yml'
 
 Thread.abort_on_exception = true
 
@@ -27,7 +33,8 @@ Signal.trap('TTIN') do
 end
 
 Signal.trap('USR1') do
-  puts 'USR1 signal caught - setting heating logging to DEBUG, app logging to INFO'
+  puts 'USR1 signal caught - setting heating logging to '\
+  'DEBUG, app logging to INFO'
   $app_logger.level = Globals::BoilerLogger::INFO
   $heating_logger.level = Logger::DEBUG
 end
@@ -83,8 +90,10 @@ pid = fork do
     pidfile.write(Process.pid.to_s)
     pidfile.close
 
+    $config = Globals::Config($app_logger, CONFIG_FILE_PATH)
+
     # Set the initial state
-    $boiler_control = HeatingController.new($app_logger)
+    $boiler_control = HeatingController.new($app_logger, $config)
     $app_logger.info('Controller initialized - starting operation')
 
     begin
