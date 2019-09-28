@@ -15,7 +15,7 @@ class HeatingController
   attr_reader :upstairs_thermostat, :basement_thermostat
   attr_reader :living_floor_thermostat, :mode_thermostat, :target_boiler_temp
   attr_reader :sm_relax_timer
-  attr_reader :logger
+  attr_reader :logger, :config
 
   def initialize(logger, config)
     # Init instance variables
@@ -340,7 +340,7 @@ class HeatingController
 
         # Wait before turning pumps off to make sure we do not lose circulation
         controller.logger.debug('Waiting shutdown delay')
-        sleep @config[:shutdown_delay]
+        sleep controller.config[:shutdown_delay]
       end
       # Turn off all pumps
       controller.radiator_pump.off
@@ -413,7 +413,7 @@ class HeatingController
 
       controller.hot_water_pump.on
       # Wait before turning pumps off to make sure we do not lose circulation
-      sleep @config[:circulation_maintenance_delay]
+      sleep controller.config[:circulation_maintenance_delay]
 
       # Only HW pump on
       controller.radiator_pump.off
