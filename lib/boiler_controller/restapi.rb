@@ -12,7 +12,7 @@ class BoilerThinBackend < ::Thin::Backends::TcpServer
 end
 
 # Setup the webserver for the rest interface
-
+=begin
 $BoilerRestapi = Sinatra.new do
   configure do
     set :environment, :production
@@ -57,3 +57,4 @@ $BoilerRestapi = Sinatra.new do
     $boiler_control.reload
   end
 end
+=end
