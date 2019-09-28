@@ -60,11 +60,12 @@ RobustThread.logger = $daemon_logger
 daemonize = !ARGV.find_index('--daemon').nil?
 
 pid = fork do
+=begin
   restapi_thread = Thread.new do
     $app_logger.info('Starting restapi')
     $BoilerRestapi.run!
   end
-
+=end
   sleep 1
 
   Signal.trap('TERM') do
