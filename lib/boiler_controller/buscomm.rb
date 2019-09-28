@@ -5,7 +5,7 @@
 $stdout.sync = true
 require 'rubygems'
 require 'serialport'
-require '/usr/local/lib/boiler_controller/Globals'
+require '/usr/local/lib/boiler_controller/globals'
 
 # The custom exception of messaging that can hold the
 # return message of the messaging subsystem
