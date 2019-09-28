@@ -201,9 +201,9 @@ class Buscomm
     @serial_read_mutex = Mutex.new
 
     @serial_response_buffer = []
-    @message_send_buffer = ''
+    @message_send_buffer = ''.dup
 
-    @train = ''
+    @train = ''.dup
 
     i = TRAIN_LENGTH_SND
     while i.positive?
@@ -333,7 +333,7 @@ class Buscomm
         print b.to_s(16), ' '
       end
       print ']'
-      temp = '' << ret[:Content][PARAMETER_START] << \
+      temp = ''.dup << ret[:Content][PARAMETER_START] << \
              ret[:Content][PARAMETER_START + 1]
       print '\nTemp: ', temp.unpack('s')[0] * 0.0625, ' C\n'
     else
@@ -348,7 +348,7 @@ class Buscomm
     # Flush the serial port input buffer
     @sp.sync
     @sp.flush
-    response = ''
+    response = ''.dup
     train_length = 0
     byte_recieved = 0
     response_state = :waiting_for_train

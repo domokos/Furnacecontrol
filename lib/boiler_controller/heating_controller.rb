@@ -990,7 +990,7 @@ class HeatingController
     $heating_logger.debug("LOGITEM BEGIN @ #{Time.now.asctime}")
     $heating_logger.debug("Active state: #{@heating_sm.current}")
 
-    sth = ''
+    sth = ''.dup
     @state_history.each do |e|
       sth += ") => (#{e[:state]},#{e[:power]}," + \
              (Time.now.getlocal(0) - e[:timestamp].to_i).strftime('%T') + ' ago'

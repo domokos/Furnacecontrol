@@ -33,7 +33,7 @@ $BoilerRestapi = Sinatra.new do
 
   get '/config:itemname' do
     paramname = params['itemname'][1, 99].to_sym
-    retval = ''
+    retval = ''.dup
     $config_mutex.synchronize do
       retval = $config[paramname]
     end

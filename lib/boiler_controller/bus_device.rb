@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require '/usr/local/lib/boiler_controller/Buscomm'
 require '/usr/local/lib/boiler_controller/Globals'
 require 'rubygems'
@@ -471,7 +473,7 @@ module BusDevice
           " of '" + @name + "'")
 
         # Calculate temperature value from the data returned
-        temp = '' << retval[:Content][Buscomm::PARAMETER_START] <<
+        temp = ''.dup << retval[:Content][Buscomm::PARAMETER_START] <<
                retval[:Content][Buscomm::PARAMETER_START + 1]
         $app_logger.info('Low level HW ' + @name + ' value: ' + temp.unpack('H*')[0]) if @debug
         return temp.unpack('s')[0] * ONE_BIT_TEMP_VALUE
