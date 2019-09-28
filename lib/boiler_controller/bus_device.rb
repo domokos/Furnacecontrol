@@ -275,15 +275,13 @@ module BusDevice
     def delayed_close
       return false unless @delayed_close_semaphore.try_lock
 
-      retval = false
       @modification_semaphore.synchronize do
         Thread.new do
           sleep DELAYED_CLOSE_VALVE_DELAY
-          retval = parent_off
+          parent_off
+          @delayed_close_semaphore.unlock
         end
       end
-      @delayed_close_semaphore.unlock
-      retval
     end
 
     def on

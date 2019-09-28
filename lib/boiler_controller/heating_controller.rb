@@ -385,20 +385,16 @@ class HeatingController
       # Set the buffer for direct connection
       controller.buffer_heater.set_relays(:normal)
 
-      # All radiator valves open
-      controller.basement_radiator_valve.open
-
-      # Radiator pumps on
+      # Hydr shift pump on
       controller.hydr_shift_pump.on
-      controller.radiator_pump.on
 
-      # Wait before turning pumps off to make sure we do not lose circulation
-      sleep $config[:circulation_maintenance_delay]
-
+      # All other pumps off
       controller.floor_pump.off
       controller.hot_water_pump.off
+      controller.radiator_pump.off
 
-      # All floor valves closed
+      # All valves closed
+      controller.basement_radiator_valve.delayed_close
       controller.basement_floor_valve.delayed_close
       controller.living_floor_valve.delayed_close
       controller.upstairs_floor_valve.delayed_close
@@ -473,8 +469,12 @@ class HeatingController
 
       if power_needed[:power] == :NONE
         case buffer_heater.state
-        when :HW
-          $app_logger.debug('Need power is: NONE coming from HW')
+        when @mode == :mode_Heat_HW && :HW
+          $app_logger.debug('Need power is: NONE coming from HW in Heat_HW mode')
+          # Turn off the heater
+          @heating_sm.postheat
+        when @mode == :mode_HW && :HW
+          $app_logger.debug('Need power is: NONE coming from HW in HW mode')
           # Turn off the heater
           @heating_sm.posthw
         when :normal
