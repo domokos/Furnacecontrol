@@ -835,9 +835,9 @@ class HeatingController
   end
 
   def read_config
-    Globals.read_global_config
+    @config.reload
 
-    $config_mutex.synchronize do
+    @config.config_mutex.synchronize do
       @forward_sensor.mock_temp = @config[:forward_mock_temp]\
        unless (defined? @forward_sensor).nil?
       @return_sensor.mock_temp = @config[:return_mock_temp]\

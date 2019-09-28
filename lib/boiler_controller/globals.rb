@@ -90,6 +90,7 @@ module Globals
   class Config
     # The mutex and the map for synchronizing read/write
     # the boiler configuration
+    attr_reader :config_mutex
     def initialize(logger, config_path)
       @config_mutex = Mutex.new
       @config = {}
