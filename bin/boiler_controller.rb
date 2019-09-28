@@ -84,7 +84,7 @@ pid = fork do
     pidfile.close
 
     # Set the initial state
-    $boiler_control = HeatingController.new(:Off, :Heat)
+    $boiler_control = HeatingController.new($app_logger)
     $app_logger.info('Controller initialized - starting operation')
 
     begin

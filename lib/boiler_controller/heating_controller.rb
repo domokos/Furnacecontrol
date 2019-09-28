@@ -16,13 +16,14 @@ class HeatingController
   attr_reader :living_floor_thermostat, :mode_thermostat, :target_boiler_temp
   attr_reader :sm_relax_timer
 
-  def initialize(_initial_state, initial_mode)
+  def initialize(logger)
     # Init instance variables
     @target_boiler_temp = 0.0
     @forward_temp = 0.0
     @return_temp = 0.0
     @test_cycle_cnt = 0
     @moving_valves_required = false
+    @logger = logger
 
     read_config
 
@@ -43,17 +44,7 @@ class HeatingController
     # Set the initial state
     @heating_sm.init
 
-    # Set the initial mode
-    if initial_mode == :Off
-      @mode = :mode_Off
-    elsif initial_mode == :HW
-      @mode = :mode_HW
-    elsif initial_mode == :Heat
-      @mode = :mode_Heat_HW
-    else
-      $app_logger.fatal('Illegal initial mode. Aborting.')
-      exit
-    end
+    @mode = :mode_Off
 
     # Create watertemp Polycurves
     @heating_watertemp_polycurve = \
@@ -67,7 +58,7 @@ class HeatingController
     @hw_thermostat.set_threshold(@hw_watertemp_polycurve\
       .float_value(@living_floor_thermostat.temp))
 
-    $app_logger.debug('Boiler controller initialized initial state '\
+    @logger.debug('Boiler controller initialized initial state '\
                       "set to: #{@heating_sm.current}, "\
                       "Initial mode set to: #{@mode}")
   end
@@ -300,7 +291,7 @@ class HeatingController
   # Prefill sensors and thermostats to ensure smooth startup operation
   def prefill_sensors
     6.times do |i|
-      $app_logger.info("Prefilling sensors. Round: #{i} of 6")
+      @logger.info("Prefilling sensors. Round: #{i} of 6")
       read_sensors
       sleep 0.5
       $shutdown_reason != Globals::NO_SHUTDOWN && break
@@ -321,7 +312,7 @@ class HeatingController
 
     # Log state transitions and arm the state change relaxation timer
     @heating_sm.on_before do |event|
-      $app_logger.debug('Heating SM state change from '\
+      @logger.debug('Heating SM state change from '\
                         "#{event.from} to #{event.to}")
       controller.sm_relax_timer.reset
     end
@@ -330,14 +321,14 @@ class HeatingController
     @heating_sm.on_enter_off do |event|
       # Perform initialization on startup
       if event.name == :init
-        $app_logger.debug('Heater SM initiaization')
+        @logger.debug('Heater SM initiaization')
 
         # Expire the timer to allow immediate state change
         controller.sm_relax_timer.expire
 
         # Regular turn off
       else
-        $app_logger.debug('Turning off heating')
+        @logger.debug('Turning off heating')
         # Stop the mixer controller
         controller.mixer_controller.stop_control
 
@@ -345,7 +336,7 @@ class HeatingController
         controller.buffer_heater.set_mode(:off)
 
         # Wait before turning pumps off to make sure we do not lose circulation
-        $app_logger.debug('Waiting shutdown delay')
+        @logger.debug('Waiting shutdown delay')
         sleep $config[:shutdown_delay]
       end
       # Turn off all pumps
@@ -361,20 +352,20 @@ class HeatingController
       controller.upstairs_floor_valve.delayed_close
 
       # Wait for the delayed closure to happen
-      $app_logger.debug('Waiting for delayed closure valves to close')
+      @logger.debug('Waiting for delayed closure valves to close')
       sleep 3
     end
 
     # Activation actions for Heating
     @heating_sm.on_enter_heating do
-      $app_logger.debug('Activating "Heat" state')
+      @logger.debug('Activating "Heat" state')
       controller.mixer_controller.start_control
       # Do not control pumps or valves
     end
 
     # Activation actions for Post circulation heating
     @heating_sm.on_enter_postheating do
-      $app_logger.debug('Activating "Postheat" state')
+      @logger.debug('Activating "Postheat" state')
 
       # Signal heater to turn off
       controller.buffer_heater.set_mode(:off)
@@ -400,13 +391,13 @@ class HeatingController
       controller.upstairs_floor_valve.delayed_close
 
       # Wait for the delayed closure to happen
-      $app_logger.debug('Waiting for delayed closure valves to close')
+      @logger.debug('Waiting for delayed closure valves to close')
       sleep 3
     end
 
     # Activation actions for Post circulation heating
     @heating_sm.on_enter_posthwing do
-      $app_logger.debug('Activating \"PostHW\" state')
+      @logger.debug('Activating \"PostHW\" state')
 
       # Signal heater to turn off
       controller.buffer_heater.set_mode(:off)
@@ -433,7 +424,7 @@ class HeatingController
       controller.upstairs_floor_valve.delayed_close
 
       # Wait for the delayed closure to happen
-      $app_logger.debug('Waiting for delayed closure valves to close')
+      @logger.debug('Waiting for delayed closure valves to close')
       sleep 3
     end
   end
@@ -442,7 +433,7 @@ class HeatingController
   # transitions basd on the current value of sensors
   def evaluate_state_change(prev_power_needed, power_needed)
     if !@sm_relax_timer.expired? && power_needed[:power] != :NONE
-      $app_logger.trace('SM relax timer not expired - not changing state')
+      @logger.trace('SM relax timer not expired - not changing state')
       return
     end
 
@@ -454,10 +445,10 @@ class HeatingController
       # Else: Stay in off state
 
       if power_needed[:power] != :NONE
-        $app_logger.debug("Need power is : #{power_needed[:power]}")
+        @logger.debug("Need power is : #{power_needed[:power]}")
         @heating_sm.turnon
       else
-        $app_logger.trace('Decision: No power requirement - not changing state')
+        @logger.trace('Decision: No power requirement - not changing state')
       end
 
     when :heating
@@ -470,19 +461,19 @@ class HeatingController
       if power_needed[:power] == :NONE
         case buffer_heater.state
         when @mode == :mode_Heat_HW && :HW
-          $app_logger.debug('Need power is: NONE coming from HW in Heat_HW mode')
+          @logger.debug('Need power is: NONE coming from HW in Heat_HW mode')
           # Turn off the heater
           @heating_sm.postheat
         when @mode == :mode_HW && :HW
-          $app_logger.debug('Need power is: NONE coming from HW in HW mode')
+          @logger.debug('Need power is: NONE coming from HW in HW mode')
           # Turn off the heater
           @heating_sm.posthw
         when :normal
-          $app_logger.debug('Need power is: NONE coming from normal heating')
+          @logger.debug('Need power is: NONE coming from normal heating')
           # Turn off the heater
           @heating_sm.postheat
         when :frombuffer
-          $app_logger.debug('Need power is: NONE coming from normal heating')
+          @logger.debug('Need power is: NONE coming from normal heating')
           # Turn off the heater
           @heating_sm.turnoff
         else
@@ -498,12 +489,12 @@ class HeatingController
       # If Delta T on the Boiler drops below 5 C then -> off
 
       if @forward_temp - @return_temp < 5.0
-        $app_logger.debug('Delta T on the boiler dropped below 5 C')
+        @logger.debug('Delta T on the boiler dropped below 5 C')
         # Turn off the heater
         @heating_sm.turnoff
         # If need power then -> Heat
       elsif power_needed[:power] != :NONE
-        $app_logger.debug("Need power is #{power_needed[:power]}")
+        @logger.debug("Need power is #{power_needed[:power]}")
         @heating_sm.turnon
       end
 
@@ -515,17 +506,17 @@ class HeatingController
       # If Delta T on the Boiler drops below 5 C then -> Off
 
       if @forward_temp - @return_temp < 5.0
-        $app_logger.debug('Delta T on the Boiler dropped below 5 C')
+        @logger.debug('Delta T on the Boiler dropped below 5 C')
         # Turn off the heater
         @heating_sm.turnoff
         # If Boiler temp below HW temp + 4 C then -> Off
       elsif @forward_temp < @hw_thermostat.temp + 4
-        $app_logger.debug('Boiler temp below HW temp + 4 C')
+        @logger.debug('Boiler temp below HW temp + 4 C')
         # Turn off the heater
         @heating_sm.turnoff
         # If need power then -> Heat
       elsif power_needed[:power] != :NONE
-        $app_logger.debug("Need power is #{power_needed[:power]}")
+        @logger.debug("Need power is #{power_needed[:power]}")
         # Turn off the heater
         @heating_sm.turnoff
       end
@@ -560,7 +551,7 @@ class HeatingController
     # Do the main loop until shutdown is requested
     while $shutdown_reason == Globals::NO_SHUTDOWN
 
-      $app_logger.trace('Main boiler loop cycle start')
+      @logger.trace('Main boiler loop cycle start')
 
       # Sleep to spare processor time
       sleep $config[:main_loop_delay]
@@ -615,7 +606,7 @@ class HeatingController
         @moving_valves_required = false
       end
     end
-    $app_logger.debug('Main cycle ended shutting down')
+    @logger.debug('Main cycle ended shutting down')
     shutdown
   end
 
@@ -687,19 +678,19 @@ class HeatingController
       return unless changed
 
       # Set mode of the heater
-      $app_logger.debug('Setting heater mode to HW')
+      @logger.debug('Setting heater mode to HW')
       @buffer_heater.set_mode(:HW)
       @mixer_controller.pause
     when :RAD, :RADFLOOR, :FLOOR
       # Set mode and required water temperature of the boiler
-      $app_logger.trace("Setting heater target temp to: #{@target_boiler_temp}")
+      @logger.trace("Setting heater target temp to: #{@target_boiler_temp}")
       @buffer_heater.set_target(@target_boiler_temp,\
                                 power_needed[:power] != :RAD)
       if power_needed[:power] == :FLOOR && changed
-        $app_logger.debug('Setting heater mode to :floorheat')
+        @logger.debug('Setting heater mode to :floorheat')
         @buffer_heater.set_mode(:floorheat)
       elsif changed
-        $app_logger.debug('Setting heater mode to :radheat')
+        @logger.debug('Setting heater mode to :radheat')
         @buffer_heater.set_mode(:radheat)
       end
       if power_needed[:power] == :RAD
@@ -708,7 +699,7 @@ class HeatingController
         @mixer_controller.resume
       end
     else
-      $app_logger.fatal('Unexpected power_needed encountered '\
+      @logger.fatal('Unexpected power_needed encountered '\
       "in control_heat: #{power_needed[:power]}")
       raise 'Unexpected power_needed encountered in control_heat: '\
       "#{power_needed[:power]}"
@@ -720,12 +711,12 @@ class HeatingController
     changed = ((prev_power_needed[:power] != power_needed[:power]) || \
     (prev_power_needed[:state] != power_needed[:state]))
 
-    $app_logger.trace('Setting valves and pumps')
+    @logger.trace('Setting valves and pumps')
 
     case power_needed[:power]
     when :HW # Only Hot water supplies on
       if changed
-        $app_logger.info('Setting valves and pumps for HW')
+        @logger.info('Setting valves and pumps for HW')
 
         # Turn off pumps
         @radiator_pump.off
@@ -746,7 +737,7 @@ class HeatingController
       end
 
       if changed
-        $app_logger.info('Setting valves and pumps for RAD')
+        @logger.info('Setting valves and pumps for RAD')
         @basement_floor_valve.delayed_close
         @living_floor_valve.delayed_close
         @upstairs_floor_valve.delayed_close
@@ -777,7 +768,7 @@ class HeatingController
       end
 
       if changed
-        $app_logger.info('Setting valves and pumps for RADFLOOR')
+        @logger.info('Setting valves and pumps for RADFLOOR')
 
         # Floor heating on
         @floor_pump.on
@@ -802,7 +793,7 @@ class HeatingController
       end
 
       if changed
-        $app_logger.info('Setting valves and pumps for FLOOR')
+        @logger.info('Setting valves and pumps for FLOOR')
         @basement_radiator_valve.delayed_close
 
         # Floor heating on
@@ -878,7 +869,7 @@ class HeatingController
     # If there is no logfile we need to move
     unless File.exist?($config[:magnetic_valve_movement_logfile])
       @moving_valves_required = true
-      $app_logger.info('No movement log file found - '\
+      @logger.info('No movement log file found - '\
         'Setting moving_valves_required to true for the first time')
       return
     end
@@ -896,13 +887,13 @@ class HeatingController
        # And we are just after 10 o'clock
        ((Time.now.to_i % (24 * 60 * 60)) + 60 * 60) > (10 * 60 * 60)
       @moving_valves_required = true
-      $app_logger.info('Setting moving_valves_required to true')
+      @logger.info('Setting moving_valves_required to true')
     end
     @move_logfile.close
   end
 
   def do_magnetic_valve_movement
-    $app_logger.info('Start moving valves')
+    @logger.info('Start moving valves')
 
     @radiator_pump.off
     @floor_pump.off
@@ -970,15 +961,15 @@ class HeatingController
     @move_logfile.write(Time.now.to_i.to_s)
     @move_logfile.write("\n")
     @move_logfile.close
-    $app_logger.info('Moving valves finished')
+    @logger.info('Moving valves finished')
   end
 
   # Perform app cycle logging
   def app_cycle_logging(power_needed)
-    $app_logger.trace("Forward boiler temp: #{@forward_temp}")
-    $app_logger.trace("Return temp: #{@return_temp}")
-    $app_logger.trace("HW temp: #{@hw_thermostat.temp}")
-    $app_logger.trace("Need power: #{power_needed}")
+    @logger.trace("Forward boiler temp: #{@forward_temp}")
+    @logger.trace("Return temp: #{@return_temp}")
+    @logger.trace("HW temp: #{@hw_thermostat.temp}")
+    @logger.trace("Need power: #{power_needed}")
   end
 
   # Perform heating cycle logging
@@ -1050,7 +1041,7 @@ class HeatingController
     begin
       @test_controls = YAML.load_file(Globals::TEST_CONTROL_FILE_PATH)
     rescue StandardError
-      $app_logger.fatal('Cannot open config file: ' + \
+      @logger.fatal('Cannot open config file: ' + \
                         Globals::TEST_CONTROL_FILE_PATH + ' Shutting down.')
       $shutdown_reason = Globals::FATAL_SHUTDOWN
     end
@@ -1073,9 +1064,9 @@ class HeatingController
     @hw_thermostat.set_threshold(@test_controls[:target_HW_temp])
     @target_boiler_temp = @test_controls[:target_boiler_temp]
 
-    $app_logger.debug("Living floor PWM thermostat value: #{@living_floor_thermostat.value}")
-    $app_logger.debug("Living floor PWM thermostat state: #{@living_floor_thermostat.state}")
-    $app_logger.debug("Power needed: #{determine_power_needed}")
+    @logger.debug("Living floor PWM thermostat value: #{@living_floor_thermostat.value}")
+    @logger.debug("Living floor PWM thermostat state: #{@living_floor_thermostat.state}")
+    @logger.debug("Power needed: #{determine_power_needed}")
     @test_cycle_cnt += 1
   end
 
@@ -1088,7 +1079,7 @@ class HeatingController
   def shutdown
     # Turn off the heater
     @heating_sm.turnoff
-    $app_logger.info('Shutdown complete. Shutdown reason: ' + $shutdown_reason)
+    @logger.info('Shutdown complete. Shutdown reason: ' + $shutdown_reason)
     command = 'rm -f ' + $pidpath
     system(command)
   end
