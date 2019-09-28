@@ -101,7 +101,9 @@ module Globals
     end
 
     def [](symbol)
-      @config[symbol]
+      retval = nil
+      @config_mutex.synchronize { retval = @config[symbol] }
+      retval
     end
 
     def reload

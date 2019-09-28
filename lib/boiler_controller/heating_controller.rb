@@ -282,12 +282,13 @@ class HeatingController
       .new(@forward_sensor, @upper_buffer_sensor,
            @buffer_output_sensor, @return_sensor,
            @hw_sensor, @hw_valve, @heater_relay, @hydr_shift_pump,
-           @hot_water_pump, @hw_watertemp, @heating_watertemp)
+           @hot_water_pump, @hw_watertemp, @heating_watertemp,
+           @config)
 
     # Create the Mixer controller
     @mixer_controller = \
       BoilerBase::MixerControl\
-      .new(@mixer_sensor, @cw_switch, @ccw_switch)
+      .new(@mixer_sensor, @cw_switch, @ccw_switch, @config)
   end
 
   # Prefill sensors and thermostats to ensure smooth startup operation
@@ -837,26 +838,24 @@ class HeatingController
   def read_config
     @config.reload
 
-    @config.config_mutex.synchronize do
-      @forward_sensor.mock_temp = @config[:forward_mock_temp]\
-       unless (defined? @forward_sensor).nil?
-      @return_sensor.mock_temp = @config[:return_mock_temp]\
-       unless (defined? @return_sensor).nil?
-      @hw_sensor.mock_temp = @config[:HW_mock_temp]\
-       unless (defined? @hw_sensor).nil?
+    @forward_sensor.mock_temp = @config[:forward_mock_temp]\
+      unless (defined? @forward_sensor).nil?
+    @return_sensor.mock_temp = @config[:return_mock_temp]\
+      unless (defined? @return_sensor).nil?
+    @hw_sensor.mock_temp = @config[:HW_mock_temp]\
+      unless (defined? @hw_sensor).nil?
 
-      @living_sensor.mock_temp = @config[:living_mock_temp]\
-       unless (defined? @living_sensor).nil?
-      @upstairs_sensor.mock_temp = @config[:upstairs_mock_temp]\
-       unless (defined? @upstairs_sensor).nil?
-      @basement_sensor.mock_temp = @config[:basement_mock_temp]\
-       unless (defined? @basement_sensor).nil?
-      @external_sensor.mock_temp = @config[:external_mock_temp]\
-       unless (defined? @external_sensor).nil?
+    @living_sensor.mock_temp = @config[:living_mock_temp]\
+      unless (defined? @living_sensor).nil?
+    @upstairs_sensor.mock_temp = @config[:upstairs_mock_temp]\
+      unless (defined? @upstairs_sensor).nil?
+    @basement_sensor.mock_temp = @config[:basement_mock_temp]\
+      unless (defined? @basement_sensor).nil?
+    @external_sensor.mock_temp = @config[:external_mock_temp]\
+      unless (defined? @external_sensor).nil?
 
-      @sm_relax_timer&.set_timer\
-        (@config[:heating_sm_state_change_relaxation_time])
-    end
+    @sm_relax_timer&.set_timer\
+      (@config[:heating_sm_state_change_relaxation_time])
   end
 
   def valve_move_evaluation

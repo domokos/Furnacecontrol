@@ -303,7 +303,8 @@ module BoilerBase
   # End of class PwmThermostat
 
   class MixerControl
-    def initialize(mix_sensor, cw_switch, ccw_switch, initial_target_temp=34.0)
+    def initialize(mix_sensor, cw_switch, ccw_switch,
+                   config, initial_target_temp=34.0)
       # Initialize class variables
       @mix_sensor = mix_sensor
       @target_temp = initial_target_temp
@@ -311,7 +312,7 @@ module BoilerBase
       @ccw_switch = ccw_switch
 
       # Copy the configuration
-      @config = $config.dup
+      @config = config
 
       # Create Filters
       @mix_filter = Filter.new(@config[:mixer_filter_size])
@@ -506,9 +507,8 @@ module BoilerBase
       $app_logger.debug('Mixer controller - measurement_thread_mutex unlocked')
     end
 
-    def log_and_copy_config(value, error)
+    def log(value, error)
       # Copy the config for updates
-      $config_mutex.synchronize { @config = $config.dup }
       $app_logger.debug("Mixer forward temp: #{value.round(2)}")
       $app_logger.debug("Mixer controller error: #{error.round(2)}")
       @mixer_log_rate_limiter.set_timer(@config[:mixer_limited_log_period])
@@ -528,7 +528,7 @@ module BoilerBase
       error = target - value
       adjustment_time = calculate_adjustment_time(error)
 
-      log_and_copy_config(value, error) if @mixer_log_rate_limiter.expired?
+      log(value, error) if @mixer_log_rate_limiter.expired?
 
       # Adjust mixing motor if it is needed
       return if adjustment_time.abs.zero?
@@ -649,7 +649,8 @@ module BoilerBase
                    hw_valve,
                    heater_relay,
                    hydr_shift_pump, hw_pump,
-                   hw_wiper, heat_wiper)
+                   hw_wiper, heat_wiper,
+                   config)
 
       # Buffer Sensors
       @forward_sensor = forward_sensor
@@ -676,7 +677,7 @@ module BoilerBase
       @control_mutex = Mutex.new
 
       # Copy the configuration
-      @config = $config.dup
+      @config = config
 
       # This one signals the control thread to exit
       @stop_control = Mutex.new
@@ -1054,7 +1055,6 @@ module BoilerBase
 
         # Loop until signalled to exit
         until @stop_control.locked?
-          $config_mutex.synchronize { @config = $config.dup }
           # Make sure mode only changes outside of the block
           @modesetting_mutex.synchronize do
             # Update any objects that may use parameters from
