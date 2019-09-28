@@ -279,8 +279,8 @@ module BusDevice
         Thread.new do
           sleep DELAYED_CLOSE_VALVE_DELAY
           parent_off
-          @delayed_close_semaphore.unlock
         end
+        @delayed_close_semaphore.unlock
       end
     end
 
