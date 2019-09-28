@@ -4,7 +4,6 @@
 # Boiler control softvare
 
 require '/usr/local/lib/boiler_controller/heating_controller'
-require '/usr/local/lib/boiler_controller/restapi'
 require 'robustthread'
 
 # Config file paths
@@ -91,6 +90,8 @@ pid = fork do
     pidfile.close
 
     $config = Globals::Config($app_logger, CONFIG_FILE_PATH)
+
+    require '/usr/local/lib/boiler_controller/restapi'
 
     # Set the initial state
     $boiler_control = HeatingController.new($app_logger, $config)
