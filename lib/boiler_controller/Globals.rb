@@ -1,20 +1,22 @@
+# frozen_string_literal: true
+
 require 'robustthread'
 require 'yaml'
 
 # Modukle of global variables and utility functions
 module Globals
-  APPLOG_LOGFILE = '/var/log/boiler_controller/boiler_controller.log'.freeze
-  HEATING_LOGFILE = '/var/log/boiler_controller/boiler_heating.log'.freeze
-  DAEMON_LOGFILE = '/var/log/boiler_controller/boiler_daemonlog.log'.freeze
-  PIDFILE = '/var/run/boiler_controller/boiler_controller.pid'.freeze
+  APPLOG_LOGFILE = '/var/log/boiler_controller/boiler_controller.log'
+  HEATING_LOGFILE = '/var/log/boiler_controller/boiler_heating.log'
+  DAEMON_LOGFILE = '/var/log/boiler_controller/boiler_daemonlog.log'
+  PIDFILE = '/var/run/boiler_controller/boiler_controller.pid'
 
   # Config file paths
-  CONFIG_FILE_PATH = '/etc/boiler_controller/boiler_controller.yml'.freeze
-  TEST_CONTROL_FILE_PATH = '/etc/boiler_controller/boiler_test_controls.yml'.freeze
+  CONFIG_FILE_PATH = '/etc/boiler_controller/boiler_controller.yml'
+  TEST_CONTROL_FILE_PATH = '/etc/boiler_controller/boiler_test_controls.yml'
 
-  NO_SHUTDOWN = 'No Shutdown'.freeze
-  NORMAL_SHUTDOWN = 'Normal Shutdown'.freeze
-  FATAL_SHUTDOWN = 'Shutdown on Fatal Error'.freeze
+  NO_SHUTDOWN = 'No Shutdown'
+  NORMAL_SHUTDOWN = 'Normal Shutdown'
+  FATAL_SHUTDOWN = 'Shutdown on Fatal Error'
 
   # The logger class
   class BoilerLogger < Logger

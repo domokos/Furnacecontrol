@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require '/usr/local/lib/boiler_controller/boiler_base'
 require 'rubygems'
 
@@ -196,12 +198,12 @@ class HeatingController
       BoilerBase::ASymmetricThermostat.new(@hw_sensor, 2, 0, 0.0, 8)
     @living_floor_thermostat =
       BoilerBase::SymmetricThermostat.new(@external_sensor,
-                                           $config[:living_floor_hysteresis],
-                                           $config[:floor_heating_threshold], 30)
+                                          $config[:living_floor_hysteresis],
+                                          $config[:floor_heating_threshold], 30)
     @mode_thermostat =
       BoilerBase::SymmetricThermostat.new(@external_sensor,
-                                           $config[:mode_hysteresis],
-                                           $config[:mode_threshold], 50)
+                                          $config[:mode_hysteresis],
+                                          $config[:mode_threshold], 50)
     @upstairs_thermostat =
       BoilerBase::SymmetricThermostat.new(@upstairs_sensor, 0.3, 5.0, 15)
     @basement_thermostat =
@@ -221,16 +223,16 @@ class HeatingController
       BusDevice::DelayedCloseMagneticValve\
       .new('Basement floor valve',
            'Contact 9 on main board',
-            $config[:main_controller_dev_addr],
-            $config[:basement_floor_valve_reg_addr],
-            DRY_RUN)
+           $config[:main_controller_dev_addr],
+           $config[:basement_floor_valve_reg_addr],
+           DRY_RUN)
     @living_floor_valve = \
-     BusDevice::DelayedCloseMagneticValve\
-     .new('Living level floor valve',
-          'In the living floor water distributor',
-          $config[:six_owbus_dev_addr],
-          $config[:living_floor_valve_reg_addr],
-          DRY_RUN)
+      BusDevice::DelayedCloseMagneticValve\
+      .new('Living level floor valve',
+           'In the living floor water distributor',
+           $config[:six_owbus_dev_addr],
+           $config[:living_floor_valve_reg_addr],
+           DRY_RUN)
     @upstairs_floor_valve = \
       BusDevice::DelayedCloseMagneticValve\
       .new('Upstairs floor valve',
@@ -466,16 +468,27 @@ class HeatingController
       # Evaluating Heat state:
       # Control valves and pumps based on measured temperatures
       # Control boiler wipers to maintain target boiler temperature
-      # If not need power anymore then -> postheating or posthw based on operating mode
+      # If not need power anymore then -> postheating or
+      # posthw based on operating mode
 
-      if power_needed[:power] == :NONE && prev_power_needed[:power] == :HW
-        $app_logger.debug('Need power is: NONE coming from HW')
-        # Turn off the heater
-        @heating_sm.posthw
-      elsif power_needed[:power] == :NONE
-        $app_logger.debug('Need power is: NONE coming from not HW')
-        # Turn off the heater
-        @heating_sm.postheat
+      if power_needed[:power] == :NONE
+        case buffer_heater.state
+        when :HW
+          $app_logger.debug('Need power is: NONE coming from HW')
+          # Turn off the heater
+          @heating_sm.posthw
+        when :normal
+          $app_logger.debug('Need power is: NONE coming from normal heating')
+          # Turn off the heater
+          @heating_sm.postheat
+        when :frombuffer
+          $app_logger.debug('Need power is: NONE coming from normal heating')
+          # Turn off the heater
+          @heating_sm.turnoff
+        else
+          raise 'Unexpected heater state in '\
+                "evaluate_state_change: #{buffer_heater.state}"
+        end
       end
 
     when :postheating

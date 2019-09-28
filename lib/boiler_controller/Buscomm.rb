@@ -1,4 +1,4 @@
-#!/usr/local/rvm/rubies/ruby-2.1.5/bin/ruby
+# frozen_string_literal: true
 
 # Encoding.default_internal = Encoding.find('ASCII-8BIT')
 

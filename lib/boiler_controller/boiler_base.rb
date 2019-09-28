@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require '/usr/local/lib/boiler_controller/Buscomm'
 require '/usr/local/lib/boiler_controller/Globals'
 require '/usr/local/lib/boiler_controller/bus_device'
@@ -645,7 +647,8 @@ module BoilerBase
     def initialize(forward_sensor, upper_sensor, buf_output_sensor, return_sensor,
                    hw_thermostat,
                    hw_valve,
-                   heater_relay, hydr_shift_pump, hw_pump,
+                   heater_relay,
+                   hydr_shift_pump, hw_pump,
                    hw_wiper, heat_wiper)
 
       # Buffer Sensors
@@ -775,6 +778,9 @@ module BoilerBase
       @overshoot_required = overshoot_required
     end
 
+    def state
+      @buffer_sm.current
+    end
     # Configure the relays for a certain purpose
     def set_relays(config)
       # Check validity of the parameter
