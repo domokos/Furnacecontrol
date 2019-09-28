@@ -322,14 +322,14 @@ class HeatingController
     @heating_sm.on_enter_off do |event|
       # Perform initialization on startup
       if event.name == :init
-        controller.debug('Heater SM initiaization')
+        controller.logger.debug('Heater SM initiaization')
 
         # Expire the timer to allow immediate state change
         controller.sm_relax_timer.expire
 
         # Regular turn off
       else
-        controller.debug('Turning off heating')
+        controller.logger.debug('Turning off heating')
         # Stop the mixer controller
         controller.mixer_controller.stop_control
 
@@ -337,7 +337,7 @@ class HeatingController
         controller.buffer_heater.set_mode(:off)
 
         # Wait before turning pumps off to make sure we do not lose circulation
-        controller.debug('Waiting shutdown delay')
+        controller.logger.debug('Waiting shutdown delay')
         sleep $config[:shutdown_delay]
       end
       # Turn off all pumps
@@ -353,20 +353,20 @@ class HeatingController
       controller.upstairs_floor_valve.delayed_close
 
       # Wait for the delayed closure to happen
-      controller.debug('Waiting for delayed closure valves to close')
+      controller.logger.debug('Waiting for delayed closure valves to close')
       sleep 3
     end
 
     # Activation actions for Heating
     @heating_sm.on_enter_heating do
-      controller.debug('Activating "Heat" state')
+      controller.logger.debug('Activating "Heat" state')
       controller.mixer_controller.start_control
       # Do not control pumps or valves
     end
 
     # Activation actions for Post circulation heating
     @heating_sm.on_enter_postheating do
-      controller.debug('Activating "Postheat" state')
+      controller.logger.debug('Activating "Postheat" state')
 
       # Signal heater to turn off
       controller.buffer_heater.set_mode(:off)
@@ -392,13 +392,13 @@ class HeatingController
       controller.upstairs_floor_valve.delayed_close
 
       # Wait for the delayed closure to happen
-      controller.debug('Waiting for delayed closure valves to close')
+      controller.logger.debug('Waiting for delayed closure valves to close')
       sleep 3
     end
 
     # Activation actions for Post circulation heating
     @heating_sm.on_enter_posthwing do
-      controller.debug('Activating \"PostHW\" state')
+      controller.logger.debug('Activating \"PostHW\" state')
 
       # Signal heater to turn off
       controller.buffer_heater.set_mode(:off)
@@ -425,7 +425,7 @@ class HeatingController
       controller.upstairs_floor_valve.delayed_close
 
       # Wait for the delayed closure to happen
-      controller.debug('Waiting for delayed closure valves to close')
+      controller.logger.debug('Waiting for delayed closure valves to close')
       sleep 3
     end
   end
