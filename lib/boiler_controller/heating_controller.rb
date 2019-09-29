@@ -955,14 +955,22 @@ class HeatingController
       @living_floor_valve.close
       @upstairs_floor_valve.close
       sleep 2
+
+      @radiator_pump.off
+      @floor_pump.off
+      @hydr_shift_pump.off
     end
 
-    @buffer_heater.set_relays(:normal)
+    @buffer_heater.set_relays(:HW)
 
     # Activate the hot water pump
     @hot_water_pump.on
     sleep 15
     @hot_water_pump.off
+
+    sleep 2
+
+    @buffer_heater.set_relays(:normal)
 
     @move_logfile = File.new(@config[:magnetic_valve_movement_logfile], 'a+')
     @move_logfile.write(Time.now.to_s)
