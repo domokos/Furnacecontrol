@@ -1010,7 +1010,7 @@ class HeatingController
                           "#{(@forward_temp - @return_temp).round(2)}")
     @heating_logger.debug("Target boiler temp: #{@target_boiler_temp.round(2)}")
 
-    @heating_logger.debug('\nHW target/temperature: '\
+    @heating_logger.debug("\nHW target/temperature: "\
                           "#{@hw_thermostat.threshold.round(2)}/"\
                           "#{@hw_thermostat.temp.round(2)}")
 
@@ -1025,13 +1025,13 @@ class HeatingController
     @heating_logger.debug("Floor pump: #{@floor_pump.state}")
     @heating_logger.debug("Hydr shift pump: #{@hydr_shift_pump.state}")
 
-    @heating_logger.debug('\nLiving target/temperature: '\
+    @heating_logger.debug("\nLiving target/temperature: "\
                           "#{@living_thermostat.threshold} / "\
                           "#{@living_thermostat.temp.round(2)}")
     @heating_logger.debug('Living thermostat state: '\
                           "#{@living_thermostat.state}")
 
-    @heating_logger.debug('\nUpstairs target/temperature: '\
+    @heating_logger.debug("\nUpstairs target/temperature: "\
                           "#{@upstairs_thermostat.threshold} / "\
                           "#{@upstairs_thermostat.temp.round(2)}")
     @heating_logger.debug('Upstairs thermostat state: '\
@@ -1043,7 +1043,7 @@ class HeatingController
     @heating_logger.debug('Upstairs floor valve: '\
                           "#{@upstairs_floor_valve.state}")
 
-    @heating_logger.debug('\nBasement target/temperature: '\
+    @heating_logger.debug("\nBasement target/temperature: "\
                           "#{@basement_thermostat.target} / "\
                           "#{@basement_thermostat.temp.round(2)}")
     @heating_logger.debug("Basement PWM value: #{(@basement_thermostat.value * \
