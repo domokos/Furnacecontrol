@@ -91,10 +91,10 @@ pid = fork do
     pidfile.write(Process.pid.to_s)
     pidfile.close
 
-    $config = Globals::Config.new($app_logger, $heating_logger, CONFIG_FILE_PATH)
+    $config = Globals::Config.new($app_logger, CONFIG_FILE_PATH)
 
     # Set the initial state
-    $boiler_control = HeatingController.new($app_logger, $config)
+    $boiler_control = HeatingController.new($app_logger, $heating_logger, $config)
     $app_logger.info('Controller initialized - starting operation')
 
     begin
