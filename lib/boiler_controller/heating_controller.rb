@@ -17,14 +17,15 @@ class HeatingController
   attr_reader :sm_relax_timer
   attr_reader :logger, :config
 
-  def initialize(logger, config)
+  def initialize(app_logger, heating_logger, config)
     # Init instance variables
     @target_boiler_temp = 0.0
     @forward_temp = 0.0
     @return_temp = 0.0
     @test_cycle_cnt = 0
     @moving_valves_required = false
-    @logger = logger
+    @logger = app_logger
+    @heating_logger = heating_logger
     @config = config
 
     read_config
@@ -100,22 +101,26 @@ class HeatingController
     # Create pumps
     @radiator_pump =
       BusDevice::Switch.new('Radiator pump',
-                            'In the basement boiler room - Contact 4 on Main Panel',
+                            'In the basement boiler room - '\
+                            'Contact 4 on Main Panel',
                             @config[:main_controller_dev_addr],
                             @config[:radiator_pump_reg_addr], DRY_RUN)
     @floor_pump =
       BusDevice::Switch.new('Floor pump',
-                            'In the basement boiler room - Contact 5 on Main Panel',
+                            'In the basement boiler room - '\
+                            'Contact 5 on Main Panel',
                             @config[:main_controller_dev_addr],
                             @config[:floor_pump_reg_addr], DRY_RUN)
     @hydr_shift_pump =
       BusDevice::Switch.new('Hydraulic shift pump',
-                            'In the basement boiler room - Contact 6 on Main Panel',
+                            'In the basement boiler room - '\
+                            'Contact 6 on Main Panel',
                             @config[:main_controller_dev_addr],
                             @config[:hydr_shift_pump_reg_addr], DRY_RUN)
     @hot_water_pump =
       BusDevice::Switch.new('Hot water pump',
-                            'In the basement boiler room - Contact 7 on Main Panel',
+                            'In the basement boiler room - '\
+                            'Contact 7 on Main Panel',
                             @config[:main_controller_dev_addr],
                             @config[:hot_water_pump_reg_addr], DRY_RUN)
 
@@ -152,7 +157,8 @@ class HeatingController
                                 DRY_RUN, @config[:buffer_output_mock_temp])
     @hw_sensor =
       BusDevice::TempSensor.new('Hot Water temperature',
-                                'Inside the Hot water container main sensing tube',
+                                'Inside the hot water container '\
+                                'main sensing tube',
                                 @config[:main_controller_dev_addr],
                                 @config[:hw_sensor_reg_addr],
                                 DRY_RUN, @config[:HW_mock_temp])
@@ -476,7 +482,7 @@ class HeatingController
           # Turn off the heater
           @heating_sm.postheat
         when :frombuffer
-          @logger.debug('Need power is: NONE coming from normal heating')
+          @logger.debug('Need power is: NONE coming from heat from buffer')
           # Turn off the heater
           @heating_sm.turnoff
         else
@@ -672,7 +678,7 @@ class HeatingController
   end
 
   # Control heating
-  def control_heat(prev_power_needed,power_needed)
+  def control_heat(prev_power_needed, power_needed)
     changed = ((prev_power_needed[:power] != power_needed[:power]) || \
     (prev_power_needed[:state] != power_needed[:state]))
 
@@ -709,8 +715,9 @@ class HeatingController
     end
   end
 
-  # This function controls valves, pumps and heat during heating by evaluating the required power
-  def control_pumps_valves_for_heating(prev_power_needed,power_needed)
+  # This function controls valves, pumps and heat
+  # during heating by evaluating the required power
+  def control_pumps_valves_for_heating(prev_power_needed, power_needed)
     changed = ((prev_power_needed[:power] != power_needed[:power]) || \
     (prev_power_needed[:state] != power_needed[:state]))
 
@@ -875,7 +882,8 @@ class HeatingController
       return
     end
 
-    # If there is a logfile we need to read it and evaluate movement need based on last log entry
+    # If there is a logfile we need to read it and evaluate
+    # movement need based on last log entry
     @move_logfile = File.new(@config[:magnetic_valve_movement_logfile], 'a+')
     @move_logfile.seek(0, IO::SEEK_SET)
 
@@ -979,58 +987,68 @@ class HeatingController
 
     @logger_timer.reset
 
-    $heating_logger.debug("LOGITEM BEGIN @ #{Time.now.asctime}")
-    $heating_logger.debug("Active state: #{@heating_sm.current}")
+    @heating_logger.debug("LOGITEM BEGIN @ #{Time.now.asctime}")
+    @heating_logger.debug("Active state: #{@heating_sm.current}")
 
     sth = ''.dup
     @state_history.each do |e|
       sth += ") => (#{e[:state]},#{e[:power]}," + \
              (Time.now.getlocal(0) - e[:timestamp].to_i).strftime('%T') + ' ago'
     end
-    $heating_logger.debug("State and power_needed history : #{sth[5, 1000]})")
-    $heating_logger.debug("Forward temperature: #{@forward_temp.round(2)}")
-    $heating_logger.debug("Return water temperature: #{@return_temp.round(2)}")
-    $heating_logger.debug("Delta T on the Boiler: #{(@forward_temp - @return_temp).round(2)}")
-    $heating_logger.debug("Target boiler temp: #{@target_boiler_temp.round(2)}")
+    @heating_logger.debug("State and power_needed history : #{sth[5, 1000]})")
+    @heating_logger.debug("Forward temperature: #{@forward_temp.round(2)}")
+    @heating_logger.debug("Return water temperature: #{@return_temp.round(2)}")
+    @heating_logger.debug('Delta T on the Boiler: '\
+                          "#{(@forward_temp - @return_temp).round(2)}")
+    @heating_logger.debug("Target boiler temp: #{@target_boiler_temp.round(2)}")
 
-    $heating_logger.debug("\nHW target/temperature: #{@hw_thermostat.threshold.round(2)}/"\
+    @heating_logger.debug('\nHW target/temperature: '\
+                          "#{@hw_thermostat.threshold.round(2)}/"\
                           "#{@hw_thermostat.temp.round(2)}")
 
-    $heating_logger.debug("\nExternal temperature: "\
+    @heating_logger.debug("\nExternal temperature: "\
                           "#{@living_floor_thermostat.temp.round(2)}")
-    $heating_logger.debug("Mode thermostat status: #{@mode_thermostat.state}")
-    $heating_logger.debug("Operating mode: #{@mode}")
-    $heating_logger.debug("Need power: #{power_needed[:power]}")
+    @heating_logger.debug("Mode thermostat status: #{@mode_thermostat.state}")
+    @heating_logger.debug("Operating mode: #{@mode}")
+    @heating_logger.debug("Need power: #{power_needed[:power]}")
 
-    $heating_logger.debug("\nHW pump: #{@hot_water_pump.state}")
-    $heating_logger.debug("Radiator pump: #{@radiator_pump.state}")
-    $heating_logger.debug("Floor pump: #{@floor_pump.state}")
-    $heating_logger.debug("Hydr shift pump: #{@hydr_shift_pump.state}")
+    @heating_logger.debug("\nHW pump: #{@hot_water_pump.state}")
+    @heating_logger.debug("Radiator pump: #{@radiator_pump.state}")
+    @heating_logger.debug("Floor pump: #{@floor_pump.state}")
+    @heating_logger.debug("Hydr shift pump: #{@hydr_shift_pump.state}")
 
-    $heating_logger.debug("\nLiving target/temperature: #{@living_thermostat.threshold} / "\
+    @heating_logger.debug('\nLiving target/temperature: '\
+                          "#{@living_thermostat.threshold} / "\
                           "#{@living_thermostat.temp.round(2)}")
-    $heating_logger.debug("Living thermostat state: #{@living_thermostat.state}")
+    @heating_logger.debug('Living thermostat state: '\
+                          "#{@living_thermostat.state}")
 
-    $heating_logger.debug("\nUpstairs target/temperature: #{@upstairs_thermostat.threshold} / "\
+    @heating_logger.debug('\nUpstairs target/temperature: '\
+                          "#{@upstairs_thermostat.threshold} / "\
                           "#{@upstairs_thermostat.temp.round(2)}")
-    $heating_logger.debug("Upstairs thermostat state: #{@upstairs_thermostat.state}")
+    @heating_logger.debug('Upstairs thermostat state: '\
+                          "#{@upstairs_thermostat.state}")
 
-    $heating_logger.debug("Living floor thermostat status: #{@living_floor_thermostat.state}")
-    $heating_logger.debug("Living floor valve: #{@living_floor_valve.state}")
-    $heating_logger.debug("Upstairs floor valve: #{@upstairs_floor_valve.state}")
+    @heating_logger.debug('Living floor thermostat status: '\
+                          "#{@living_floor_thermostat.state}")
+    @heating_logger.debug("Living floor valve: #{@living_floor_valve.state}")
+    @heating_logger.debug('Upstairs floor valve: '\
+                          "#{@upstairs_floor_valve.state}")
 
-    $heating_logger.debug("\nBasement target/temperature: #{@basement_thermostat.target} / "\
+    @heating_logger.debug('\nBasement target/temperature: '\
+                          "#{@basement_thermostat.target} / "\
                           "#{@basement_thermostat.temp.round(2)}")
-    $heating_logger.debug("Basement PWM value: #{(@basement_thermostat.value * \
+    @heating_logger.debug("Basement PWM value: #{(@basement_thermostat.value * \
                           100).round(0)}%")
-    $heating_logger.debug("Basement floor valve: #{@basement_floor_valve.state}")
-    $heating_logger.debug('Basement thermostat status: '\
+    @heating_logger.debug('Basement floor valve: '\
+                          "#{@basement_floor_valve.state}")
+    @heating_logger.debug('Basement thermostat status: '\
                           "#{@basement_thermostat.state}")
 
-    $heating_logger.debug("\nBoiler relay: #{@heater_relay.state}")
-    $heating_logger.debug('Boiler required temperature: '\
+    @heating_logger.debug("\nBoiler relay: #{@heater_relay.state}")
+    @heating_logger.debug('Boiler required temperature: '\
                           "#{@heating_watertemp.temp_required.round(2)}")
-    $heating_logger.debug("LOGITEM END\n")
+    @heating_logger.debug("LOGITEM END\n")
   end
 
   # Walk through states to test the state machine

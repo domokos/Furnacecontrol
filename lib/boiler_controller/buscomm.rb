@@ -39,16 +39,19 @@ class Buscomm
 
   # Message receiving error conditions
   #:no_error = 0 # No error
-  #:no_train_received = 1 # Expected train sequence, got something else => Ignoring communication
+  #:no_train_received = 1 # Expected train sequence,
+  #     got something else => Ignoring communication
   #:ill_formed_message = 2 # Receive buffer length exceeded
-  #:messaging_timeout = 3 # Timeout occured - expected but no communication is seen on the bus
+  #:messaging_timeout = 3 # Timeout occured -
+  #     expected but no communication is seen on the bus
   #:crc_error = 4 # Frame with CRC error received
   #:device_error = 5 # Device responded with error
 
   RESPONSE_TEXT = {
     no_error: 'No error',
     no_train_received: 'No train received',
-    ill_formed_message: 'Ill formed message - received length too short or too long',
+    ill_formed_message: 'Ill formed message - received length too '\
+                        'short or too long',
     messaging_timeout: 'Messaging timeout',
     crc_error: 'CRC error - recieved message fails checksum check',
     device_error: 'Device returned error'
@@ -70,7 +73,8 @@ class Buscomm
   PING = 4
   # Set communication speed
   SET_COMM_SPEED = 5
-  # Host pings master - master does not forward the message to the bus, responds with a MASTER_ECHO
+  # Host pings master - master does not forward the message to the bus,
+  # responds with a MASTER_ECHO
   PING_MASTER = 6
   # Return the number of CRC error messages seen
   GET_DEVICE_CRC_ERROR_COUNTER = 7
