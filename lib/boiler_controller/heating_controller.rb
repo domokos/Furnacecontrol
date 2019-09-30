@@ -34,6 +34,9 @@ class HeatingController
       Globals::TimerSec.new(@config[:logger_delay_whole_sec],
                             'Logging Delay Timer')
 
+    @device_base = BusDevice::DeviceBase\
+                   .new(@config, @logger)
+
     create_pumps_and_sensors
 
     create_valueprocs
@@ -208,7 +211,8 @@ class HeatingController
     @basement_thermostat =
       BoilerBase::PwmThermostat.new(@basement_sensor, 30,
                                     @basement_thermostat_valueproc,
-                                    @is_hw_or_valve_proc, 'Basement thermostat')
+                                    @is_hw_or_valve_proc, 'Basement thermostat',
+                                    @logger)
 
     # Create magnetic valves
     @basement_radiator_valve = \
@@ -289,12 +293,12 @@ class HeatingController
            @buffer_output_sensor, @return_sensor,
            @hw_sensor, @hw_valve, @heater_relay, @hydr_shift_pump,
            @hot_water_pump, @hw_watertemp, @heating_watertemp,
-           @config)
+           @config, @logger)
 
     # Create the Mixer controller
     @mixer_controller = \
       BoilerBase::MixerControl\
-      .new(@mixer_sensor, @cw_switch, @ccw_switch, @config)
+      .new(@mixer_sensor, @cw_switch, @ccw_switch, @config, @logger)
   end
 
   # Prefill sensors and thermostats to ensure smooth startup operation
@@ -637,7 +641,11 @@ class HeatingController
     @floor_watertemp_polycurve.load(@config[:floor_watertemp_polycurve])
     @hw_watertemp_polycurve.load(@config[:HW_watertemp_polycurve])
 
-    @mode = @mode_thermostat.on? ? :mode_Heat_HW : :mode_HW
+    new_mode = @mode_thermostat.on? ? :mode_Heat_HW : :mode_HW
+    if @mode != new_mode
+      @logger.debug("Mode changed to: #{newmode}")
+      @mode = new_mode
+    end
 
     case power_needed[:power]
     when :HW
