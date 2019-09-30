@@ -1084,7 +1084,6 @@ module BoilerBase
               perform_mode_change
               @mode_changed = false
             else
-              controller_log
               evaluate_heater_state_change
             end
           end
@@ -1125,18 +1124,6 @@ module BoilerBase
     end
     # of stop_control_thread
 
-    def controller_log
-      do_limited_logging = false
-      if @control_log_rate_limiter.expired?
-        do_limited_logging = true
-        @control_log_rate_limiter.reset
-      else
-        do_limited_logging = false
-      end
-
-      @logger.debug("Heater mode: #{@mode}") if do_limited_logging
-    end
-
     # Feed logging
     def feed_log
       do_limited_logging = false
@@ -1152,6 +1139,8 @@ module BoilerBase
        unless @heater_relax_timer.expired?
       @logger.trace("Relay state: #{@relay_state}")
       @logger.trace("SM state: #{@buffer_sm.current}")
+
+      @logger.debug("Heater mode: #{@mode}") if do_limited_logging
 
       case @buffer_sm.current
       when :normal
