@@ -97,7 +97,7 @@ pid = fork do
     $app_logger.info('Controller initialized - starting operation')
 
     begin
-      $boiler_control.operate
+      boiler_control.operate
     rescue StandardError => e
       $app_logger.fatal('Exception caught in main block: ' + e.inspect)
       $app_logger.fatal('Exception backtrace: ' + e.backtrace.join("\n"))
