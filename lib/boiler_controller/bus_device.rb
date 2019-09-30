@@ -269,7 +269,8 @@ module BusDevice
                    name, location,
                    slave_address, register_address,
                    dry_run)
-      super(base, name, location, slave_address, register_address, dry_run)
+      super(base, name, location, slave_address,
+            register_address, dry_run)
       @delayed_close_semaphore = Mutex.new
       @modification_semaphore = Mutex.new
     end
@@ -596,8 +597,6 @@ module BusDevice
         $shutdown_reason = Globals::FATAL_SHUTDOWN
       end
     end
-
-    alias register_at_super register_checker
 
     def check_process
       # Preset variable holding check return value
