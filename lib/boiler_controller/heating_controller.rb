@@ -802,7 +802,7 @@ class HeatingController
       end
 
       # decide on floor valves based on external temperature
-      if @living_floor_thermostat.on?logger.
+      if @living_floor_thermostat.on?
         @living_floor_valve.open
         @upstairs_floor_valve.open
       else
