@@ -104,10 +104,10 @@ pid = fork do
       $app_logger.fatal('Exception backtrace: ' + e.backtrace.join("\n"))
       $shutdown_reason = Globals::FATAL_SHUTDOWN
       $boiler_control.shutdown
-      $BoilerRestapi.quit!
+      #$BoilerRestapi.quit!
       exit
     end
-    $BoilerRestapi.quit!
+    #$BoilerRestapi.quit!
   end
 end
 
