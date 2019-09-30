@@ -681,7 +681,7 @@ module BusDevice
 
   # The class of the heating water temp function
   class HeatingWaterTemp < WaterTempBase
-    def initialize(name, location, slave_address, register_address, dry_run, init_temp = 20.0)
+    def initialize(base, name, location, slave_address, register_address, dry_run, init_temp = 20.0)
       @lookup_curve =
         Globals::Polycurve.new(
           [
@@ -703,7 +703,7 @@ module BusDevice
             [85, 0xff]
           ]
         )
-      super(name, location, slave_address, register_address, dry_run, init_temp)
+      super(base, name, location, slave_address, register_address, dry_run, init_temp)
     end
 
     protected

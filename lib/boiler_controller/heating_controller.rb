@@ -103,25 +103,25 @@ class HeatingController
   def create_pumps_and_sensors
     # Create pumps
     @radiator_pump =
-      BusDevice::Switch.new('Radiator pump',
+      BusDevice::Switch.new(@device_base, 'Radiator pump',
                             'In the basement boiler room - '\
                             'Contact 4 on Main Panel',
                             @config[:main_controller_dev_addr],
                             @config[:radiator_pump_reg_addr], DRY_RUN)
     @floor_pump =
-      BusDevice::Switch.new('Floor pump',
+      BusDevice::Switch.new(@device_base, 'Floor pump',
                             'In the basement boiler room - '\
                             'Contact 5 on Main Panel',
                             @config[:main_controller_dev_addr],
                             @config[:floor_pump_reg_addr], DRY_RUN)
     @hydr_shift_pump =
-      BusDevice::Switch.new('Hydraulic shift pump',
+      BusDevice::Switch.new(@device_base, 'Hydraulic shift pump',
                             'In the basement boiler room - '\
                             'Contact 6 on Main Panel',
                             @config[:main_controller_dev_addr],
                             @config[:hydr_shift_pump_reg_addr], DRY_RUN)
     @hot_water_pump =
-      BusDevice::Switch.new('Hot water pump',
+      BusDevice::Switch.new(@device_base, 'Hot water pump',
                             'In the basement boiler room - '\
                             'Contact 7 on Main Panel',
                             @config[:main_controller_dev_addr],
@@ -129,62 +129,62 @@ class HeatingController
 
     # Create temp sensors
     @mixer_sensor =
-      BusDevice::TempSensor.new('Forward floor temperature',
+      BusDevice::TempSensor.new(@device_base, 'Forward floor temperature',
                                 'On the forward piping after the mixer valve',
                                 @config[:mixer_controller_dev_addr],
                                 @config[:mixer_fwd_sensor_reg_addr],
                                 DRY_RUN, @config[:mixer_forward_mock_temp])
     @forward_sensor =
-      BusDevice::TempSensor.new('Forward boiler temperature',
+      BusDevice::TempSensor.new(@device_base, 'Forward boiler temperature',
                                 'On the forward piping of the boiler',
                                 @config[:mixer_controller_dev_addr],
                                 @config[:forward_sensor_reg_addr],
                                 DRY_RUN, @config[:forward_mock_temp])
     @return_sensor =
-      BusDevice::TempSensor.new('Return water temperature',
+      BusDevice::TempSensor.new(@device_base, 'Return water temperature',
                                 'On the return piping of the boiler',
                                 @config[:mixer_controller_dev_addr],
                                 @config[:return_sensor_reg_addr],
                                 DRY_RUN, @config[:return_mock_temp])
     @upper_buffer_sensor =
-      BusDevice::TempSensor.new('Upper Buffer temperature',
+      BusDevice::TempSensor.new(@device_base, 'Upper Buffer temperature',
                                 'Inside the buffer - upper section',
                                 @config[:main_controller_dev_addr],
                                 @config[:upper_buffer_sensor_reg_addr],
                                 DRY_RUN, @config[:upper_buffer_mock_temp])
     @buffer_output_sensor =
-      BusDevice::TempSensor.new('Buffer output temperature',
+      BusDevice::TempSensor.new(@device_base, 'Buffer output temperature',
                                 'On top of the buffer',
                                 @config[:main_controller_dev_addr],
                                 @config[:buffer_output_sensor_reg_addr],
                                 DRY_RUN, @config[:buffer_output_mock_temp])
     @hw_sensor =
-      BusDevice::TempSensor.new('Hot Water temperature',
+      BusDevice::TempSensor.new(@device_base, 'Hot Water temperature',
                                 'Inside the hot water container '\
                                 'main sensing tube',
                                 @config[:main_controller_dev_addr],
                                 @config[:hw_sensor_reg_addr],
                                 DRY_RUN, @config[:HW_mock_temp])
     @living_sensor =
-      BusDevice::TempSensor.new('Living room temperature',
+      BusDevice::TempSensor.new(@device_base, 'Living room temperature',
                                 'Temperature in the living room',
                                 @config[:six_owbus_dev_addr],
                                 @config[:living_sensor_reg_addr],
                                 DRY_RUN, @config[:living_mock_temp])
     @upstairs_sensor =
-      BusDevice::TempSensor.new('Upstairs temperature',
+      BusDevice::TempSensor.new(@device_base, 'Upstairs temperature',
                                 'Upstairs forest room',
                                 @config[:six_owbus_dev_addr],
                                 @config[:upstairs_sensor_reg_addr],
                                 DRY_RUN, @config[:upstairs_mock_temp])
     @basement_sensor =
-      BusDevice::TempSensor.new('Basement temperature',
+      BusDevice::TempSensor.new(@device_base, 'Basement temperature',
                                 'In the sauna rest area',
                                 @config[:main_controller_dev_addr],
                                 @config[:basement_sensor_reg_addr],
                                 DRY_RUN, @config[:basement_mock_temp])
     @external_sensor =
-      BusDevice::TempSensor.new('External temperature',
+      BusDevice::TempSensor.new(@device_base, 'External temperature',
                                 'On the northwestern external wall',
                                 @config[:six_owbus_dev_addr],
                                 @config[:external_sensor_reg_addr],
@@ -217,28 +217,28 @@ class HeatingController
     # Create magnetic valves
     @basement_radiator_valve = \
       BusDevice::DelayedCloseMagneticValve\
-      .new('Basement radiator valve',
+      .new(@device_base, 'Basement radiator valve',
            'Contact 8 on main board',
            @config[:main_controller_dev_addr],
            @config[:basement_radiator_valve_reg_addr],
            DRY_RUN)
     @basement_floor_valve = \
       BusDevice::DelayedCloseMagneticValve\
-      .new('Basement floor valve',
+      .new(@device_base, 'Basement floor valve',
            'Contact 9 on main board',
            @config[:main_controller_dev_addr],
            @config[:basement_floor_valve_reg_addr],
            DRY_RUN)
     @living_floor_valve = \
       BusDevice::DelayedCloseMagneticValve\
-      .new('Living level floor valve',
+      .new(@device_base, 'Living level floor valve',
            'In the living floor water distributor',
            @config[:six_owbus_dev_addr],
            @config[:living_floor_valve_reg_addr],
            DRY_RUN)
     @upstairs_floor_valve = \
       BusDevice::DelayedCloseMagneticValve\
-      .new('Upstairs floor valve',
+      .new(@device_base, 'Upstairs floor valve',
            'In the upstairs water distributor',
            @config[:six_owbus_dev_addr],
            @config[:upstairs_floor_valve_reg_addr],
@@ -247,7 +247,7 @@ class HeatingController
     # Create buffer direction shift valves
     @hw_valve = \
       BusDevice::Switch\
-      .new('Forward three-way valve',
+      .new(@device_base, 'Forward three-way valve',
            'After the boiler+buffer joint - Contact 2 on main board',
            @config[:main_controller_dev_addr],
            @config[:hw_valve_reg_addr], DRY_RUN)
@@ -255,32 +255,32 @@ class HeatingController
     # Create heater relay switch
     @heater_relay = \
       BusDevice::Switch\
-      .new('Heater relay', 'Heater contact on main panel',
+      .new(@device_base, 'Heater relay', 'Heater contact on main panel',
            @config[:main_controller_dev_addr],
            @config[:heater_relay_reg_addr], DRY_RUN)
 
     # Create mixer pulsing switches
     @cw_switch = \
       BusDevice::PulseSwitch\
-      .new('CW mixer switch', 'In the mixer controller box',
+      .new(@device_base, 'CW mixer switch', 'In the mixer controller box',
            @config[:mixer_controller_dev_addr],
            @config[:mixer_cw_reg_addr], DRY_RUN)
     @ccw_switch = \
       BusDevice::PulseSwitch\
-      .new('CCW mixer switch', 'In the mixer controller box',
+      .new(@device_base, 'CCW mixer switch', 'In the mixer controller box',
            @config[:mixer_controller_dev_addr],
            @config[:mixer_ccw_reg_addr], DRY_RUN)
 
     # Create water temp wipers
     @heating_watertemp = \
       BusDevice::HeatingWaterTemp\
-      .new('Heating temp wiper',
+      .new(@device_base, 'Heating temp wiper',
            'Heating wiper contact on main panel',
            @config[:main_controller_dev_addr],
            @config[:heating_wiper_reg_addr], DRY_RUN)
     @hw_watertemp = \
       BusDevice::HWWaterTemp\
-      .new('HW temp wiper',
+      .new(@device_base, 'HW temp wiper',
            'HW wiper contact on main panel',
            @config[:main_controller_dev_addr],
            @config[:hw_wiper_reg_addr], DRY_RUN,
