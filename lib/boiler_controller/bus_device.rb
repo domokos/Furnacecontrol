@@ -105,7 +105,6 @@ module BusDevice
       # Initialize state to off
       @state = :off
       write_device(0) unless @dry_run
-      register_check_process
 
       # Register method at base to check switch value consistency
       # with the state stored in the class
