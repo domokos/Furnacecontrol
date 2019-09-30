@@ -16,8 +16,6 @@ module Globals
 
   # The logger class
   class BoilerLogger < Logger
-    attr_reader :app_logger, :heating_logger, :daemon_logger
-
     FATAL = 6
     INFO = 5
     ERROR = 4
@@ -62,6 +60,7 @@ module Globals
 
   # Class holding the logger instances of the controller
   class ControllerLogger
+    attr_reader :app_logger, :heating_logger, :daemon_logger
     def initialize
       @app_logger = BoilerLogger.new(APPLOG_LOGFILE, 6, 1_000_000)
 
