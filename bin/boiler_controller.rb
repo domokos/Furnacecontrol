@@ -15,7 +15,7 @@ Thread.abort_on_exception = true
 
 $stdout.sync = true
 
-logger = Globals::BoilerLogger.new
+logger = Globals::ControllerLogger.new
 
 logger.app_logger.level = Globals::BoilerLogger::INFO
 logger.heating_logger.level = Logger::INFO

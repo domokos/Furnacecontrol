@@ -58,7 +58,10 @@ module Globals
     def trace(progname = nil, &block)
       add(0, nil, progname, &block)
     end
+  end
 
+  # Class holding the logger instances of the controller
+  class ControllerLogger
     def initialize
       @app_logger = BoilerLogger.new(APPLOG_LOGFILE, 6, 1_000_000)
 
