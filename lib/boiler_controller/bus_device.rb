@@ -15,8 +15,9 @@ module BusDevice
       @config = config
       @logger = logger
       (defined? @comm_interface).nil? &&
-        @comm_interface = Buscomm.new(@config[:bus_master_address],
-                                      @config[:serial_device], COMM_SPEED)
+        @comm_interface = Buscomm
+                          .new(@logger, @config[:bus_master_address],
+                               @config[:serial_device], COMM_SPEED)
       (defined? @check_process_mutex).nil? &&
         @check_process_mutex = Mutex.new
       (defined? @check_list).nil? &&
@@ -482,7 +483,7 @@ module BusDevice
                       .send_message(@slave_address,
                                     Buscomm::READ_REGISTER,
                                     @register_address.chr)
-        $app_logger.trace('Succesful read from temp register'\
+        @base.logger.trace('Succesful read from temp register'\
           " of '#{@name}'")
 
         # Calculate temperature value from the data returned

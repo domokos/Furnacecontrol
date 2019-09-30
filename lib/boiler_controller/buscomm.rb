@@ -185,7 +185,8 @@ class Buscomm
   SLAVES_KEEPALIVE_INTERVAL_SEC = 15
   SLAVES_KEEPALIVE_CHECK_INTERVAL = 2
 
-  def initialize(master_address, portnum, comm_speed)
+  def initialize(logger, master_address, portnum, comm_speed)
+    @logger = logger
     @comm_speed = comm_speed
     @sp = SerialPort.new(portnum)
     set_host_paremeters(portnum, PARITY, STOPBITS,
@@ -225,19 +226,19 @@ class Buscomm
         @slaves.each do |slave_address, last_addressed|
           if last_addressed < Time.now.to_i - SLAVES_KEEPALIVE_INTERVAL_SEC
             begin
-              $app_logger.verbose("Slave '#{slave_address}' has seen no "\
+              @logger.verbose("Slave '#{slave_address}' has seen no "\
                 "communication since '#{SLAVES_KEEPALIVE_INTERVAL_SEC}' sec. "\
                 'Pinging to make sure it stays alive.')
               send_message(slave_address, PING, '')
             rescue MessagingError => e
               retval = e.return_message
-              $app_logger.fatal('Unrecoverable communication error on bus, '\
+              @logger.fatal('Unrecoverable communication error on bus, '\
                 "pinging slave '#{slave_address}' ERRNO: #{retval[:Return_code]} "\
                 "- #{Buscomm::RESPONSE_TEXT[retval[:Return_code]]}")
               $shutdown_reason = Globals::FATAL_SHUTDOWN
             end
           else
-            $app_logger.verbose("Slave '#{slave_address}' has last seen "\
+            @logger.verbose("Slave '#{slave_address}' has last seen "\
               "communication at '#{Time.at(last_addressed)\
               .strftime('%Y-%m-%d %H:%M:%S')}', #{(Time.now.to_i - last_addressed)} "\
               'secs ago. Skip pinging it.')
@@ -266,22 +267,23 @@ class Buscomm
         # Increment message seq
         @message_seq < 255 ? @message_seq += 1 : @message_seq = 0
 
-        @message_send_buffer = (@message_send_buffer.length + 3).chr + \
-                                @message_send_buffer
+        @message_send_buffer = (@message_send_buffer.length + 3).chr << \
+                               @message_send_buffer
 
         crc = crc16(@message_send_buffer)
 
-        @message_send_buffer = @train + @message_send_buffer + (crc >> 8).chr + \
-                               (crc & 0xff).chr + TRAIN_CHR.chr
+        @message_send_buffer = @train.dup << @message_send_buffer << \
+                               (crc >> 8).chr << \
+                               (crc & 0xff).chr << TRAIN_CHR.chr
 
         @sp.write(@message_send_buffer)
-        $app_logger.trace('Message sent waiting for response')
+        @logger.trace('Message sent waiting for response')
 
         @response = wait_for_response
 
         if @response[:Return_code] == :no_error
           if @slaves[slave_address].nil?
-            $app_logger.verbose("New slave device '#{slave_address}' "\
+            @logger.verbose("New slave device '#{slave_address}' "\
               'identified - registering for keepalive')
             start_keepalive_process
           end
@@ -298,7 +300,7 @@ class Buscomm
         if retry_count.positive?
           ret_c = 1
           response_history.each do |resp|
-            $app_logger.warn("Messaging retry ##{ret_c} Error code: "\
+            @logger.warn("Messaging retry ##{ret_c} Error code: "\
               "#{resp[:Return_code]} - #{RESPONSE_TEXT[resp[:Return_code]]} "\
               "Device return code: #{resp[:DeviceResponseCode]}")
             ret_c += 1
