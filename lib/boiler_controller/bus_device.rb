@@ -40,7 +40,7 @@ module BusDevice
         loop do
           @logger.trace('Check round started')
           @check_process_mutex.synchronize do
-            actual_check_list = @@check_list.dup
+            actual_check_list = @check_list.dup
           end
           @logger.trace('Element count in checkround: '\
             "#{actual_check_list.size}")
@@ -70,7 +70,7 @@ module BusDevice
               @logger.error('Bus device consistency checker process: '\
                 'Check method not defined for: '\
                 "'#{element.inspect}' Deleting from list")
-              @@check_process_mutex.synchronize { @@check_list.delete(element) }
+              @check_process_mutex.synchronize { @check_list.delete(element) }
             end
 
             # Just log the result - the checker process itself is expected
