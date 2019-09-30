@@ -63,10 +63,10 @@ module Globals
   $app_logger.formatter = proc { |severity, datetime, _progname, msg|
     if caller(4..4)[0].class == String
       "#{datetime.to_s.sub!(/^(.*) \+.*$/, '\1')} #{severity} "\
-      "#{caller(4..4)[0].sub!(%r{^.*/(.*)$}, '\1')} #{msg}\n"
+      "#{caller(4..4)[0].sub!(%r{^.*/(.*)$}, '\1')}: #{msg}\n"
     else
       "#{datetime.to_s.sub!(/^(.*) \+.*$/, '\1')} #{severity} "\
-      "#{caller(4..4)[0]} #{msg}\n"
+      "#{caller(4..4)[0]}: #{msg}\n"
     end
   }
 
@@ -79,10 +79,10 @@ module Globals
   $daemon_logger.formatter = proc { |severity, datetime, _progname, msg|
     if caller(4..4)[0].class == String
       "#{datetime.to_s.sub!(/^(.*) \+.*$/, '\1')} #{severity} "\
-      "#{caller(4..4)[0].sub!(%r{^.*\/(.*)$}, '\1')} #{msg}\n"
+      "#{caller(4..4)[0].sub!(%r{^.*\/(.*)$}, '\1')}: #{msg}\n"
     else
       "#{datetime.to_s.sub!(/^(.*) \+.*$/, '\1')} #{severity} "\
-      "#{caller(4..4)[0]} #{msg}\n"
+      "#{caller(4..4)[0]}: #{msg}\n"
     end
   }
 
