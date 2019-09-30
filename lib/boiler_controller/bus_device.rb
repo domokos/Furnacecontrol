@@ -11,8 +11,6 @@ module BusDevice
     attr_reader :config, :logger, :comm_interface
     COMM_SPEED = Buscomm::COMM_SPEED_9600_H
 
-    # Delayed close magnetic valve close delay in secs
-    DELAYED_CLOSE_VALVE_DELAY = 2
     def initialize(config, logger)
       @config = config
       @logger = logger
@@ -264,6 +262,9 @@ module BusDevice
   # This Magnetic valve closes with a delay to decrease
   # shockwawe effects in the system
   class DelayedCloseMagneticValve < Switch
+    # Delayed close magnetic valve close delay in secs
+    DELAYED_CLOSE_VALVE_DELAY = 2
+
     def initialize(base,
                    name, location,
                    slave_address, register_address,
