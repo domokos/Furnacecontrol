@@ -16,24 +16,24 @@ module Globals
 
   # The logger class
   class BoilerLogger < Logger
-    INFO = 6
-    FATAL = 5
+    FATAL = 6
+    INFO = 5
     ERROR = 4
     WARN = 3
     DEBUG = 2
     VERBOSE = 1
     TRACE = 0
 
-    SEVS = %w[TRACE VERBOSE DEBUG WARN ERROR FATAL INFO].freeze
+    SEVS = %w[TRACE VERBOSE DEBUG WARN ERROR INFO FATAL].freeze
     def format_severity(severity)
       SEVS[severity] || 'ANY'
     end
 
-    def info(progname = nil, &block)
+    def fatal(progname = nil, &block)
       add(6, nil, progname, &block)
     end
 
-    def fatal(progname = nil, &block)
+    def info(progname = nil, &block)
       add(5, nil, progname, &block)
     end
 
