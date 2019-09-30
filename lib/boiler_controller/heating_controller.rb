@@ -643,7 +643,7 @@ class HeatingController
 
     new_mode = @mode_thermostat.on? ? :mode_Heat_HW : :mode_HW
     if @mode != new_mode
-      @logger.debug("Mode changed to: #{newmode}")
+      @logger.debug("Mode changed to: #{new_mode}")
       @mode = new_mode
     end
 
