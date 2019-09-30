@@ -58,35 +58,37 @@ module Globals
     def trace(progname = nil, &block)
       add(0, nil, progname, &block)
     end
+
+    def initialize
+      @app_logger = BoilerLogger.new(APPLOG_LOGFILE, 6, 1_000_000)
+
+      @app_logger.formatter = proc { |severity, datetime, _progname, msg|
+        if caller(4..4)[0].class == String
+          "#{datetime.to_s.sub!(/^(.*) \+.*$/, '\1')} #{severity} "\
+          "#{caller(4..4)[0].sub!(%r{^.*/(.*)$}, '\1')} :: #{msg}\n"
+        else
+          "#{datetime.to_s.sub!(/^(.*) \+.*$/, '\1')} #{severity} "\
+          "#{caller(4..4)[0]} :: #{msg}\n"
+        end
+      }
+
+      @heating_logger = Logger.new(HEATING_LOGFILE, 6, 1_000_000)
+      @heating_logger.formatter = proc { |_severity, _datetime, _progname, msg|
+        "#{msg}\n"
+      }
+
+      @daemon_logger = Logger.new(DAEMON_LOGFILE, 6, 1_000_000)
+      @daemon_logger.formatter = proc { |severity, datetime, _progname, msg|
+        if caller(4..4)[0].class == String
+          "#{datetime.to_s.sub!(/^(.*) \+.*$/, '\1')} #{severity} "\
+          "#{caller(4..4)[0].sub!(%r{^.*\/(.*)$}, '\1')} :: #{msg}\n"
+        else
+          "#{datetime.to_s.sub!(/^(.*) \+.*$/, '\1')} #{severity} "\
+          "#{caller(4..4)[0]} :: #{msg}\n"
+        end
+      }
+    end
   end
-
-  @app_logger = BoilerLogger.new(APPLOG_LOGFILE, 6, 1_000_000)
-
-  @app_logger.formatter = proc { |severity, datetime, _progname, msg|
-    if caller(4..4)[0].class == String
-      "#{datetime.to_s.sub!(/^(.*) \+.*$/, '\1')} #{severity} "\
-      "#{caller(4..4)[0].sub!(%r{^.*/(.*)$}, '\1')} :: #{msg}\n"
-    else
-      "#{datetime.to_s.sub!(/^(.*) \+.*$/, '\1')} #{severity} "\
-      "#{caller(4..4)[0]} :: #{msg}\n"
-    end
-  }
-
-  @heating_logger = Logger.new(HEATING_LOGFILE, 6, 1_000_000)
-  @heating_logger.formatter = proc { |_severity, _datetime, _progname, msg|
-    "#{msg}\n"
-  }
-
-  @daemon_logger = Logger.new(DAEMON_LOGFILE, 6, 1_000_000)
-  @daemon_logger.formatter = proc { |severity, datetime, _progname, msg|
-    if caller(4..4)[0].class == String
-      "#{datetime.to_s.sub!(/^(.*) \+.*$/, '\1')} #{severity} "\
-      "#{caller(4..4)[0].sub!(%r{^.*\/(.*)$}, '\1')} :: #{msg}\n"
-    else
-      "#{datetime.to_s.sub!(/^(.*) \+.*$/, '\1')} #{severity} "\
-      "#{caller(4..4)[0]} :: #{msg}\n"
-    end
-  }
 
   # A class storing configuration items
   class Config
