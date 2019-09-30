@@ -17,15 +17,15 @@ class HeatingController
   attr_reader :sm_relax_timer
   attr_reader :logger, :config
 
-  def initialize(app_logger, heating_logger, config)
+  def initialize(config)
     # Init instance variables
     @target_boiler_temp = 0.0
     @forward_temp = 0.0
     @return_temp = 0.0
     @test_cycle_cnt = 0
     @moving_valves_required = false
-    @logger = app_logger
-    @heating_logger = heating_logger
+    @logger = config.logger
+    @heating_logger = config.heating_logger
     @config = config
 
     read_config
@@ -35,7 +35,7 @@ class HeatingController
                             'Logging Delay Timer')
 
     @device_base = BusDevice::DeviceBase\
-                   .new(@config, @logger)
+                   .new(@config)
 
     create_pumps_and_sensors
 
@@ -212,7 +212,7 @@ class HeatingController
       BoilerBase::PwmThermostat.new(@basement_sensor, 30,
                                     @basement_thermostat_valueproc,
                                     @is_hw_or_valve_proc, 'Basement thermostat',
-                                    @logger)
+                                    @config)
 
     # Create magnetic valves
     @basement_radiator_valve = \
@@ -293,12 +293,12 @@ class HeatingController
            @buffer_output_sensor, @return_sensor,
            @hw_sensor, @hw_valve, @heater_relay, @hydr_shift_pump,
            @hot_water_pump, @hw_watertemp, @heating_watertemp,
-           @config, @logger)
+           @config)
 
     # Create the Mixer controller
     @mixer_controller = \
       BoilerBase::MixerControl\
-      .new(@mixer_sensor, @cw_switch, @ccw_switch, @config, @logger)
+      .new(@mixer_sensor, @cw_switch, @ccw_switch, @config)
   end
 
   # Prefill sensors and thermostats to ensure smooth startup operation
@@ -307,7 +307,7 @@ class HeatingController
       @logger.info("Prefilling sensors. Round: #{i} of 6")
       read_sensors
       sleep 0.5
-      $shutdown_reason != Globals::NO_SHUTDOWN && break
+      @config.shutdown_reason != Globals::NO_SHUTDOWN && break
     end
   end
 
@@ -562,7 +562,7 @@ class HeatingController
                      timestamp: Time.now.getlocal(0) }
 
     # Do the main loop until shutdown is requested
-    while $shutdown_reason == Globals::NO_SHUTDOWN
+    while @config.shutdown_reason == Globals::NO_SHUTDOWN
 
       @logger.trace('Main boiler loop cycle start')
 
@@ -1078,7 +1078,7 @@ class HeatingController
     rescue StandardError
       @logger.fatal('Cannot open config file: ' + \
                         Globals::TEST_CONTROL_FILE_PATH + ' Shutting down.')
-      $shutdown_reason = Globals::FATAL_SHUTDOWN
+      @config.shutdown_reason = Globals::FATAL_SHUTDOWN
     end
 
     @forward_temp = @test_controls[:boiler_temp]
@@ -1114,8 +1114,9 @@ class HeatingController
   def shutdown
     # Turn off the heater
     @heating_sm.turnoff
-    @logger.info('Shutdown complete. Shutdown reason: ' + $shutdown_reason)
-    command = 'rm -f ' + $pidpath
+    @logger.info('Shutdown complete. '\
+                 "Shutdown reason: #{@config.shutdown_reason}")
+    command = 'rm -f ' + @config.pidpath
     system(command)
   end
 end

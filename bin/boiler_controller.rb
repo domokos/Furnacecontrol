@@ -19,7 +19,7 @@ $app_logger.level = Globals::BoilerLogger::INFO
 $heating_logger.level = Logger::INFO
 
 DRY_RUN = false
-$shutdown_reason = Globals::NO_SHUTDOWN
+
 $low_floor_temp_mode = false
 
 Signal.trap('TTIN') do
@@ -66,35 +66,35 @@ pid = fork do
     $BoilerRestapi.run!
   end
 =end
-  sleep 1
+  pidfile_index = ARGV.find_index('--pidfile')
+  pidpath = if !pidfile_index.nil? && !ARGV[pidfile_index + 1].nil?
+              ARGV[pidfile_index + 1]
+            else
+              Globals::PIDFILE
+            end
+  pidfile = File.new(pidpath, 'w')
+  pidfile.write(Process.pid.to_s)
+  pidfile.close
+
+  config = Globals::Config.new($app_logger, $heating_logger, CONFIG_FILE_PATH)
+
+  config.pidpath = pidpath
 
   Signal.trap('TERM') do
     puts 'TERM signal caught - setting shutdown reason to NORMAL_SHUTDOWN'
-    $shutdown_reason = Globals::NORMAL_SHUTDOWN
+    config.shutdown_reason = Globals::NORMAL_SHUTDOWN
   end
 
   RobustThread.new(label: 'Main daemon thread') do
     Thread.current[:name] = 'Main daemon'
     Signal.trap('HUP', 'IGNORE')
 
-    pidfile_index = ARGV.find_index('--pidfile')
-    $pidpath = if !pidfile_index.nil? && !ARGV[pidfile_index+1].nil?
-                 ARGV[pidfile_index + 1]
-               else
-                 Globals::PIDFILE
-               end
-
     $app_logger.level = Globals::BoilerLogger::DEBUG unless\
                         ARGV.find_index('--debug').nil?
 
-    pidfile = File.new($pidpath, 'w')
-    pidfile.write(Process.pid.to_s)
-    pidfile.close
-
-    $config = Globals::Config.new($app_logger, CONFIG_FILE_PATH)
-
     # Set the initial state
-    $boiler_control = HeatingController.new($app_logger, $heating_logger, $config)
+    boiler_control = HeatingController
+                      .new($app_logger, $heating_logger, config)
     $app_logger.info('Controller initialized - starting operation')
 
     begin
@@ -102,8 +102,8 @@ pid = fork do
     rescue StandardError => e
       $app_logger.fatal('Exception caught in main block: ' + e.inspect)
       $app_logger.fatal('Exception backtrace: ' + e.backtrace.join("\n"))
-      $shutdown_reason = Globals::FATAL_SHUTDOWN
-      $boiler_control.shutdown
+      config.shutdown_reason = Globals::FATAL_SHUTDOWN
+      boiler_control.shutdown
       #$BoilerRestapi.quit!
       exit
     end

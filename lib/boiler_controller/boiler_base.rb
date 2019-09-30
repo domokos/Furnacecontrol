@@ -170,7 +170,7 @@ module BoilerBase
     attr_reader :target, :name, :modification_mutex
     def initialize(sensor,
                    filtersize, value_proc, is_hw_or_valve,
-                   name, logger,
+                   name, config,
                    timebase = 3600)
       # Update the Class variables
       @@timebase = timebase
@@ -180,7 +180,7 @@ module BoilerBase
       @sample_filter = Filter.new(filtersize)
       @value_proc = value_proc
       @name = name
-      @logger = logger
+      @logger = config.logger
 
       @modification_mutex = Mutex.new
 
@@ -312,7 +312,7 @@ module BoilerBase
 
   class MixerControl
     def initialize(mix_sensor, cw_switch, ccw_switch,
-                   config, logger,
+                   config,
                    initial_target_temp = 34.0)
       # Initialize class variables
       @mix_sensor = mix_sensor
@@ -322,7 +322,7 @@ module BoilerBase
 
       # Copy the configuration
       @config = config
-      @logger = logger
+      @logger = config.logger
 
       # Create Filters
       @mix_filter = Filter.new(@config[:mixer_filter_size])
@@ -666,7 +666,7 @@ module BoilerBase
                    heater_relay,
                    hydr_shift_pump, hw_pump,
                    hw_wiper, heat_wiper,
-                   config, logger)
+                   config)
 
       # Buffer Sensors
       @forward_sensor = forward_sensor
@@ -694,7 +694,7 @@ module BoilerBase
 
       # Copy the configuration
       @config = config
-      @logger = logger
+      @logger = config.logger
 
       # This one signals the control thread to exit
       @stop_control = Mutex.new

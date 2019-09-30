@@ -90,12 +90,17 @@ module Globals
   class Config
     # The mutex and the map for synchronizing read/write
     # the boiler configuration
-    attr_reader :config_mutex
-    def initialize(logger, config_path)
+    attr_reader :config_mutex, :logger, :heating_logger
+    attr_accessor :shutdown_reason, :pidpath
+    def initialize(app_logger, heating_logger, config_path)
       @config_mutex = Mutex.new
       @config = {}
       @config_path = config_path
-      @logger = logger
+      @logger = app_logger
+      @heating_logger = heating_logger
+
+      @shutdown_reason = Globals::NO_SHUTDOWN
+      @pidpath = ''.dup
 
       reload
     end
@@ -111,7 +116,7 @@ module Globals
     rescue StandardError
       @logger.fatal('Cannot open config file: ' + @config_path + \
                         ' Shutting down.')
-      $shutdown_reason = Globals::FATAL_SHUTDOWN
+      @shutdown_reason = Globals::FATAL_SHUTDOWN
     end
   end
 
@@ -247,12 +252,15 @@ module Globals
 
   # A PID controller class
   class PIDController
-    def initialize(input_sensor, name, kp, ki, kd, setpoint, outmin, outmax, sampletime)
+    def initialize(input_sensor, name,
+                   k_p, k_i, k_d, setpoint,
+                   outmin, outmax,
+                   sampletime)
       @name = name
 
-      @kp = kp
-      @ki = ki
-      @kd = kd
+      @kp = k_p
+      @ki = k_i
+      @kd = k_d
 
       @input_sensor = input_sensor
 
@@ -266,15 +274,18 @@ module Globals
       @modification_mutex = Mutex.new
     end
 
-    def update_parameters(kp, ki, kd, setpoint, outMin, outMax, sampletime)
+    def update_parameters(k_p, k_i, k_d,
+                          setpoint,
+                          outmin, outmax,
+                          sampletime)
       @modification_mutex.synchronize do
-        @kp = kp
-        @ki = ki
-        @kd = kd
+        @kp = k_p
+        @ki = k_i
+        @kd = k_d
         @setpoint = setpoint
         @sampletime = sampletime
-        @outmin = outMin
-        @outmax = outMax
+        @outmin = outmin
+        @outmax = outmax
       end
     end
 

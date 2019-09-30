@@ -11,13 +11,12 @@ module BusDevice
     attr_reader :config, :logger, :comm_interface
     COMM_SPEED = Buscomm::COMM_SPEED_9600_H
 
-    def initialize(config, logger)
+    def initialize(config)
       @config = config
-      @logger = logger
+      @logger = config.logger
       (defined? @comm_interface).nil? &&
         @comm_interface = Buscomm
-                          .new(@logger, @config[:bus_master_address],
-                               @config[:serial_device], COMM_SPEED)
+                          .new(@config, COMM_SPEED)
       (defined? @check_process_mutex).nil? &&
         @check_process_mutex = Mutex.new
       (defined? @check_list).nil? &&
@@ -94,7 +93,10 @@ module BusDevice
                    slave_address, register_address,
                    dry_run)
       @base = base
+      @logger = base.logger
+      @config = base.config
       @name = name
+
       @slave_address = slave_address
       @location = location
       @register_address = register_address
@@ -133,7 +135,7 @@ module BusDevice
         if @state != :on
           @state = :on
           write_device(1) == :Success &&
-            @base.logger.debug("'#{@name}' turned on.")
+            @logger.debug("'#{@name}' turned on.")
           retval = true
         end
       end
@@ -148,7 +150,7 @@ module BusDevice
         if @state != :off
           @state = :off
           write_device(0) == :Success &&
-            @base.logger.debug("'#{@name}' turned off.")
+            @logger.debug("'#{@name}' turned off.")
           retval = true
         end
       end
@@ -167,11 +169,11 @@ module BusDevice
             @slave_address, Buscomm::SET_REGISTER,
             @register_address.chr + value.chr
           )
-          @base.logger.trace("Sucessfully written #{value} to "\
+          @logger.trace("Sucessfully written #{value} to "\
             "register '#{@name}'")
         rescue MessagingError => e
           retval = e.return_message
-          @base.logger.fatal('Unrecoverable communication '\
+          @logger.fatal('Unrecoverable communication '\
             'error on bus, writing '\
             "'#{@name}' ERRNO: #{retval[:Return_code]} - "\
             "#{Buscomm::RESPONSE_TEXT[retval[:Return_code]]}")
@@ -179,7 +181,7 @@ module BusDevice
           return :Failure
         end
       else
-        @base.logger.trace("Dry run - writing #{value} to register '#{@name}'")
+        @logger.trace("Dry run - writing #{value} to register '#{@name}'")
       end
       :Success
     end
@@ -214,7 +216,7 @@ module BusDevice
             errorstring << 'Trying to set device to the known state - attempt'\
                            " no: #{retry_count}"
 
-            @base.logger.error(errorstring)
+            @logger.error(errorstring)
 
             # Try setting the server side known state to the device
             retval = @base.comm_interface.send_message(
@@ -246,7 +248,7 @@ module BusDevice
       rescue MessagingError => e
         # Log the messaging error
         retval = e.return_message
-        @base.logger.fatal('Unrecoverable communication error on bus'\
+        @logger.fatal('Unrecoverable communication error on bus'\
           " communicating with '#{@name}' ERRNO: #{retval[:Return_code]} "\
           "- #{Buscomm::RESPONSE_TEXT[retval[:Return_code]]}")
 
@@ -314,6 +316,7 @@ module BusDevice
                    slave_address, register_address,
                    dry_run)
       @base = base
+      @logger = base.logger
       @name = name
       @slave_address = slave_address
       @location = location
@@ -322,7 +325,7 @@ module BusDevice
       @movement_active = false
 
       # Wait until the device becomes inactive to establish a known state
-      @base.logger.debug("Waiting until Pulse Switch '#{@name}' "\
+      @logger.debug("Waiting until Pulse Switch '#{@name}' "\
         ' becomes inactive')
       wait_until_inactive
       start_state_reader_thread if @state == :active
@@ -331,7 +334,7 @@ module BusDevice
     # Turn the device on
     def pulse_block(duration)
       write_device(duration) == :Success &&
-        @base.logger.trace("Succesfully started pulsing Switch '#{@name}'")
+        @logger.trace("Succesfully started pulsing Switch '#{@name}'")
       sleep STATE_READ_PERIOD
       wait_until_inactive
     end
@@ -357,11 +360,11 @@ module BusDevice
                         .send_message(@slave_address,
                                       Buscomm::READ_REGISTER,
                                       @register_address.chr)
-          @base.logger.trace('Sucessfully read device '\
+          @logger.trace('Sucessfully read device '\
             "'#{@name}' address #{@register_address}")
         rescue MessagingError => e
           retval = e.return_message
-          @base.logger.fatal('Unrecoverable communication error on bus, '\
+          @logger.fatal('Unrecoverable communication error on bus, '\
             "reading '#{@name}' ERRNO: #{retval[:Return_code]} - "\
             "#{Buscomm::RESPONSE_TEXT[retval[:Return_code]]}")
           $shutdown_reason = Globals::FATAL_SHUTDOWN
@@ -371,7 +374,7 @@ module BusDevice
         retval[:Content][Buscomm::PARAMETER_START].ord
 
       else
-        @base.logger.debug("Dry run - reading device '#{@name}'"\
+        @logger.debug("Dry run - reading device '#{@name}'"\
           " address #{@register_address}")
         0
       end
@@ -386,18 +389,18 @@ module BusDevice
                .send_message(@slave_address,
                              Buscomm::SET_REGISTER,
                              @register_address.chr + value.chr)
-          @base.logger.trace("Sucessfully written #{value} to "\
+          @logger.trace("Sucessfully written #{value} to "\
             "pulse switch '#{@name}'")
         rescue MessagingError => e
           retval = e.return_message
-          @base.logger.fatal('Unrecoverable communication error on bus, '\
+          @logger.fatal('Unrecoverable communication error on bus, '\
             "writing '#{@name}' ERRNO: #{retval[:Return_code]} - "\
             "#{Buscomm::RESPONSE_TEXT[retval[:Return_code]]}")
           $shutdown_reason = Globals::FATAL_SHUTDOWN
           return :Failure
         end
       else
-        @base.logger.trace("Dry run - writing #{value} to register '#{@name}'")
+        @logger.trace("Dry run - writing #{value} to register '#{@name}'")
       end
       :Success
     end
@@ -423,6 +426,7 @@ module BusDevice
                    dry_run,
                    mock_temp, debug = false)
       @base = base
+      @logger = base.logger
       @name = name
       @slave_address = slave_address
       @location = location
@@ -462,9 +466,9 @@ module BusDevice
             @skipped_temp_values = 0
           end
           if @skipped_temp_values.positive?
-            @base.logger.debug("Skipped #{@skipped_temp_values} "\
+            @logger.debug("Skipped #{@skipped_temp_values} "\
               "samples at #{@name}")
-            @base.logger.debug("Last skipped temp value is: #{temp_tmp}")
+            @logger.debug("Last skipped temp value is: #{temp_tmp}")
           end
         end
       end
@@ -483,19 +487,19 @@ module BusDevice
                       .send_message(@slave_address,
                                     Buscomm::READ_REGISTER,
                                     @register_address.chr)
-        @base.logger.trace('Succesful read from temp register'\
+        @logger.trace('Succesful read from temp register'\
           " of '#{@name}'")
 
         # Calculate temperature value from the data returned
         temp = ''.dup << retval[:Content][Buscomm::PARAMETER_START] <<
                retval[:Content][Buscomm::PARAMETER_START + 1]
-        @debug && @base.logger.info("Low level HW #{@name} value: "\
+        @debug && @logger.info("Low level HW #{@name} value: "\
                                     "#{temp.unpack('H*')[0]}")
         return temp.unpack('s')[0] * ONE_BIT_TEMP_VALUE
       rescue MessagingError => e
         # Log the messaging error
         retval = e.return_message
-        @base.logger.fatal('Unrecoverable communication error on bus '\
+        @logger.fatal('Unrecoverable communication error on bus '\
           "reading '#{@name}' ERRNO: #{retval[:Return_code]} - "\
           "#{Buscomm::RESPONSE_TEXT[retval[:Return_code]]} Device "\
           "return code: #{retval[:DeviceResponseCode]}")
@@ -522,6 +526,7 @@ module BusDevice
                    dry_run,
                    init_temp = 20.0)
       @base = base
+      @logger = base.logger
       @name = name
       @slave_address = slave_address
       @location = location
@@ -554,7 +559,7 @@ module BusDevice
         if value_requested != @value
           @value = value_requested
           write_device(@value, VOLATILE)
-          @base.logger.debug(@name + " set to value #{@value} meaning "\
+          @logger.debug(@name + " set to value #{@value} meaning "\
             "water temperature #{@temp_required.round(2)} C")
         end
       end
@@ -585,14 +590,14 @@ module BusDevice
                              @register_address.chr + 0x01.chr +
                              0xff.chr + is_volatile.chr)
         end
-        @base.logger.trace("Dry run - writing #{value.to_s(16)} to wiper "\
+        @logger.trace("Dry run - writing #{value.to_s(16)} to wiper "\
         "register with is_volatile flag set to #{is_volatile} in '#{@name}'")
       rescue MessagingError => e
         # Get the returned message
         retval = e.return_message
 
         # Log the error and bail out
-        @base.logger.fatal('Unrecoverable communication error on bus, '\
+        @logger.fatal('Unrecoverable communication error on bus, '\
           "writing '#{@name}' ERRNO: #{retval[:Return_code]} - "\
           "#{Buscomm::RESPONSE_TEXT[retval[:Return_code]]}")
         $shutdown_reason = Globals::FATAL_SHUTDOWN
@@ -631,7 +636,7 @@ module BusDevice
             errorstring << 'Trying to set device to the known state '\
                            "- attempt no: #{retry_count}"
 
-            @base.logger.error(errorstring)
+            @logger.error(errorstring)
 
             # Retry setting the server side known state on the device
             retval = @base.comm_interface.send_message(
@@ -653,7 +658,7 @@ module BusDevice
 
         # Bail out if comparison/resetting trial fails CHECK_RETRY_COUNT times
         if retry_count >= CHECK_RETRY_COUNT
-          @base.logger.fatal("Unable to recover #{@name} device "\
+          @logger.fatal("Unable to recover #{@name} device "\
             'value mismatch. Potential HW failure - bailing out')
           $shutdown_reason = Globals::FATAL_SHUTDOWN
           check_result = :Failure
@@ -662,12 +667,12 @@ module BusDevice
         # Log the messaging error
         if e.class == MessagingError
           retval = e.return_message
-          @base.logger.fatal('Unrecoverable communication error on bus '\
+          @logger.fatal('Unrecoverable communication error on bus '\
             "communicating with '#{@name}' ERRNO: #{retval[:Return_code]} - "\
             "#{Buscomm::RESPONSE_TEXT[retval[:Return_code]]}")
         else
-          @base.logger.fatal("Exception: #{e.inspect}")
-          @base.logger.fatal("Exception: #{e.backtrace}")
+          @logger.fatal("Exception: #{e.inspect}")
+          @logger.fatal("Exception: #{e.backtrace}")
         end
 
         # Signal the main thread for fatal error shutdown
@@ -682,7 +687,10 @@ module BusDevice
 
   # The class of the heating water temp function
   class HeatingWaterTemp < WaterTempBase
-    def initialize(base, name, location, slave_address, register_address, dry_run, init_temp = 20.0)
+    def initialize(base,
+                   name, location,
+                   slave_address, register_address,
+                   dry_run, init_temp = 20.0)
       @lookup_curve =
         Globals::Polycurve.new(
           [
@@ -704,7 +712,10 @@ module BusDevice
             [85, 0xff]
           ]
         )
-      super(base, name, location, slave_address, register_address, dry_run, init_temp)
+      super(base,
+            name, location,
+            slave_address, register_address,
+            dry_run, init_temp)
     end
 
     protected
@@ -745,8 +756,10 @@ module BusDevice
             [62.6, 0xff] # 2.28k
           ], shift
         )
-      super(base, name, location, slave_address,
-            register_address, dry_run, init_temp)
+      super(base,
+            name, location,
+            slave_address, register_address,
+            dry_run, init_temp)
     end
 
     protected

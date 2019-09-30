@@ -185,17 +185,19 @@ class Buscomm
   SLAVES_KEEPALIVE_INTERVAL_SEC = 15
   SLAVES_KEEPALIVE_CHECK_INTERVAL = 2
 
-  def initialize(logger, master_address, portnum, comm_speed)
-    @logger = logger
+  def initialize(config, comm_speed)
+    @config = config
+    @logger = config.logger
+
     @comm_speed = comm_speed
-    @sp = SerialPort.new(portnum)
-    set_host_paremeters(portnum, PARITY, STOPBITS,
+    @sp = SerialPort.new(@config[:serial_device])
+    set_host_paremeters(@config[:serial_device], PARITY, STOPBITS,
                         COMM_DATA[@comm_speed][BAUD_DATA], DATABITS)
     @sp.flow_control = SerialPort::NONE
     @sp.sync = true
     @sp.binmode
 
-    @master_address = master_address
+    @master_address = @config[:bus_master_address]
 
     @slaves = {}
     @keepalive_process = nil
@@ -235,7 +237,7 @@ class Buscomm
               @logger.fatal('Unrecoverable communication error on bus, '\
                 "pinging slave '#{slave_address}' ERRNO: #{retval[:Return_code]} "\
                 "- #{Buscomm::RESPONSE_TEXT[retval[:Return_code]]}")
-              $shutdown_reason = Globals::FATAL_SHUTDOWN
+              @config.shutdown_reason = Globals::FATAL_SHUTDOWN
             end
           else
             @logger.verbose("Slave '#{slave_address}' has last seen "\
