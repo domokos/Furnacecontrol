@@ -25,11 +25,11 @@
 #
 # External temperature below which floor heating is active
 :floor_heating_threshold: 13.0
-# Hysteresis value for living floor thermostat
-:living_floor_hysteresis: 1.0
+# Hysteresis value for floor thermostat
+:floor_hysteresis: 1.0
 #
 # Threshold and hysteresis values for mode setting
-:mode_threshold: 20.0
+:mode_threshold: 18.0
 :mode_hysteresis: 1.0
 #
 # *********************************************************************************************

@@ -62,7 +62,7 @@ class HeatingController
 
     # Set initial HW target
     @hw_thermostat.set_threshold(@hw_watertemp_polycurve\
-      .float_value(@living_floor_thermostat.temp))
+      .float_value(@floor_thermostat.temp))
 
     @logger.debug('Boiler controller initialized initial state '\
                       "set to: #{@heating_sm.current}, "\
@@ -198,9 +198,9 @@ class HeatingController
       BoilerBase::SymmetricThermostat.new(@living_sensor, 0.3, 0.0, 15)
     @hw_thermostat =
       BoilerBase::ASymmetricThermostat.new(@hw_sensor, 2, 0, 0.0, 8)
-    @living_floor_thermostat =
+    @floor_thermostat =
       BoilerBase::SymmetricThermostat.new(@external_sensor,
-                                          @config[:living_floor_hysteresis],
+                                          @config[:floor_hysteresis],
                                           @config[:floor_heating_threshold], 30)
     @mode_thermostat =
       BoilerBase::SymmetricThermostat.new(@external_sensor,
@@ -544,7 +544,7 @@ class HeatingController
     @living_thermostat.update
     @upstairs_thermostat.update
     @basement_thermostat.update
-    @living_floor_thermostat.update
+    @floor_thermostat.update
     @mode_thermostat.update
   end
 
@@ -634,7 +634,7 @@ class HeatingController
     @mode_thermostat.set_threshold(@config[:mode_threshold])
     @mode_thermostat.hysteresis = @config[:mode_hysteresis]
 
-    @living_floor_thermostat.set_threshold(@config[:floor_heating_threshold])
+    @floor_thermostat.set_threshold(@config[:floor_heating_threshold])
 
     # Update watertemp Polycurves
     @heating_watertemp_polycurve.load(@config[:heating_watertemp_polycurve])
@@ -653,30 +653,30 @@ class HeatingController
       # Set HW target temp only when in HW mode to avoid
       # sneak climbing of HW target
       @hw_thermostat.set_threshold(@hw_watertemp_polycurve\
-        .float_value(@living_floor_thermostat.temp))
+        .float_value(@floor_thermostat.temp))
 
     when :RAD
       @target_boiler_temp = @heating_watertemp_polycurve\
-                            .float_value(@living_floor_thermostat.temp)
+                            .float_value(@floor_thermostat.temp)
 
     when :RADFLOOR
       # Set target to the higher value
       @target_boiler_temp =
-        if @heating_watertemp_polycurve.float_value(@living_floor_thermostat.temp) >
-           @floor_watertemp_polycurve.float_value(@living_floor_thermostat.temp)
-          @heating_watertemp_polycurve.float_value(@living_floor_thermostat.temp)
+        if @heating_watertemp_polycurve.float_value(@floor_thermostat.temp) >
+           @floor_watertemp_polycurve.float_value(@floor_thermostat.temp)
+          @heating_watertemp_polycurve.float_value(@floor_thermostat.temp)
         else
-          @floor_watertemp_polycurve.float_value(@living_floor_thermostat.temp)
+          @floor_watertemp_polycurve.float_value(@floor_thermostat.temp)
         end
 
       @mixer_controller.set_target_temp(@floor_watertemp_polycurve\
-        .float_value(@living_floor_thermostat.temp))
+        .float_value(@floor_thermostat.temp))
 
     when :FLOOR
       @target_boiler_temp = @floor_watertemp_polycurve\
-                            .float_value(@living_floor_thermostat.temp)
+                            .float_value(@floor_thermostat.temp)
       @mixer_controller.set_target_temp(@floor_watertemp_polycurve\
-        .float_value(@living_floor_thermostat.temp))
+        .float_value(@floor_thermostat.temp))
 
     when :NONE
       @target_boiler_temp = 7.0
@@ -777,7 +777,7 @@ class HeatingController
       end
 
       # decide on floor valves based on external temperature
-      if @living_floor_thermostat.on?
+      if @floor_thermostat.on?
         @living_floor_valve.open
         @upstairs_floor_valve.open
       else
@@ -802,7 +802,7 @@ class HeatingController
       end
 
       # decide on floor valves based on external temperature
-      if @living_floor_thermostat.on?
+      if @floor_thermostat.on?
         @living_floor_valve.open
         @upstairs_floor_valve.open
       else
@@ -830,17 +830,17 @@ class HeatingController
       :HW
     elsif @mode == :mode_Heat_HW && (@upstairs_thermostat.on? || \
           @living_thermostat.on?) && \
-          @living_floor_thermostat.off? && \
+          @floor_thermostat.off? && \
           @basement_thermostat.off?
       # Power needed for heating
       :RAD
     elsif @mode == :mode_Heat_HW && (@upstairs_thermostat.on? || \
           @living_thermostat.on?) && \
-          (@living_floor_thermostat.on? || \
+          (@floor_thermostat.on? || \
           @basement_thermostat.on?)
       # Power needed for heating and floor heating
       :RADFLOOR
-    elsif @mode == :mode_Heat_HW && (@living_floor_thermostat.on? || \
+    elsif @mode == :mode_Heat_HW && (@floor_thermostat.on? || \
           @basement_thermostat.on?)
       # Power needed for floor heating only
       :FLOOR
@@ -1023,7 +1023,7 @@ class HeatingController
                           "#{@hw_thermostat.temp.round(2)}")
 
     @heating_logger.debug("\nExternal temperature: "\
-                          "#{@living_floor_thermostat.temp.round(2)}")
+                          "#{@floor_thermostat.temp.round(2)}")
     @heating_logger.debug("Mode thermostat status: #{@mode_thermostat.state}")
     @heating_logger.debug("Operating mode: #{@mode}")
     @heating_logger.debug("Need power: #{power_needed[:power]}")
@@ -1046,7 +1046,7 @@ class HeatingController
                           "#{@upstairs_thermostat.state}")
 
     @heating_logger.debug('Living floor thermostat status: '\
-                          "#{@living_floor_thermostat.state}")
+                          "#{@floor_thermostat.state}")
     @heating_logger.debug("Living floor valve: #{@living_floor_valve.state}")
     @heating_logger.debug('Upstairs floor valve: '\
                           "#{@upstairs_floor_valve.state}")
@@ -1091,7 +1091,7 @@ class HeatingController
     @basement_thermostat.test_update(@test_controls[:basement_temp])
     @basement_thermostat.set_target(@test_controls[:target_basement_temp])
 
-    @living_floor_thermostat.test_update(@test_controls[:external_temp])
+    @floor_thermostat.test_update(@test_controls[:external_temp])
 
     @living_thermostat.set_threshold(@test_controls[:target_living_temp])
     @upstairs_thermostat.set_threshold(@test_controls[:target_upstairs_temp])
@@ -1099,8 +1099,8 @@ class HeatingController
     @hw_thermostat.set_threshold(@test_controls[:target_HW_temp])
     @target_boiler_temp = @test_controls[:target_boiler_temp]
 
-    @logger.debug("Living floor PWM thermostat value: #{@living_floor_thermostat.value}")
-    @logger.debug("Living floor PWM thermostat state: #{@living_floor_thermostat.state}")
+    @logger.debug("Living floor PWM thermostat value: #{@floor_thermostat.value}")
+    @logger.debug("Living floor PWM thermostat state: #{@floor_thermostat.state}")
     @logger.debug("Power needed: #{determine_power_needed}")
     @test_cycle_cnt += 1
   end
