@@ -13,7 +13,7 @@ module BusDevice
 
     def initialize(config)
       @config = config
-      @logger = config.logger
+      @logger = config.logger.app_logger
       (defined? @comm_interface).nil? &&
         @comm_interface = Buscomm
                           .new(@config, COMM_SPEED)
@@ -177,7 +177,7 @@ module BusDevice
             'error on bus, writing '\
             "'#{@name}' ERRNO: #{retval[:Return_code]} - "\
             "#{Buscomm::RESPONSE_TEXT[retval[:Return_code]]}")
-          $shutdown_reason = Globals::FATAL_SHUTDOWN
+          @config.shutdown_reason = Globals::FATAL_SHUTDOWN
           return :Failure
         end
       else
@@ -242,7 +242,7 @@ module BusDevice
         if retry_count >= CHECK_RETRY_COUNT
           @bas.logger.fatal('Unable to recover '\
             "#{@name} device mismatch. Potential HW failure - bailing out")
-          $shutdown_reason = Globals::FATAL_SHUTDOWN
+          @config.shutdown_reason = Globals::FATAL_SHUTDOWN
           check_result = :Failure
         end
       rescue MessagingError => e
@@ -253,7 +253,7 @@ module BusDevice
           "- #{Buscomm::RESPONSE_TEXT[retval[:Return_code]]}")
 
         # Signal the main thread for fatal error shutdown
-        $shutdown_reason = Globals::FATAL_SHUTDOWN
+        @config.shutdown_reason = Globals::FATAL_SHUTDOWN
         check_result = :Failure
       end
 
@@ -367,7 +367,7 @@ module BusDevice
           @logger.fatal('Unrecoverable communication error on bus, '\
             "reading '#{@name}' ERRNO: #{retval[:Return_code]} - "\
             "#{Buscomm::RESPONSE_TEXT[retval[:Return_code]]}")
-          $shutdown_reason = Globals::FATAL_SHUTDOWN
+          @config.shutdown_reason = Globals::FATAL_SHUTDOWN
           return 0
         end
 
@@ -396,7 +396,7 @@ module BusDevice
           @logger.fatal('Unrecoverable communication error on bus, '\
             "writing '#{@name}' ERRNO: #{retval[:Return_code]} - "\
             "#{Buscomm::RESPONSE_TEXT[retval[:Return_code]]}")
-          $shutdown_reason = Globals::FATAL_SHUTDOWN
+          @config.shutdown_reason = Globals::FATAL_SHUTDOWN
           return :Failure
         end
       else
@@ -505,7 +505,7 @@ module BusDevice
           "return code: #{retval[:DeviceResponseCode]}")
 
         # Signal the main thread for fatal error shutdown
-        $shutdown_reason = Globals::FATAL_SHUTDOWN
+        @config.shutdown_reason = Globals::FATAL_SHUTDOWN
         return @lasttemp
       end
     end
@@ -600,7 +600,7 @@ module BusDevice
         @logger.fatal('Unrecoverable communication error on bus, '\
           "writing '#{@name}' ERRNO: #{retval[:Return_code]} - "\
           "#{Buscomm::RESPONSE_TEXT[retval[:Return_code]]}")
-        $shutdown_reason = Globals::FATAL_SHUTDOWN
+        @config.shutdown_reason = Globals::FATAL_SHUTDOWN
       end
     end
 
@@ -660,7 +660,7 @@ module BusDevice
         if retry_count >= CHECK_RETRY_COUNT
           @logger.fatal("Unable to recover #{@name} device "\
             'value mismatch. Potential HW failure - bailing out')
-          $shutdown_reason = Globals::FATAL_SHUTDOWN
+          @config.shutdown_reason = Globals::FATAL_SHUTDOWN
           check_result = :Failure
         end
       rescue StandardError => e
@@ -676,7 +676,7 @@ module BusDevice
         end
 
         # Signal the main thread for fatal error shutdown
-        $shutdown_reason = Globals::FATAL_SHUTDOWN
+        @config.shutdown_reason = Globals::FATAL_SHUTDOWN
         check_result = :Failure
       end
       check_result

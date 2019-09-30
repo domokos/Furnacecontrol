@@ -187,7 +187,7 @@ class Buscomm
 
   def initialize(config, comm_speed)
     @config = config
-    @logger = config.logger
+    @logger = config.logger.app_logger
 
     @comm_speed = comm_speed
     @sp = SerialPort.new(@config[:serial_device])

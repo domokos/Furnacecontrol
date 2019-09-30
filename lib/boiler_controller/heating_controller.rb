@@ -24,8 +24,8 @@ class HeatingController
     @return_temp = 0.0
     @test_cycle_cnt = 0
     @moving_valves_required = false
-    @logger = config.logger
-    @heating_logger = config.heating_logger
+    @logger = config.logger.app_logger
+    @heating_logger = config.logger.heating_logger
     @config = config
 
     read_config
@@ -802,7 +802,7 @@ class HeatingController
       end
 
       # decide on floor valves based on external temperature
-      if @living_floor_thermostat.on?
+      if @living_floor_thermostat.on?logger.
         @living_floor_valve.open
         @upstairs_floor_valve.open
       else

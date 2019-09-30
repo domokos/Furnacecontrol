@@ -16,6 +16,8 @@ module Globals
 
   # The logger class
   class BoilerLogger < Logger
+    attr_reader :app_logger, :heating_logger, :daemon_logger
+
     FATAL = 6
     INFO = 5
     ERROR = 4
@@ -58,9 +60,9 @@ module Globals
     end
   end
 
-  $app_logger = BoilerLogger.new(APPLOG_LOGFILE, 6, 1_000_000)
+  @app_logger = BoilerLogger.new(APPLOG_LOGFILE, 6, 1_000_000)
 
-  $app_logger.formatter = proc { |severity, datetime, _progname, msg|
+  @app_logger.formatter = proc { |severity, datetime, _progname, msg|
     if caller(4..4)[0].class == String
       "#{datetime.to_s.sub!(/^(.*) \+.*$/, '\1')} #{severity} "\
       "#{caller(4..4)[0].sub!(%r{^.*/(.*)$}, '\1')} :: #{msg}\n"
@@ -70,13 +72,13 @@ module Globals
     end
   }
 
-  $heating_logger = Logger.new(HEATING_LOGFILE, 6, 1_000_000)
-  $heating_logger.formatter = proc { |_severity, _datetime, _progname, msg|
+  @heating_logger = Logger.new(HEATING_LOGFILE, 6, 1_000_000)
+  @heating_logger.formatter = proc { |_severity, _datetime, _progname, msg|
     "#{msg}\n"
   }
 
-  $daemon_logger = Logger.new(DAEMON_LOGFILE, 6, 1_000_000)
-  $daemon_logger.formatter = proc { |severity, datetime, _progname, msg|
+  @daemon_logger = Logger.new(DAEMON_LOGFILE, 6, 1_000_000)
+  @daemon_logger.formatter = proc { |severity, datetime, _progname, msg|
     if caller(4..4)[0].class == String
       "#{datetime.to_s.sub!(/^(.*) \+.*$/, '\1')} #{severity} "\
       "#{caller(4..4)[0].sub!(%r{^.*\/(.*)$}, '\1')} :: #{msg}\n"
@@ -90,14 +92,13 @@ module Globals
   class Config
     # The mutex and the map for synchronizing read/write
     # the boiler configuration
-    attr_reader :config_mutex, :logger, :heating_logger
+    attr_reader :config_mutex, :logger
     attr_accessor :shutdown_reason, :pidpath
-    def initialize(app_logger, heating_logger, config_path)
+    def initialize(logger, config_path)
       @config_mutex = Mutex.new
       @config = {}
       @config_path = config_path
-      @logger = app_logger
-      @heating_logger = heating_logger
+      @logger = logger
 
       @shutdown_reason = Globals::NO_SHUTDOWN
       @pidpath = ''.dup

@@ -180,7 +180,7 @@ module BoilerBase
       @sample_filter = Filter.new(filtersize)
       @value_proc = value_proc
       @name = name
-      @logger = config.logger
+      @logger = config.logger.app_logger
 
       @modification_mutex = Mutex.new
 
@@ -322,7 +322,7 @@ module BoilerBase
 
       # Copy the configuration
       @config = config
-      @logger = config.logger
+      @logger = config.logger.app_logger
 
       # Create Filters
       @mix_filter = Filter.new(@config[:mixer_filter_size])
@@ -694,7 +694,7 @@ module BoilerBase
 
       # Copy the configuration
       @config = config
-      @logger = config.logger
+      @logger = config.logger.app_logger
 
       # This one signals the control thread to exit
       @stop_control = Mutex.new

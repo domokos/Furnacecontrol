@@ -15,8 +15,10 @@ Thread.abort_on_exception = true
 
 $stdout.sync = true
 
-$app_logger.level = Globals::BoilerLogger::INFO
-$heating_logger.level = Logger::INFO
+logger = BoilerLogger.new
+
+logger.app_logger.level = Globals::BoilerLogger::INFO
+logger.heating_logger.level = Logger::INFO
 
 DRY_RUN = false
 
@@ -35,27 +37,27 @@ end
 Signal.trap('USR1') do
   puts 'USR1 signal caught - setting heating logging to '\
   'DEBUG, app logging to INFO'
-  $app_logger.level = Globals::BoilerLogger::INFO
-  $heating_logger.level = Logger::DEBUG
+  logger.app_logger.level = Globals::BoilerLogger::INFO
+  logger.heating_logger.level = Logger::DEBUG
 end
 
 Signal.trap('USR2') do
   puts 'USR2 signal caught - setting all logging to INFO'
-  $app_logger.level = Globals::BoilerLogger::INFO
-  $heating_logger.level = Logger::INFO
+  logger.app_logger.level = Globals::BoilerLogger::INFO
+  logger.heating_logger.level = Logger::INFO
 end
 
 Signal.trap('URG') do
   puts 'URG signal caught - setting all logging to DEBUG'
-  $app_logger.level = Globals::BoilerLogger::DEBUG
-  $heating_logger.level = Logger::DEBUG
+  logger.app_logger.level = Globals::BoilerLogger::DEBUG
+  logger.heating_logger.level = Logger::DEBUG
 end
 
 # Beginnning of main execution thread
 
 Thread.current['thread_name'] = 'Main thread'
 
-RobustThread.logger = $daemon_logger
+RobustThread.logger = logger.daemon_logger
 
 daemonize = !ARGV.find_index('--daemon').nil?
 
@@ -76,7 +78,7 @@ pid = fork do
   pidfile.write(Process.pid.to_s)
   pidfile.close
 
-  config = Globals::Config.new($app_logger, $heating_logger, CONFIG_FILE_PATH)
+  config = Globals::Config.new(logger, CONFIG_FILE_PATH)
 
   config.pidpath = pidpath
 
@@ -89,24 +91,26 @@ pid = fork do
     Thread.current[:name] = 'Main daemon'
     Signal.trap('HUP', 'IGNORE')
 
-    $app_logger.level = Globals::BoilerLogger::DEBUG unless\
+    logger.app_logger.level = Globals::BoilerLogger::DEBUG unless\
                         ARGV.find_index('--debug').nil?
 
-    # Set the initial state
+    logger.app_logger.info('Boiler controller initializing')
+
+    # Create controller
     boiler_control = HeatingController.new(config)
-    $app_logger.info('Controller initialized - starting operation')
+    logger.app_logger.info('Controller initialized - starting operation')
 
     begin
       boiler_control.operate
     rescue StandardError => e
-      $app_logger.fatal('Exception caught in main block: ' + e.inspect)
-      $app_logger.fatal('Exception backtrace: ' + e.backtrace.join("\n"))
+      logger.app_logger.fatal('Exception caught in main block: ' + e.inspect)
+      logger.app_logger.fatal('Exception backtrace: ' + e.backtrace.join("\n"))
       config.shutdown_reason = Globals::FATAL_SHUTDOWN
       boiler_control.shutdown
-      #$BoilerRestapi.quit!
+      # $BoilerRestapi.quit!
       exit
     end
-    #$BoilerRestapi.quit!
+    # $BoilerRestapi.quit!
   end
 end
 
