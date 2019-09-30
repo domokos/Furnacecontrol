@@ -61,12 +61,12 @@ module Globals
   $app_logger = BoilerLogger.new(APPLOG_LOGFILE, 6, 1_000_000)
 
   $app_logger.formatter = proc { |severity, datetime, _progname, msg|
-    if caller(4..4).class == String
+    if caller(4..4)[0].class == String
       "#{datetime.to_s.sub!(/^(.*) \+.*$/, '\1')} #{severity} "\
-      "#{caller(4..4).sub!(/^.*\/(.*)$/,'\1')} #{msg}\n"
+      "#{caller(4..4)[0].sub!(%r{^.*/(.*)$}, '\1')} #{msg}\n"
     else
       "#{datetime.to_s.sub!(/^(.*) \+.*$/, '\1')} #{severity} "\
-      "#{caller(4..4)} #{msg}\n"
+      "#{caller(4..4)[0]} #{msg}\n"
     end
   }
 
@@ -77,12 +77,12 @@ module Globals
 
   $daemon_logger = Logger.new(DAEMON_LOGFILE, 6, 1_000_000)
   $daemon_logger.formatter = proc { |severity, datetime, _progname, msg|
-    if caller(4..4).class == String
+    if caller(4..4)[0].class == String
       "#{datetime.to_s.sub!(/^(.*) \+.*$/, '\1')} #{severity} "\
-      "#{caller(4..4).sub!(/^.*\/(.*)$/,'\1')} #{msg}\n"
+      "#{caller(4..4)[0].sub!(%r{^.*\/(.*)$}, '\1')} #{msg}\n"
     else
       "#{datetime.to_s.sub!(/^(.*) \+.*$/, '\1')} #{severity} "\
-      "#{caller(4..4)} #{msg}\n"
+      "#{caller(4..4)[0]} #{msg}\n"
     end
   }
 
