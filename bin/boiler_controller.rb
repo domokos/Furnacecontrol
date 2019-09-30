@@ -93,8 +93,7 @@ pid = fork do
                         ARGV.find_index('--debug').nil?
 
     # Set the initial state
-    boiler_control = HeatingController
-                      .new($app_logger, $heating_logger, config)
+    boiler_control = HeatingController.new(config)
     $app_logger.info('Controller initialized - starting operation')
 
     begin
