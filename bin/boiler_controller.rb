@@ -22,8 +22,6 @@ logger.heating_logger.level = Logger::INFO
 
 DRY_RUN = false
 
-$low_floor_temp_mode = false
-
 Signal.trap('TTIN') do
   puts "---------\n"
   Thread.list.each do |thread|

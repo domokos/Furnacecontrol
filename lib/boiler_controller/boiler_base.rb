@@ -159,41 +159,21 @@ module BoilerBase
     end
   end
 
-  # A Pulse Width Modulation (PWM) Thermostat class providing a PWM output
-  # signal based on sensor value
-  # The class' PWM behaviour takes into account the real operating time of
-  # the heating by calling a reference function
-  # passed to it as an argument. The reference function should return true
-  # at times, when the PWM thermostat should consider the PWM to be active.
-  class PwmThermostat
-    attr_accessor :cycle_threshold, :state
-    attr_reader :target, :name, :modification_mutex
-    def initialize(sensor,
-                   filtersize, value_proc, is_hw_or_valve,
-                   name, config,
+  # The base class of PWM thermostats with common timing
+  class PwmBase
+    def initialize(config, is_hw_or_valve_proc,
                    timebase = 3600)
-      # Update the Class variables
-      @@timebase = timebase
-      @@is_hw_or_valve = is_hw_or_valve
+      @config = config
+      @logger = config.app_logger
+      @timebase = timebase
+      @is_hw_or_valve_proc = is_hw_or_valve_proc
+      @thermostat_instances = []
+      @base_mutex = Mutex.new
+      start_pwm_thread
+    end
 
-      @sensor = sensor
-      @sample_filter = Filter.new(filtersize)
-      @value_proc = value_proc
-      @name = name
-      @logger = config.logger.app_logger
-
-      @modification_mutex = Mutex.new
-
-      @state = :off
-      @target = nil
-      @cycle_threshold = 0
-
-      update
-
-      @@thermostat_instances = [] if defined?(@@thermostat_instances).nil?
-      @modification_mutex.synchronize { @@thermostat_instances << self }
-
-      start_pwm_thread if defined?(@@pwm_thread).nil?
+    def register(thermostat_instance)
+      @base_mutex.synchronize { @thermostat_instances << thermostat_instance }
     end
 
     def init_thread
@@ -201,7 +181,7 @@ module BoilerBase
       safety_loop_counter = 0
       loop do
         initialized = true
-        @@thermostat_instances.each do |th|
+        @thermostat_instances.each do |th|
           th.modification_mutex.synchronize do
             initialized &= !th.target.nil?
             # @logger.debug(th.name + " initialized: #{!th.target.nil?}")
@@ -219,7 +199,7 @@ module BoilerBase
     end
 
     def start_pwm_thread
-      @@pwm_thread = Thread.new do
+      @pwm_thread = Thread.new do
         Thread.current[:name] = 'PWM thermostat'
         # Wait for the main thread to create all PWM thermostat objects
         # we may get some later but those will just skip one cycle
@@ -228,21 +208,21 @@ module BoilerBase
         # Loop forever
         loop do
           # Calculate the threshold value for each instance
-          @@thermostat_instances.each do |th|
+          @thermostat_instances.each do |th|
             th.modification_mutex.synchronize do
-              th.cycle_threshold = @@timebase * th.value
+              th.cycle_threshold = @timebase * th.value
               @logger
                 .debug("#{th.name} pulse width set to: "\
-                       "#{(th.cycle_threshold / @@timebase * 100).round(0)}%")
+                       "#{(th.cycle_threshold / @timebase * 100).round(0)}%")
             end
           end
 
           # Perform the cycle
-          @@sec_elapsed = 0
-          while @@sec_elapsed < @@timebase
+          @sec_elapsed = 0
+          while @sec_elapsed < @timebase
             any_thermostats_on = false
-            @@thermostat_instances.each do |th|
-              if th.cycle_threshold > @@sec_elapsed
+            @thermostat_instances.each do |th|
+              if th.cycle_threshold > @sec_elapsed
                 th.modification_mutex.synchronize do
                   if th.state != :on
                     th.state = :on
@@ -266,12 +246,45 @@ module BoilerBase
             # HW or valve movement rather than heating. This actually is only
             # good for the active thermostats as others being switched off
             # suffer an increased off time - no easy way around this...
-            (@@sec_elapsed += 1) unless\
-             @@is_hw_or_valve.call && any_thermostats_on
+            (@sec_elapsed += 1) unless\
+             @is_hw_or_valve.call && any_thermostats_on
           end
           @logger.debug('End of PWM thermostat cycle')
         end
       end
+    end
+  end
+
+  # A Pulse Width Modulation (PWM) Thermostat class providing a PWM output
+  # signal based on sensor value
+  # The class' PWM behaviour takes into account the real operating time of
+  # the heating by calling a reference function
+  # passed to it as an argument. The reference function should return true
+  # at times, when the PWM thermostat should consider the PWM to be active.
+  class PwmThermostat
+    attr_accessor :cycle_threshold, :state
+    attr_reader :target, :name, :modification_mutex
+    def initialize(base, sensor,
+                   filtersize, value_proc,
+                   name, config)
+      # Update the Class variables
+
+      @sensor = sensor
+      @sample_filter = Filter.new(filtersize)
+      @value_proc = value_proc
+      @name = name
+      @logger = config.logger.app_logger
+
+      @modification_mutex = Mutex.new
+
+      @state = :off
+      @target = nil
+      @cycle_threshold = 0
+      @base = base
+
+      update
+
+      base.register(self)
     end
 
     def update

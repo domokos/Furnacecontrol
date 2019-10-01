@@ -88,7 +88,6 @@ class HeatingController
                    else
                      (45 - @target_boiler_temp) / 15 + 1
                    end
-      return 0 if $low_floor_temp_mode
 
       value = (error + 0.9) / 5.0 * multiplier
       if value > 0.9
@@ -410,7 +409,7 @@ class HeatingController
 
     # Activation actions for Post circulation heating
     @heating_sm.on_enter_posthwing do
-      controller.logger.debug('Activating \"PostHW\" state')
+      controller.logger.debug('Activating "PostHW" state')
 
       # Signal heater to turn off
       controller.buffer_heater.set_mode(:off)
