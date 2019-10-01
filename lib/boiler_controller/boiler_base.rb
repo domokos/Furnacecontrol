@@ -248,7 +248,7 @@ module BoilerBase
             # good for the active thermostats as others being switched off
             # suffer an increased off time - no easy way around this...
             (@sec_elapsed += 1) unless\
-             @is_hw_or_valve.call && any_thermostats_on
+             @is_hw_or_valve_proc.call && any_thermostats_on
           end
           @logger.debug('End of PWM thermostat cycle')
         end
