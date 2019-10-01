@@ -161,6 +161,7 @@ module BoilerBase
 
   # The base class of PWM thermostats with common timing
   class PwmBase
+    attr_accessor :config
     def initialize(config, is_hw_or_valve_proc,
                    timebase = 3600)
       @config = config
@@ -266,14 +267,15 @@ module BoilerBase
     attr_reader :target, :name, :modification_mutex
     def initialize(base, sensor,
                    filtersize, value_proc,
-                   name, config)
+                   name)
       # Update the Class variables
 
+      @config = base.config
+      @logger = config.logger.app_logger
       @sensor = sensor
       @sample_filter = Filter.new(filtersize)
       @value_proc = value_proc
       @name = name
-      @logger = config.logger.app_logger
 
       @modification_mutex = Mutex.new
 

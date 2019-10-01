@@ -207,12 +207,11 @@ class HeatingController
                                           @config[:mode_threshold], 50)
     @upstairs_thermostat =
       BoilerBase::SymmetricThermostat.new(@upstairs_sensor, 0.3, 5.0, 15)
+    @pwmbase = BoilerBase::PwmBase.new(@config, @is_hw_or_valve_proc)
     @basement_thermostat =
-      BoilerBase::PwmThermostat.new(@basement_sensor, 30,
+      BoilerBase::PwmThermostat.new(@pwmbase, @basement_sensor, 30,
                                     @basement_thermostat_valueproc,
-                                    @is_hw_or_valve_proc, 'Basement thermostat',
-                                    @config)
-
+                                    'Basement thermostat')
     # Create magnetic valves
     @basement_radiator_valve = \
       BusDevice::DelayedCloseMagneticValve\
