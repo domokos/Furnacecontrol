@@ -165,7 +165,7 @@ module BoilerBase
     def initialize(config, is_hw_or_valve_proc,
                    timebase = 3600)
       @config = config
-      @logger = config.app_logger
+      @logger = config.logger.app_logger
       @timebase = timebase
       @is_hw_or_valve_proc = is_hw_or_valve_proc
       @thermostat_instances = []
