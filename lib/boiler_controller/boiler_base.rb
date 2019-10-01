@@ -271,7 +271,7 @@ module BoilerBase
       # Update the Class variables
 
       @config = base.config
-      @logger = config.logger.app_logger
+      @logger = @config.logger.app_logger
       @sensor = sensor
       @sample_filter = Filter.new(filtersize)
       @value_proc = value_proc
