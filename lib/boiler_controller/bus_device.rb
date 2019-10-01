@@ -317,6 +317,7 @@ module BusDevice
                    dry_run)
       @base = base
       @logger = base.logger
+      @config = base.config
       @name = name
       @slave_address = slave_address
       @location = location
@@ -427,6 +428,7 @@ module BusDevice
                    mock_temp, debug = false)
       @base = base
       @logger = base.logger
+      @config = base.config
       @name = name
       @slave_address = slave_address
       @location = location
@@ -527,6 +529,7 @@ module BusDevice
                    init_temp = 20.0)
       @base = base
       @logger = base.logger
+      @config = base.config
       @name = name
       @slave_address = slave_address
       @location = location
