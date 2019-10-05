@@ -750,6 +750,7 @@ module BoilerBase
       @overshoot_required = false
       @forward_temp = @forward_sensor.temp
       @upper_temp = @upper_sensor.temp
+      @heat_return_temp = @heat_return_sensor.temp
       @return_temp = @return_sensor.temp
       @delta_t = 0.0
     end
@@ -963,6 +964,7 @@ module BoilerBase
     def evaluate_heater_state_change
       @forward_temp = @forward_sensor.temp
       @upper_temp = @upper_sensor.temp
+      @heat_return_temp = @heat_return_sensor.temp
       @return_temp = @return_sensor.temp
 
       # Evaluate Hydr shift Boiler states
@@ -1009,7 +1011,7 @@ module BoilerBase
         # is therefore
         # @config[:buffer_passthrough_overshoot]+@config[:buffer_expiry_threshold]
 
-        @delta_t = @upper_temp - @heat_return_sensor
+        @delta_t = @upper_temp - @heat_return_temp
 
         if @upper_temp < @target_temp - @config[:buffer_expiry_threshold] && \
            @heater_relax_timer.expired?
