@@ -11,6 +11,9 @@ STDOUT.sync = true
 CONFIG_FILE_PATH = '/etc/boiler_controller/boiler_controller.yml'
 TEST_CONTROL_FILE_PATH = '/etc/boiler_controller/boiler_test_controls.yml'
 
+
+logger = Globals::ControllerLogger.new
+
 config = Globals::Config.new(logger, CONFIG_FILE_PATH)
 
 #Parameters
