@@ -841,7 +841,12 @@ module BoilerBase
     end
 
     # Calculate limited boiler target watertemp taking overshoot into account
-    def limit_watertemp(watertemp, overshoot = 0)
+    def corrected_watertemp(watertemp)
+      overshoot = if @overshoot_required
+                    @config[:buffer_passthrough_overshoot]
+                  else
+                    0
+                  end
       if watertemp + overshoot < @config[:minimum_heating_watertemp]
         @config[:minimum_heating_watertemp]
       else
@@ -892,7 +897,8 @@ module BoilerBase
       @buffer_sm.on_enter_normal do
         buffer.hw_pump.off if buffer.hw_pump.on?
         buffer.heat_wiper.set_water_temp(\
-          buffer.limit_watertemp(buffer.target_temp))
+          buffer.corrected_watertemp(buffer.target_temp)
+        )
         buffer.hydr_shift_pump.on
         sleep buffer.config[:circulation_maintenance_delay] \
           if buffer.set_relays(:normal) == :immediate
@@ -971,14 +977,8 @@ module BoilerBase
 
         @delta_t = @forward_temp - @return_temp
 
-        overshoot = if @overshoot_required
-                      @config[:buffer_passthrough_overshoot]
-                    else
-                      0
-                    end
-
         if @forward_temp > \
-           (limit_watertemp(@target_temp, overshoot) + \
+           (corrected_watertemp(@target_temp) + \
               @config[:forward_above_target]) &&
            @heater_relax_timer.expired?
           @logger.debug('Overheating - buffer full.'\
@@ -991,7 +991,7 @@ module BoilerBase
           # offset Decide how ot set relays based on boiler state
         else
           @heat_wiper\
-            .set_water_temp(limit_watertemp(@target_temp, overshoot))
+            .set_water_temp(corrected_watertemp(@target_temp))
           set_relays(:normal)
         end
 
@@ -1164,8 +1164,8 @@ module BoilerBase
           "#{@target_temp.round(2)}/#{@heat_wiper.get_target}")
         @logger.trace("Delta_t: #{@delta_t}")
         if do_limited_logging
-          @logger.debug('Normal. Not limited target: '\
-            "#{(@target_temp + @config[:buffer_passthrough_overshoot]).round(2)}")
+          @logger.debug('Normal. Target: '\
+            "#{buffer.corrected_watertemp(buffer.target_temp).round(2)}")
           @logger.debug("Forward temp: #{@forward_temp}")
           @logger.debug("Buffer output temp: #{@upper_temp}")
           @logger.debug('Heat dissipation into the buffer: '\
