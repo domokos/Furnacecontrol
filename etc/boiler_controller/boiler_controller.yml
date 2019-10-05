@@ -205,11 +205,12 @@
 # Mixer controller - Boiler room
 :mixer_controller_dev_addr: 12
 :mixer_fwd_sensor_reg_addr: 1
-:forward_sensor_reg_addr: 2
-:return_sensor_reg_addr: 3
-:mixer_cw_reg_addr: 4
-:mixer_ccw_reg_addr: 5
-:mixer_spare_valve_reg_addr: 6
-:mixer_spareb_switch_reg_addr: 7
-:mixer_gpio_reg_addr: 8
-:read_single_rom_code_on_owbus_reg_addr: 9
+:heat_return_sensor_reg_addr: 2
+:forward_sensor_reg_addr: 3
+:return_sensor_reg_addr: 4
+:mixer_cw_reg_addr: 5
+:mixer_ccw_reg_addr: 6
+:mixer_spare_valve_reg_addr: 7
+:mixer_spareb_switch_reg_addr: 8
+:mixer_gpio_reg_addr: 9
+:read_single_rom_code_on_owbus_reg_addr: 10

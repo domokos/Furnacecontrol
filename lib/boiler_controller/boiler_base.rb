@@ -666,7 +666,7 @@ module BoilerBase
 
   class BufferHeat
     attr_reader :forward_sensor, :upper_sensor, :buf_output_sensor, :return_sensor
-    attr_reader :hw_thermostat
+    attr_reader :hw_sensor, :heat_return_sensor
     attr_reader :hw_valve
     attr_reader :heater_relay, :hydr_shift_pump, :hw_pump
     attr_reader :hw_wiper, :heat_wiper
@@ -676,7 +676,8 @@ module BoilerBase
     attr_accessor :prev_sm_state
     # Initialize the buffer taking its sensors and control valves
     def initialize(forward_sensor, upper_sensor, buf_output_sensor, return_sensor,
-                   hw_thermostat,
+                   heat_return_sensor,
+                   hw_sensor,
                    hw_valve,
                    heater_relay,
                    hydr_shift_pump, hw_pump,
@@ -688,9 +689,10 @@ module BoilerBase
       @upper_sensor = upper_sensor
       @buf_output_sensor = buf_output_sensor
       @return_sensor = return_sensor
+      @heat_return_sensor = heat_return_sensor
 
       # HW_thermostat for filtered value
-      @hw_thermostat = hw_thermostat
+      @hw_sensor = hw_sensor
 
       # Valves
       @hw_valve = hw_valve
@@ -937,7 +939,7 @@ module BoilerBase
         else
           buffer.logger.debug('Hydr shift pump already off')
         end
-        buffer.hw_wiper.set_water_temp(buffer.hw_thermostat.temp)
+        buffer.hw_wiper.set_water_temp(buffer.hw_sensor.temp)
       end
       # of enter HW action
 
@@ -1007,7 +1009,7 @@ module BoilerBase
         # is therefore
         # @config[:buffer_passthrough_overshoot]+@config[:buffer_expiry_threshold]
 
-        @delta_t = @upper_temp - @return_temp
+        @delta_t = @upper_temp - @heat_return_sensor
 
         if @upper_temp < @target_temp - @config[:buffer_expiry_threshold] && \
            @heater_relax_timer.expired?
@@ -1022,7 +1024,7 @@ module BoilerBase
       when :HW
         @delta_t = @forward_temp - @return_temp
         # Just set the HW temp
-        @hw_wiper.set_water_temp(@hw_thermostat.temp)
+        @hw_wiper.set_water_temp(@hw_sensor.temp)
       else
         raise 'Unexpected state in '\
               "evaluate_heater_state_change: #{@buffer_sm.current}"

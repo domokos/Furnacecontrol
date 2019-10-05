@@ -133,6 +133,12 @@ class HeatingController
                                 @config[:mixer_controller_dev_addr],
                                 @config[:mixer_fwd_sensor_reg_addr],
                                 DRY_RUN, @config[:mixer_forward_mock_temp])
+    @heat_return_sensor =
+      BusDevice::TempSensor.new(@device_base, 'Heating return temperature',
+                                'On the return piping before the buffer',
+                                @config[:mixer_controller_dev_addr],
+                                @config[:mixer_fwd_sensor_reg_addr],
+                                DRY_RUN, @config[:mixer_forward_mock_temp])
     @forward_sensor =
       BusDevice::TempSensor.new(@device_base, 'Forward boiler temperature',
                                 'On the forward piping of the boiler',
@@ -153,14 +159,14 @@ class HeatingController
                                 DRY_RUN, @config[:upper_buffer_mock_temp])
     @buffer_output_sensor =
       BusDevice::TempSensor.new(@device_base, 'Buffer output temperature',
-                                'On top of the buffer',
+                                'On top of the buffer output pipe',
                                 @config[:main_controller_dev_addr],
                                 @config[:buffer_output_sensor_reg_addr],
                                 DRY_RUN, @config[:buffer_output_mock_temp])
     @hw_sensor =
       BusDevice::TempSensor.new(@device_base, 'Hot Water temperature',
                                 'Inside the hot water container '\
-                                'main sensing tube',
+                                'sensing tube',
                                 @config[:main_controller_dev_addr],
                                 @config[:hw_sensor_reg_addr],
                                 DRY_RUN, @config[:HW_mock_temp])
@@ -288,7 +294,7 @@ class HeatingController
     @buffer_heater = \
       BoilerBase::BufferHeat\
       .new(@forward_sensor, @upper_buffer_sensor,
-           @buffer_output_sensor, @return_sensor,
+           @buffer_output_sensor, @return_sensor, @heat_return_sensor,
            @hw_sensor, @hw_valve, @heater_relay, @hydr_shift_pump,
            @hot_water_pump, @hw_watertemp, @heating_watertemp,
            @config)
