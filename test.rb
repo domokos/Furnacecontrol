@@ -11,7 +11,6 @@ STDOUT.sync = true
 CONFIG_FILE_PATH = '/etc/boiler_controller/boiler_controller.yml'
 TEST_CONTROL_FILE_PATH = '/etc/boiler_controller/boiler_test_controls.yml'
 
-
 logger = Globals::ControllerLogger.new
 
 config = Globals::Config.new(logger, CONFIG_FILE_PATH)
@@ -116,7 +115,7 @@ sleep 0.5
 
 # Turn on forward valve
 ret = my_comm.send_message(config[:main_controller_dev_addr],Buscomm::SET_REGISTER,
-                               config[:forward_valve_reg_addr].chr+1.chr)
+                               config[:hw_valve_reg_addr].chr+1.chr)
 # Turn on HW pump
 	ret = my_comm.send_message(config[:main_controller_dev_addr],Buscomm::SET_REGISTER,
 			       config[:hot_water_pump_reg_addr].chr+1.chr)
@@ -191,7 +190,7 @@ elsif mode == "test"
 
 # Turn on forward valve
     ret = my_comm.send_message(config[:main_controller_dev_addr],Buscomm::SET_REGISTER,
-                               config[:forward_valve_reg_addr].chr+1.chr)
+                               config[:hw_valve_reg_addr].chr+1.chr)
 # Turn on HW pump
     ret = my_comm.send_message(config[:main_controller_dev_addr],Buscomm::SET_REGISTER,
 			       config[:hot_water_pump_reg_addr].chr+1.chr)
