@@ -1174,7 +1174,7 @@ module BoilerBase
         end
       when :frombuffer
         if do_limited_logging
-          @logger.debug("Not limited target temp: #{@target_temp.round(2)}")
+          @logger.debug("Target temp: #{@target_temp.round(2)}")
           @logger.debug("Feed from buffer. Buffer output temp: #{@upper_temp}")
           @logger.debug("Delta_t: #{@delta_t}")
         end
