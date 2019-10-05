@@ -1176,6 +1176,8 @@ module BoilerBase
         if do_limited_logging
           @logger.debug("Target temp: #{@target_temp.round(2)}")
           @logger.debug("Feed from buffer. Buffer output temp: #{@upper_temp}")
+          @logger.debug('Difference: '\
+                        "#{@target_temp - @config[:buffer_expiry_threshold]}")
           @logger.debug("Delta_t: #{@delta_t}")
         end
       when :HW
