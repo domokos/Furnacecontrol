@@ -545,6 +545,8 @@ class HeatingController
     @forward_temp = @forward_sensor.temp
     @hw_thermostat.update
     @return_temp = @return_sensor.temp
+    @upper_buffer_temp = @upper_buffer_sensor.temp
+    @heat_return_temp = @heat_return_sensor.temp
     @living_thermostat.update
     @upstairs_thermostat.update
     @basement_thermostat.update
@@ -997,6 +999,8 @@ class HeatingController
   def app_cycle_logging(power_needed)
     @logger.trace("Forward boiler temp: #{@forward_temp}")
     @logger.trace("Return temp: #{@return_temp}")
+    @logger.trace("Upper buffer temp: #{@upper_buffer_temp}")
+    @logger.trace("Heat return temp: #{@heat_return_temp}")
     @logger.trace("HW temp: #{@hw_thermostat.temp}")
     @logger.trace("Need power: #{power_needed}")
   end
@@ -1017,9 +1021,12 @@ class HeatingController
     end
     @heating_logger.debug("State and power_needed history : #{sth[5, 1000]})")
     @heating_logger.debug("Forward temperature: #{@forward_temp.round(2)}")
-    @heating_logger.debug("Return water temperature: #{@return_temp.round(2)}")
+    @heating_logger.debug("Boiler return water temperature: #{@return_temp.round(2)}")
+    @heating_logger.debug("Heating return water temperature: #{@heat_return_temp.round(2)}")
     @heating_logger.debug('Delta T on the Boiler: '\
                           "#{(@forward_temp - @return_temp).round(2)}")
+    @heating_logger.debug('Delta T in Heating: '\
+                          "#{(@upper_buffer_temp - @heat_return_temp).round(2)}")
     @heating_logger.debug("Target boiler temp: #{@target_boiler_temp.round(2)}")
 
     @heating_logger.debug("\nHW target/temperature: "\
