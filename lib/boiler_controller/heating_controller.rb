@@ -1020,18 +1020,18 @@ class HeatingController
              (Time.now.getlocal(0) - e[:timestamp].to_i).strftime('%T') + ' ago'
     end
     @heating_logger.debug("State and power_needed history : #{sth[5, 1000]})")
+    @heating_logger.debug("Target output temp: #{@target_boiler_temp.round(2)}")
     @heating_logger.debug('Boiler forward temperature: '\
                           "#{@forward_temp.round(2)}")
     @heating_logger.debug("Boiler return temperature: #{@return_temp.round(2)}")
+    @heating_logger.debug('Delta T on the Boiler: '\
+                          "#{(@forward_temp - @return_temp).round(2)}")
     @heating_logger.debug('Heating forward temperature: '\
                           "#{@upper_buffer_temp.round(2)}")
     @heating_logger.debug('Heating return temperature: '\
                           "#{@heat_return_temp.round(2)}")
-    @heating_logger.debug('Delta T on the Boiler: '\
-                          "#{(@forward_temp - @return_temp).round(2)}")
     @heating_logger.debug('Delta T in Heating: '\
                           "#{(@upper_buffer_temp - @heat_return_temp).round(2)}")
-    @heating_logger.debug("Target boiler temp: #{@target_boiler_temp.round(2)}")
 
     @heating_logger.debug("\nHW target/temperature: "\
                           "#{@hw_thermostat.threshold.round(2)}/"\
