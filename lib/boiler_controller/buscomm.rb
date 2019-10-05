@@ -343,7 +343,7 @@ class Buscomm
       print ']'
       temp = ''.dup << ret[:Content][PARAMETER_START] << \
              ret[:Content][PARAMETER_START + 1]
-      print '\nTemp: ', temp.unpack('s')[0] * 0.0625, ' C\n'
+      print "\nTemp: #{temp.unpack('s')[0] * 0.0625} C\n"
     else
       print "Comm error - Error code: #{ret[:Return_code]} - "\
       "#{RESPONSE_TEXT[retval[:Return_code]]}"
