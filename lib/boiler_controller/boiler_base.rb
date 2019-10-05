@@ -1165,7 +1165,7 @@ module BoilerBase
         @logger.trace("Delta_t: #{@delta_t}")
         if do_limited_logging
           @logger.debug('Normal. Target: '\
-            "#{buffer.corrected_watertemp(buffer.target_temp).round(2)}")
+            "#{corrected_watertemp(@target_temp).round(2)}")
           @logger.debug("Forward temp: #{@forward_temp}")
           @logger.debug("Buffer output temp: #{@upper_temp}")
           @logger.debug('Heat dissipation into the buffer: '\
