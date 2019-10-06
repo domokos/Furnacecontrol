@@ -1030,7 +1030,7 @@ class HeatingController
                           "#{@upper_buffer_temp.round(2)}")
     @heating_logger.debug('Heating return temperature: '\
                           "#{@heat_return_temp.round(2)}")
-    @heating_logger.debug('Delta T in Heating: '\
+    @heating_logger.debug('Delta T on Buffer: '\
                           "#{(@upper_buffer_temp - @heat_return_temp).round(2)}")
 
     @heating_logger.debug("\nHW target/temperature: "\
