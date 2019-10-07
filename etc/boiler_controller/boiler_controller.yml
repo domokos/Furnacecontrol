@@ -214,3 +214,13 @@
 :mixer_spareb_switch_reg_addr: 8
 :mixer_gpio_reg_addr: 9
 :read_single_rom_code_on_owbus_reg_addr: 10
+#
+#
+# *********************************************************************************************
+# Stability criteria 
+# # *********************************************************************************************
+#
+#
+:sensor_stability_windowsize: 120
+:sensor_stability_period: 5
+:sensor_stability_deviance_limit: 0.25

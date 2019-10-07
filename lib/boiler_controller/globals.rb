@@ -8,6 +8,7 @@ module Globals
   APPLOG_LOGFILE = '/var/log/boiler_controller/boiler_controller.log'
   HEATING_LOGFILE = '/var/log/boiler_controller/boiler_heating.log'
   DAEMON_LOGFILE = '/var/log/boiler_controller/boiler_daemonlog.log'
+  ANALYZER_LOGFILE = '/var/log/boiler_controller/boiler_analyzer.log'
   PIDFILE = '/var/run/boiler_controller/boiler_controller.pid'
 
   NO_SHUTDOWN = 'No Shutdown'
@@ -60,7 +61,7 @@ module Globals
 
   # Class holding the logger instances of the controller
   class ControllerLogger
-    attr_reader :app_logger, :heating_logger, :daemon_logger
+    attr_reader :app_logger, :heating_logger, :daemon_logger, :analyzer_logger
     def initialize
       @app_logger = BoilerLogger.new(APPLOG_LOGFILE, 6, 1_000_000)
 
@@ -84,6 +85,18 @@ module Globals
         if caller(4..4)[0].class == String
           "#{datetime.to_s.sub!(/^(.*) \+.*$/, '\1')} #{severity} "\
           "#{caller(4..4)[0].sub!(%r{^.*\/(.*)$}, '\1')} :: #{msg}\n"
+        else
+          "#{datetime.to_s.sub!(/^(.*) \+.*$/, '\1')} #{severity} "\
+          "#{caller(4..4)[0]} :: #{msg}\n"
+        end
+      }
+
+      @analyzer_logger = BoilerLogger.new(ANALYZER_LOGFILE, 6, 1_000_000)
+
+      @analyzer_logger.formatter = proc { |severity, datetime, _progname, msg|
+        if caller(4..4)[0].class == String
+          "#{datetime.to_s.sub!(/^(.*) \+.*$/, '\1')} #{severity} "\
+          "#{caller(4..4)[0].sub!(%r{^.*/(.*)$}, '\1')} :: #{msg}\n"
         else
           "#{datetime.to_s.sub!(/^(.*) \+.*$/, '\1')} #{severity} "\
           "#{caller(4..4)[0]} :: #{msg}\n"
