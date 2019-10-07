@@ -31,6 +31,10 @@ class BoilerPID
     @pid_thread = nil
     @lastchanged = Time.now
 
+    @ki = @config[:boiler_pid_ki]
+    @kp = @config[:boiler_pid_kp]
+    @kd = @config[:boiler_pid_kd]
+
     start_pid
   end
 
