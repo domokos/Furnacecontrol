@@ -82,7 +82,7 @@ class BoilerPID
     input = @sampling_buffer.value
     error = @target - input
 
-    @i_term += limit(@ki * error)
+    @i_term += @ki * error
 
     d_input = input - @last_input
 
