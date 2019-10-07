@@ -1171,9 +1171,10 @@ module BoilerBase
           @logger.debug('Normal. Target: '\
             "#{corrected_watertemp(@target_temp).round(2)}")
           @logger.debug("Forward temp: #{@forward_temp}")
+          @logger.debug('Deviation: '\
+                        "#{(corrected_watertemp(@target_temp) - \
+                        @forward_temp).round(2)}")
           @logger.debug("Buffer output temp: #{@upper_temp}")
-          @logger.debug('Heat dissipation into the buffer: '\
-                            "#{@forward_temp - @upper_temp}")
           @logger.debug("Delta_t: #{@delta_t}")
         end
       when :frombuffer
