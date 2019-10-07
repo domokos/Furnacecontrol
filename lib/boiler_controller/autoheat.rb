@@ -3,6 +3,7 @@
 require '/usr/local/lib/boiler_controller/boiler_base'
 require '/usr/local/lib/boiler_controller/globals'
 
+
 # A PID controller for the boiler
 class BoilerPID
   def initialize(output_wiper, heatmap,
@@ -16,8 +17,7 @@ class BoilerPID
     @config = config
     @logger = config.logger.analyzer_logger
     @stability_buffer = BoilerBase::Filter
-                        .new(@config[:sensor_stability_windowsize],
-                             @config[:sensor_stability_deviance_limit])
+                        .new(@config[:sensor_stability_windowsize])
     @stability_timer = Globals::TimerSec
                        .new(@config[:sensor_stability_measurement_period],
                             'Stability sampling delay timer')
