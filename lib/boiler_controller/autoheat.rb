@@ -88,7 +88,7 @@ class BoilerPI
     # Compute PI Output
     new_output = limit(@kp * error + @i_term)
     if (@output - new_output).abs > 0.2 &&
-       new_output < @target - 10
+       new_output < @target + 10
       @output = new_output
       @logger.info('PID Output adjusted')
     end
