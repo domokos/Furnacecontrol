@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require '/usr/local/lib/boiler_controller/globals'
+require '/usr/local/lib/boiler_controller/boiler_base'
 
 class MixerControl
   def initialize(mix_sensor, cw_switch, ccw_switch,
@@ -17,7 +18,7 @@ class MixerControl
     @logger = config.logger.app_logger
 
     # Create Filters
-    @mix_filter = Filter.new(@config[:mixer_filter_size])
+    @mix_filter = BolierFilter.new(@config[:mixer_filter_size])
 
     @target_mutex = Mutex.new
     @control_mutex = Mutex.new
@@ -294,10 +295,10 @@ class MixerControl
 
     if @int_err_sum.abs > @config[:mixer_motor_ival_limit]
       @int_err_sum = if @int_err_sum.positive?
-                        @config[:mixer_motor_ival_limit]
-                      else
-                        -@config[:mixer_motor_ival_limit]
-                      end
+                       @config[:mixer_motor_ival_limit]
+                     else
+                       -@config[:mixer_motor_ival_limit]
+                     end
     end
 
     # Calculate the controller output
