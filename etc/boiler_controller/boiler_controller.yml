@@ -50,7 +50,7 @@
 # Wahet temp shift.
 # Shifg the HW and heating ntc curve up/down with the parameter - for calibration reasosns
 :hw_temp_shift: 7
-:heating_temp_shift: -3
+:heating_temp_shift: 3
 #
 # Minimum forward heating watertemp to use
 :minimum_heating_watertemp: 34.5
