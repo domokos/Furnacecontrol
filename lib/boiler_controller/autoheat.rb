@@ -54,13 +54,13 @@ class BoilerPI
         if @stability_timer.expired?
           @stability_timer.reset
           @stability_buffer.input_sample(@sensor.temp)
-          @logger.info('Boiler PID stability buffer size: '\
+          @logger.info('Boiler PD stability buffer size: '\
                        "#{@stability_buffer.size}")
         end
         if @sampling_timer.expired?
           @sampling_timer.reset
           @sampling_buffer.input_sample(@sensor.temp)
-          @logger.info('Boiler PID sampling buffer size: '\
+          @logger.info('Boiler PD sampling buffer size: '\
                        "#{@sampling_buffer.size}")
           pi_control(@sampling_buffer.value)
           @output_wiper.set_water_temp(@output)
@@ -90,13 +90,13 @@ class BoilerPI
     if (@output - new_output).abs > 0.2 &&
        new_output < @target + 10
       @output = new_output
-      @logger.info('PID Output adjusted')
+      @logger.info('PD Output adjusted')
     end
 
-    @logger.info("PID input: #{input.round(2)}")
-    @logger.info("PID target: #{@target.round(2)}")
-    @logger.info("PID Error: #{error.round(2)}")
-    @logger.info("PID Output: #{@output.round(2)}")
+    @logger.info("PD input: #{input.round(2)}")
+    @logger.info("PD target: #{@target.round(2)}")
+    @logger.info("PD Error: #{error.round(2)}")
+    @logger.info("PD Output: #{@output.round(2)}")
 
     @last_input = input
   end

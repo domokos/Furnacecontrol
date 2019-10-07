@@ -713,7 +713,7 @@ module BusDevice
             [80, 0xf4],
             [84, 0xf8],
             [85, 0xff]
-          ]
+          ], -3
         )
       super(base,
             name, location,
