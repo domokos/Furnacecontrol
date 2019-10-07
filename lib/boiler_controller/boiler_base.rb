@@ -31,6 +31,7 @@ module BoilerBase
 
   # A low pass filter to filter out jitter from sensor data
   class Filter
+    attr_reader :size
     def initialize(size)
       @size = size
       @content = []
