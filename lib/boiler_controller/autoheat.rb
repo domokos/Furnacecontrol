@@ -100,7 +100,7 @@ class BoilerPID
     return 34 if value < 34
     return 85 if value > 85
 
-    temp
+    value
   end
 
 end
