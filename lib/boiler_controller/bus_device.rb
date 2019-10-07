@@ -693,7 +693,7 @@ module BusDevice
     def initialize(base,
                    name, location,
                    slave_address, register_address,
-                   dry_run, init_temp = 20.0)
+                   dry_run, shift, init_temp = 20.0)
       @lookup_curve =
         Globals::Polycurve.new(
           [
@@ -713,7 +713,7 @@ module BusDevice
             [80, 0xf4],
             [84, 0xf8],
             [85, 0xff]
-          ], -3
+          ], shift
         )
       super(base,
             name, location,
