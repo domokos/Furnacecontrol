@@ -60,7 +60,7 @@ class BoilerPID
           @sampling_buffer.input_sample(@sensor.temp)
           @logger.info("Boiler PID sampling buffer size: #{@sampling_buffer.size}")
           pid_control(@sampling_buffer.value)
-          @output_wiper
+          @output_wiper.set_water_temp(@output)
         end
         sleep 0.1
       end
