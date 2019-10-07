@@ -90,7 +90,8 @@ class BoilerPID
     # Compute PID Output
     @output = limit(@kp * error + @i_term - @kd * d_input)
 
-    @logger.info("PID target: #{error}")
+    @logger.info("PID input: #{input}")
+    @logger.info("PID target: #{@target}")
     @logger.info("PID Error: #{error}")
     @logger.info("PID Output: #{@output}")
 
