@@ -270,7 +270,7 @@ module Globals
 
   # A PID controller class
   class PIDController
-    def initialize(input_sensor, name,
+    def initialize(name,
                    k_p, k_i, k_d, setpoint,
                    outmin, outmax,
                    sampletime)

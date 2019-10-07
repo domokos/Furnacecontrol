@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require '/usr/local/lib/boiler_controller/boiler_base'
+require '/usr/local/lib/boiler_controller/autoheat'
 require 'rubygems'
 
 # Class of the heating controller
@@ -289,6 +290,17 @@ class HeatingController
            @config[:main_controller_dev_addr],
            @config[:hw_wiper_reg_addr], DRY_RUN,
            @config[:hw_temp_shift])
+
+    curve = Globals::Polycurve.new(
+      [
+        [21.5, 0x00], # 11.3k
+        [23.7, 0x10], # 10.75k
+        [24.7, 0x20]],0)
+
+
+    @boiler_pid = BoilerPID \ 
+        .new(@heating_watertemp, curve,
+      @forward_sensor, @config)
 
     # Create the BufferHeat controller
     @buffer_heater = \

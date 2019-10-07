@@ -61,21 +61,38 @@ module BoilerBase
     end
 
     # Sensor is stable if the sample buffer is full and
-    # all samples are within +-0.25 C from the median
-    def stable?
+    # all samples are within +-limit C from the median
+    def stable?(stability_limit)
       return nil if @content.empty?
 
       # Copy a consistent state for calculations
       content = []
-      avg = 0
+      avg = 0.0
       @filter_mutex.synchronize do
         content = @content.dup
         avg = value_unsynced
       end
 
       stable = true
-      content.each { |x| stable &= (x - avg).abs < @config[:sensor_stability_deviance_limit] }
+      content.each { |x| stable &= (x - avg).abs < stability_limit }
       stable
+    end
+
+    def variance
+      # Copy a consistent state for calculations
+      content = []
+      avg = 0.0
+      @filter_mutex.synchronize do
+        content = @content.dup
+        avg = value_unsynced
+      end
+      sum = 0.0
+      content.each { |v| sum += (v - avg)**2 }
+      sum / content.size
+    end
+
+    def sigma
+      Math.sqrt(variance)
     end
 
     private

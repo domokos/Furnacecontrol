@@ -3,68 +3,104 @@
 require '/usr/local/lib/boiler_controller/boiler_base'
 require '/usr/local/lib/boiler_controller/globals'
 
-# Analyzes the stability of a sensor
-# The analyzer takes measurements periodically and
-# examines samples within a time window
-class SensorAnalyzer
-  def initialize(sensor, target, config)
+# A PID controller for the boiler
+class BoilerPID
+  def initialize(output_wiper, heatmap,
+                 sensor, config, initial_target = 34.0)
+    @target = initial_target
+    @output_wiper = output_wiper
+    @output = initial_target
+    @heatmap = heatmap
+    @corrected_heatmap = heatmap.dup
     @sensor = sensor
-    @sample_buffer =[]
-    @target = target
     @config = config
-    @window = @config[:sensor_stability_windowsize]
-    @period = @config[:sensor_stability_period]
     @logger = config.logger.analyzer_logger
-    @window = @period if @window < @period
-    @nr_samples = window / period
-    @delay_timer = Globals::TimerSec
-                   .new(period, 'Analyzer sampling delay timer')
-    @stop_analyzer_mutex = Mutex.new
-    @sample_mutex = Mutex.new
-    @analyzer_thread = nil
+    @stability_buffer = BoilerBase::Filter
+                        .new(@config[:sensor_stability_windowsize],
+                             @config[:sensor_stability_deviance_limit])
+    @stability_timer = Globals::TimerSec
+                       .new(@config[:sensor_stability_measurement_period],
+                            'Stability sampling delay timer')
+    @sampling_buffer = BoilerBase::Filter
+                       .new(@config[:boiler_pid_filter_size])
+    @sampling_timer = Globals::TimerSec
+                      .new(@config[:boiler_pid_sampling_delay],
+                           'Stability sampling delay timer')
+
+    @pid_output_active = Mutex.new
+    @pid_thread = nil
+    @lastchanged = Time.now
+
+    start_pid
   end
 
-  def start
-    return unless @analyzer_thread.nil?
+  def target(target)
+    return if target == @target
 
-    sleep rand * period + 1
-    @stop_analyzer_mutex.unlock if @stop_analyzer_mutex.locked?
-    @delay_timer.reset
-    @analyzer_thread = Thread.new { do_measurement }
+    @lastchanged = Time.now
+    @target = target
   end
 
-  def stop
-    # Signal analyzer thread to exit
-    @stop_analyzer_mutex.lock
-    @analyzer_thread.join
-    @analyzer_thread = nil
-  end
-
-  def do_measurement
-    until @stop_analyzer_mutex.locked?
-      if @delay_timer.expired?
-        @sample_mutex.synchronize do
-          @sample_buffer << [@sensor.temp]
-          @sample_buffer.shift if @sample_buffer.size > @nr_samples
+  def start_pid
+    init_pid
+    Thread.new do
+      loop do
+        if @stability_timer.expired?
+          @stability_timer.reset
+          @stability_buffer.input_sample(@sensor.temp)
+          @logger.info("Boiler PID stability buffer size: #{@stability_buffer.size}")
         end
-        @logger.info("#{@sensor.name} - Sample size: #{@sample_buffer.size}")
+        if @sampling_timer.expired?
+          @sampling_timer.reset
+          @sampling_buffer.input_sample(@sensor.temp)
+          @logger.info("Boiler PID sampling buffer size: #{@sampling_buffer.size}")
+          pid_control(@sampling_buffer.value)
+        end
+        sleep 0.1
       end
-      sleep 0.1
     end
   end
 
+  def reset
+    @stability_buffer.reset
+    @sampling_buffer.reset
+    init_pid
+  end
 
-end
+  private
 
-# A PID controller for the boiler
-class BoilerPID
-  def initialize(output, heatmap, config, initial_target = 34.0)
-    @target = initial_target
-    @output = output
-    @heatmap = heatmap
-    @corrected_heatmap = heatmap.dup
-    @config = config
-    @logger = config.logger.analyzer_logger
+  def pid_control(input)
+    if @pid_output_active.locked?
+
+    else
+
+    end
+    input = @sampling_buffer.value
+    error = @target - input
+
+    @i_term += limit(@ki * error)
+
+    d_input = input - @last_input
+
+    # Compute PID Output
+    @output = limit(@kp * error + @i_term - @kd * d_input)
+
+    @logger.info("PID Error: #{error}")
+    @logger.info("PID Output: #{@output}")
+
+    @last_input = input
+  end
+
+  def init_pid
+    @last_input = @sensor.temp
+    @i_term = limit(@target)
+  end
+
+  def limit(value)
+    return 34 if value < 34
+    return 85 if value > 85
+
+    temp
   end
 
 end
