@@ -281,7 +281,8 @@ class HeatingController
       .new(@device_base, 'Heating temp wiper',
            'Heating wiper contact on main panel',
            @config[:main_controller_dev_addr],
-           @config[:heating_wiper_reg_addr], DRY_RUN)
+           @config[:heating_wiper_reg_addr], DRY_RUN,
+           @config[:heating_temp_shift])
     @hw_watertemp = \
       BusDevice::HWWaterTemp\
       .new(@device_base, 'HW temp wiper',
