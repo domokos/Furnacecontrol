@@ -41,7 +41,7 @@ class BoilerPI
     return if target == @target
 
     @lastchanged = Time.now
-    init_pi if (@target - target).abs > 5
+    init_pi if (@target - target).abs > 4
     @target = target
   end
 
@@ -92,10 +92,10 @@ class BoilerPI
       @logger.info('PID Output adjusted')
     end
 
-    @logger.info("PID input: #{input}")
-    @logger.info("PID target: #{@target}")
-    @logger.info("PID Error: #{error}")
-    @logger.info("PID Output: #{@output}")
+    @logger.info("PID input: #{input.round(2)}")
+    @logger.info("PID target: #{@target.round(2)}")
+    @logger.info("PID Error: #{error.round(2)}")
+    @logger.info("PID Output: #{@output.round(2)}")
 
     @last_input = input
   end
@@ -105,6 +105,7 @@ class BoilerPI
     @sampling_buffer.reset
     @last_input = @sensor.temp
     @i_term = limit(@target)
+    @output = limit(@target)
   end
 
   def limit(value)
