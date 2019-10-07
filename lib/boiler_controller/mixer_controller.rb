@@ -18,7 +18,7 @@ class MixerControl
     @logger = config.logger.app_logger
 
     # Create Filters
-    @mix_filter = Filter.new(@config[:mixer_filter_size])
+    @mix_filter = BoilerBase::Filter.new(@config[:mixer_filter_size])
 
     @target_mutex = Mutex.new
     @control_mutex = Mutex.new
