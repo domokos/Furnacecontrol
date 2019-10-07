@@ -226,6 +226,5 @@
 :sensor_stability_deviance_limit: 0.25
 :boiler_pid_filter_size: 4
 :boiler_pid_sampling_delay: 5
-:boiler_pid_ki: 0.04
-:boiler_pid_kp: 0.02
-:boiler_pid_kd: 0
+:boiler_pi_ki: 0.005
+:boiler_pi_kp: 0.03

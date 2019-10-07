@@ -386,7 +386,7 @@ module BoilerBase
     attr_reader :hw_sensor, :heat_return_sensor
     attr_reader :hw_valve
     attr_reader :heater_relay, :hydr_shift_pump, :hw_pump
-    attr_reader :hw_wiper, :boiler_pid
+    attr_reader :hw_wiper, :boiler_pi
     attr_reader :logger, :config
     attr_reader :heater_relax_timer
     attr_reader :target_temp
@@ -398,7 +398,7 @@ module BoilerBase
                    hw_valve,
                    heater_relay,
                    hydr_shift_pump, hw_pump,
-                   hw_wiper, boiler_pid,
+                   hw_wiper, boiler_pi,
                    config)
 
       # Buffer Sensors
@@ -421,7 +421,7 @@ module BoilerBase
 
       # Temp wipers
       @hw_wiper = hw_wiper
-      @boiler_pid = boiler_pid
+      @boiler_pi = boiler_pi
 
       # This one ensures that there is only one control thread running
       @control_mutex = Mutex.new
@@ -616,7 +616,7 @@ module BoilerBase
       # - Start the hydr shift pump
       @buffer_sm.on_enter_normal do
         buffer.hw_pump.off if buffer.hw_pump.on?
-        buffer.boiler_pid.target(\
+        buffer.boiler_pi.target(\
           buffer.corrected_watertemp(buffer.target_temp)
         )
         buffer.hydr_shift_pump.on
@@ -711,7 +711,7 @@ module BoilerBase
           # Set the required water temperature raised with the buffer filling
           # offset Decide how ot set relays based on boiler state
         else
-          @boiler_pid\
+          @boiler_pi\
             .target(corrected_watertemp(@target_temp))
           set_relays(:normal)
         end
@@ -882,7 +882,7 @@ module BoilerBase
       when :normal
         @logger.trace("Forward temp: #{@forward_temp}")
         @logger.trace('Reqd./effective target temps: '\
-          "#{@target_temp.round(2)}/#{@boiler_pid.target}")
+          "#{@target_temp.round(2)}/#{@boiler_pi.target}")
         @logger.trace("Delta_t: #{@delta_t}")
         if do_limited_logging
           @logger.debug('Normal. Target: '\
