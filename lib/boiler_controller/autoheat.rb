@@ -40,9 +40,9 @@ class BoilerPI
     return @target if target.nil?
     return if target == @target
 
-    @lastchanged = Time.now
-    init_pi if (@target - target).abs > 4
+    init_needed = (@target - target).abs > 4
     @target = target
+    init_pi if init_needed
   end
 
   def start
@@ -63,7 +63,7 @@ class BoilerPI
           @logger.info('Boiler PID sampling buffer size: '\
                        "#{@sampling_buffer.size}")
           pi_control(@sampling_buffer.value)
-          #@output_wiper.set_water_temp(@output)
+          @output_wiper.set_water_temp(@output)
         end
         sleep 0.1
       end
@@ -87,7 +87,8 @@ class BoilerPI
 
     # Compute PI Output
     new_output = limit(@kp * error + @i_term)
-    if (@output - new_output).abs > 0.2
+    if (@output - new_output).abs > 0.2 &&
+       new_output < @target - 10
       @output = new_output
       @logger.info('PID Output adjusted')
     end
