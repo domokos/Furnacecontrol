@@ -38,7 +38,8 @@ class BoilerPID
     start_pid
   end
 
-  def target(target)
+  def target(target = nil)
+    return @target if target.nil?
     return if target == @target
 
     @lastchanged = Time.now
@@ -59,6 +60,7 @@ class BoilerPID
           @sampling_buffer.input_sample(@sensor.temp)
           @logger.info("Boiler PID sampling buffer size: #{@sampling_buffer.size}")
           pid_control(@sampling_buffer.value)
+          @output_wiper
         end
         sleep 0.1
       end
@@ -79,7 +81,6 @@ class BoilerPID
     else
 
     end
-    input = @sampling_buffer.value
     error = @target - input
 
     @i_term += @ki * error
@@ -89,6 +90,7 @@ class BoilerPID
     # Compute PID Output
     @output = limit(@kp * error + @i_term - @kd * d_input)
 
+    @logger.info("PID target: #{error}")
     @logger.info("PID Error: #{error}")
     @logger.info("PID Output: #{@output}")
 

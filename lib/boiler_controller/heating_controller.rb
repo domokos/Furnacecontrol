@@ -295,11 +295,13 @@ class HeatingController
       [
         [21.5, 0x00], # 11.3k
         [23.7, 0x10], # 10.75k
-        [24.7, 0x20]] , 0)
+        [24.7, 0x20]
+      ], 0
+    )
 
     @boiler_pid = BoilerPID\
-    .new(@heating_watertemp, curve,
-    @forward_sensor, @config)
+                  .new(@heating_watertemp, curve,
+                       @forward_sensor, @config)
 
     # Create the BufferHeat controller
     @buffer_heater = \
@@ -307,7 +309,7 @@ class HeatingController
       .new(@forward_sensor, @upper_buffer_sensor,
            @buffer_output_sensor, @return_sensor, @heat_return_sensor,
            @hw_sensor, @hw_valve, @heater_relay, @hydr_shift_pump,
-           @hot_water_pump, @hw_watertemp, @heating_watertemp,
+           @hot_water_pump, @hw_watertemp, @boiler_pid,
            @config)
 
     # Create the Mixer controller
