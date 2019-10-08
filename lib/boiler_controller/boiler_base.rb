@@ -981,9 +981,10 @@ module BoilerBase
 
         @delta_t = @forward_temp - @return_temp
 
-        if @forward_temp > \
+        if (@forward_temp > \
            (corrected_watertemp(@target_temp) + \
-              @config[:forward_above_target]) &&
+              @config[:forward_above_target]) ||
+              @delta_t < @config[:min_delta_t_to_maintain]) &&
            @heater_relax_timer.expired?
           @logger.debug('Overheating - buffer full.'\
                             ' State will change from buffer normal')
