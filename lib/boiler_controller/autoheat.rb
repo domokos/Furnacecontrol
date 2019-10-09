@@ -46,20 +46,20 @@ class BoilerPI
 
     init_pi
     @pi_thread = Thread.new do
-      @logger.info('Boiler PD starting control')
+      @logger.info('Boiler PI starting control')
 
       # Main loop of the PD controller
       until @pi_output_active.locked?
         pi_main_loop
         sleep 0.1
       end
-      @logger.info('Boiler PD exiting control loop')
+      @logger.info('Boiler PI exiting control loop')
     end
   end
 
   def stop
     return if @pi_thread.nil?
-    @logger.info('Boiler PD stop requested - control active')
+    @logger.info('Boiler PI stop requested - control active')
     @pi_output_active.lock
     @pi_thread.join
     @pi_output_active.unlock
@@ -72,7 +72,7 @@ class BoilerPI
     if @stability_timer.expired?
       @stability_timer.reset
       @stability_buffer.input_sample(@sensor.temp)
-      @logger.info('Boiler PD stability buffer size: '\
+      @logger.info('Boiler PI stability buffer size: '\
                    "#{@stability_buffer.size}")
     end
     if @control_timer.expired?
@@ -83,11 +83,10 @@ class BoilerPI
   end
 
   def pi_control(input)
-    # If the boiler is inactive follow the target and do nothing
-    if input < @config[:boiler_active_threshold]
-      @output = limit(@target)
-      @i_term = limit(@target)
-      @last_input = input
+    # If the boiler is inactive or too cold follow the target and do nothing
+    if input < @config[:boiler_active_threshold] ||
+       input < @target - @config[:boiler_below_target_threshold]
+      follow_targets
       return
     end
 
@@ -100,15 +99,23 @@ class BoilerPI
     if (@output - new_output).abs > 0.2 &&
        new_output < @target + 5
       @output = new_output
-      @logger.info('PD Output adjusted')
+      @logger.info('PI Output adjusted')
     end
 
-    @logger.info("PD input: #{input.round(2)}")
-    @logger.info("PD target: #{@target.round(2)}")
-    @logger.info("PD Error: #{error.round(2)}")
-    @logger.info("PD Output: #{@output.round(2)}")
+    @logger.info("PI input: #{input.round(2)}")
+    @logger.info("PI target: #{@target.round(2)}")
+    @logger.info("PI Error: #{error.round(2)}")
+    @logger.info("PI Output: #{@output.round(2)}")
 
     @last_input = input
+  end
+
+  def follow_targets
+    @output = limit(@target)
+    @i_term = limit(@target)
+    @last_input = input
+    @logger.info('Boiler PI : Boiler inactive or too cold '\
+                 '- no control, following targets')
   end
 
   def init_pi

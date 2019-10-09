@@ -225,9 +225,11 @@
 :sensor_stability_windowsize: 120
 :sensor_stability_measurement_period: 15
 :sensor_stability_deviance_limit: 0.25
-# Above which temp is boiler considered active
+# Above this temp is boiler considered active
 :boiler_active_threshold: 29.5
+# If boiler is cooler by this amount that the target do not control
+:boiler_below_target_threshold: 4
 # PI controller parameters
 :boiler_pi_sampling_period: 5
-:boiler_pi_ki: 0.05
-:boiler_pi_kp: 0.1
+:boiler_pi_ki: 0.08
+:boiler_pi_kp: 0.13
