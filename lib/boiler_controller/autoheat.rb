@@ -20,6 +20,10 @@ class BoilerPI
     @stability_timer = Globals::TimerSec
                        .new(@config[:sensor_stability_measurement_period],
                             'Stability sampling delay timer')
+    @control_timer = Globals::TimerSec
+                     .new(@config[:boiler_pi_sampling_period],
+                          'Control sampling timer')
+
     @pi_output_active = Mutex.new
     @pi_thread = nil
     @lastchanged = Time.now
