@@ -104,9 +104,10 @@ class BoilerPI
 
   def init_pi
     @stability_buffer.reset
-    @sampling_buffer.reset
-    @stability_timer.reset
+
     @control_timer.reset
+    @stability_timer.reset
+
     @last_input = @sensor.temp
     @i_term = limit(@target)
     @output = limit(@target)
