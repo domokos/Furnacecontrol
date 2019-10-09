@@ -44,7 +44,6 @@ class BoilerPI
   def start
     return unless @pi_thread.nil?
 
-    @startup = true
     init_pi
     @pi_thread = Thread.new do
       @logger.info('Boiler PI starting control')
@@ -60,9 +59,11 @@ class BoilerPI
 
   def stop
     return if @pi_thread.nil?
+
     @logger.info('Boiler PI stop requested - control active')
     @pi_output_active.lock
     @pi_thread.join
+    @pi_thread = nil
     @pi_output_active.unlock
   end
 
@@ -85,32 +86,29 @@ class BoilerPI
 
   def pi_control(input)
     # If the boiler is inactive or too cold follow the target and do nothing
-    if @startup &&
-       (input < @config[:boiler_active_threshold] ||
-       input < @target - @config[:boiler_below_target_threshold])
+    if input < @config[:boiler_active_threshold] ||
+       input < @target - @config[:boiler_below_target_threshold]
       follow_targets(input)
-      return
+    else
+      error = (@target - input).abs > 0.3 ? @target - input : 0
+
+      @i_term += @ki * error
+
+      # Compute PI Output
+      new_output = limit(@kp * error + @i_term)
+      if (@output - new_output).abs > 0.2 &&
+        new_output < @target + 5
+        @output = new_output
+        @logger.info('PI Output adjusted')
+      end
+
+      @logger.info("PI input: #{input.round(2)}")
+      @logger.info("PI target: #{@target.round(2)}")
+      @logger.info("PI Error: #{error.round(2)}")
+      @logger.info("PI Output: #{@output.round(2)}")
+
+      @last_input = input
     end
-
-    @startup = false
-    error = (@target - input).abs > 0.3 ? @target - input : 0
-
-    @i_term += @ki * error
-
-    # Compute PI Output
-    new_output = limit(@kp * error + @i_term)
-    if (@output - new_output).abs > 0.2 &&
-       new_output < @target + 5
-      @output = new_output
-      @logger.info('PI Output adjusted')
-    end
-
-    @logger.info("PI input: #{input.round(2)}")
-    @logger.info("PI target: #{@target.round(2)}")
-    @logger.info("PI Error: #{error.round(2)}")
-    @logger.info("PI Output: #{@output.round(2)}")
-
-    @last_input = input
   end
 
   def follow_targets(input)
