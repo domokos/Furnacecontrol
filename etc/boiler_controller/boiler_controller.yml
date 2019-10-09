@@ -231,5 +231,5 @@
 :boiler_below_target_threshold: 4
 # PI controller parameters
 :boiler_pi_sampling_period: 5
-:boiler_pi_ki: 0.08
-:boiler_pi_kp: 0.13
+:boiler_pi_ki: 0.05
+:boiler_pi_kp: 0.1
