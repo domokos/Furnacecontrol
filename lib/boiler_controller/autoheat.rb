@@ -86,7 +86,7 @@ class BoilerPI
     # If the boiler is inactive or too cold follow the target and do nothing
     if input < @config[:boiler_active_threshold] ||
        input < @target - @config[:boiler_below_target_threshold]
-      follow_targets
+      follow_targets(input)
       return
     end
 
@@ -110,7 +110,7 @@ class BoilerPI
     @last_input = input
   end
 
-  def follow_targets
+  def follow_targets(input)
     @output = limit(@target)
     @i_term = limit(@target)
     @last_input = input
