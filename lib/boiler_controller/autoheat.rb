@@ -44,6 +44,7 @@ class BoilerPI
   def start
     return unless @pi_thread.nil?
 
+    @startup = true
     init_pi
     @pi_thread = Thread.new do
       @logger.info('Boiler PI starting control')
@@ -84,12 +85,14 @@ class BoilerPI
 
   def pi_control(input)
     # If the boiler is inactive or too cold follow the target and do nothing
-    if input < @config[:boiler_active_threshold] ||
-       input < @target - @config[:boiler_below_target_threshold]
+    if @startup &&
+       (input < @config[:boiler_active_threshold] ||
+       input < @target - @config[:boiler_below_target_threshold])
       follow_targets(input)
       return
     end
 
+    @startup = false
     error = (@target - input).abs > 0.3 ? @target - input : 0
 
     @i_term += @ki * error
@@ -114,8 +117,8 @@ class BoilerPI
     @output = limit(@target)
     @i_term = limit(@target)
     @last_input = input
-    @logger.info('Boiler PI : Boiler inactive or too cold '\
-                 '- no control, following targets')
+    @logger.info('Boiler PI : Boiler inactive or too cold at startup'\
+                 '- no control, following input and target')
   end
 
   def init_pi
