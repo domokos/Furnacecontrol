@@ -32,7 +32,6 @@ class BoilerPI
 
     @ki = @config[:boiler_pi_ki]
     @kp = @config[:boiler_pi_kp]
-    start
   end
 
   def target(target = nil)
@@ -59,13 +58,14 @@ class BoilerPI
         pi_main_loop
         sleep 0.1
       end
+      @logger.info('Boiler PD exiting control loop')
     end
   end
 
   def stop
     return if @pi_thread.nil?
-
-    @pi_output_active.lock
+    @logger.info('Boiler PD stop requested - control active')
+    @pi_output_active.lock if @pi_output_active.lock
     @pi_thread.join
     @pi_output_active.unlock
   end
@@ -114,6 +114,8 @@ class BoilerPI
   def init_pi
     @stability_buffer.reset
     @sampling_buffer.reset
+    @stability_timer.reset
+    @sampling_timer.reset
     @last_input = @sensor.temp
     @i_term = limit(@target)
     @output = limit(@target)
