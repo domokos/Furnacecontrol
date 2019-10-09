@@ -226,7 +226,5 @@
 :sensor_stability_measurement_period: 15
 :sensor_stability_deviance_limit: 0.25
 :boiler_pi_start_grace_time: 120
-:boiler_pi_filter_size: 4
-:boiler_pi_sampling_delay: 5
 :boiler_pi_ki: 0.05
 :boiler_pi_kp: 0.1

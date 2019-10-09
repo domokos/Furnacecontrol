@@ -376,15 +376,24 @@ class HeatingController
       controller.hydr_shift_pump.off
       controller.hot_water_pump.off
 
-      # Close all valves
-      controller.basement_floor_valve.delayed_close
-      controller.basement_radiator_valve.delayed_close
-      controller.living_floor_valve.delayed_close
-      controller.upstairs_floor_valve.delayed_close
+      if event.name == :init
+        # Close all valves
+        controller.basement_floor_valve.close
+        controller.basement_radiator_valve.close
+        controller.living_floor_valve.close
+        controller.upstairs_floor_valve.close
 
-      # Wait for the delayed closure to happen
-      controller.logger.debug('Waiting for delayed closure valves to close')
-      sleep 3
+      else
+        # Close all valves
+        controller.basement_floor_valve.delayed_close
+        controller.basement_radiator_valve.delayed_close
+        controller.living_floor_valve.delayed_close
+        controller.upstairs_floor_valve.delayed_close
+
+        # Wait for the delayed closure to happen
+        controller.logger.debug('Waiting for delayed closure valves to close')
+        sleep 3
+      end
     end
 
     # Activation actions for Heating

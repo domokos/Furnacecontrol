@@ -20,12 +20,6 @@ class BoilerPI
     @stability_timer = Globals::TimerSec
                        .new(@config[:sensor_stability_measurement_period],
                             'Stability sampling delay timer')
-    @sampling_buffer = BoilerBase::Filter
-                       .new(@config[:boiler_pi_filter_size])
-    @sampling_timer = Globals::TimerSec
-                      .new(@config[:boiler_pi_sampling_delay],
-                           'Stability sampling delay timer')
-
     @pi_output_active = Mutex.new
     @pi_thread = nil
     @lastchanged = Time.now
@@ -49,7 +43,7 @@ class BoilerPI
     init_pi
     @pi_thread = Thread.new do
       @logger.info('Boiler PD sleeping '\
-        "#{@stability_buffer.size} secs before starting control")
+        "#{@config[:boiler_pi_start_grace_time]} secs before starting control")
       sleep @config[:boiler_pi_start_grace_time]
       @logger.info('Boiler PD starting control')
 
@@ -65,7 +59,7 @@ class BoilerPI
   def stop
     return if @pi_thread.nil?
     @logger.info('Boiler PD stop requested - control active')
-    @pi_output_active.lock if @pi_output_active.lock
+    @pi_output_active.lock
     @pi_thread.join
     @pi_output_active.unlock
   end
@@ -80,12 +74,9 @@ class BoilerPI
       @logger.info('Boiler PD stability buffer size: '\
                    "#{@stability_buffer.size}")
     end
-    if @sampling_timer.expired?
-      @sampling_timer.reset
-      @sampling_buffer.input_sample(@sensor.temp)
-      @logger.info('Boiler PD sampling buffer size: '\
-                   "#{@sampling_buffer.size}")
-      pi_control(@sampling_buffer.value)
+    if @control_timer.expired?
+      @control_timer.reset
+      pi_control(@sensor.temp)
       @output_wiper.set_water_temp(@output)
     end
   end
@@ -98,7 +89,7 @@ class BoilerPI
     # Compute PI Output
     new_output = limit(@kp * error + @i_term)
     if (@output - new_output).abs > 0.2 &&
-       new_output < @target + 10
+       new_output < @target + 5
       @output = new_output
       @logger.info('PD Output adjusted')
     end
@@ -115,7 +106,7 @@ class BoilerPI
     @stability_buffer.reset
     @sampling_buffer.reset
     @stability_timer.reset
-    @sampling_timer.reset
+    @control_timer.reset
     @last_input = @sensor.temp
     @i_term = limit(@target)
     @output = limit(@target)
