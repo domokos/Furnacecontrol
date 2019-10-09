@@ -46,9 +46,6 @@ class BoilerPI
 
     init_pi
     @pi_thread = Thread.new do
-      @logger.info('Boiler PD sleeping '\
-        "#{@config[:boiler_pi_start_grace_time]} secs before starting control")
-      sleep @config[:boiler_pi_start_grace_time]
       @logger.info('Boiler PD starting control')
 
       # Main loop of the PD controller
@@ -86,6 +83,14 @@ class BoilerPI
   end
 
   def pi_control(input)
+    # If the boiler is inactive follow the target and do nothing
+    if input < @config[:boiler_active_threshold]
+      @output = limit(@target)
+      @i_term = limit(@target)
+      @last_input = input
+      return
+    end
+
     error = (@target - input).abs > 0.3 ? @target - input : 0
 
     @i_term += @ki * error
