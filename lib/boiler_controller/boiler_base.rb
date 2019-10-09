@@ -596,11 +596,13 @@ module BoilerBase
           buffer.logger.debug('Bufferheater initializing')
           buffer.hw_wiper.set_water_temp(65.0)
           buffer.set_relays(:normal)
-          buffer.heater_relay.off if buffer.heater_relay.on?
+          buffer.heater_relay.off
+          buffer.boiler_pi.stop
         else
           buffer.logger.debug('Bufferheater turning off')
           if buffer.heater_relay.on?
             buffer.heater_relay.off
+            buffer.boiler_pi.stop
             sleep buffer.config[:circulation_maintenance_delay]
           else
             buffer.logger.debug('Heater relay already off')
@@ -629,8 +631,9 @@ module BoilerBase
       # On entering heating from buffer set relays and turn off heating
       # - Turn off HW production of boiler
       @buffer_sm.on_enter_frombuffer do
-        buffer.hw_pump.off if buffer.hw_pump.on?
-        buffer.heater_relay.off if buffer.heater_relay.on?
+        buffer.hw_pump.off
+        buffer.heater_relay.off
+        buffer.boiler_pi.stop
 
         # Turn off hydr shift pump
         if buffer.hydr_shift_pump.on?
@@ -713,6 +716,7 @@ module BoilerBase
         else
           @boiler_pi\
             .target(corrected_watertemp(@target_temp))
+          @boiler_pi.start
           set_relays(:normal)
         end
 

@@ -130,32 +130,28 @@ module BusDevice
 
     # Turn the device on
     def on
-      retval = false
+      return if @state == :on
+
       @state_semaphore.synchronize do
-        if @state != :on
+        if write_device(1) == :Success
+          @logger.debug("'#{@name}' turned on.")
           @state = :on
-          write_device(1) == :Success &&
-            @logger.debug("'#{@name}' turned on.")
-          retval = true
         end
       end
       # of state semaphore sync
-      retval
     end
 
     # Turn the device off
     def off
-      retval = false
+      return if @state == :off
+
       @state_semaphore.synchronize do
-        if @state != :off
+        if write_device(0) == :Success
+          @logger.debug("'#{@name}' turned off.")
           @state = :off
-          write_device(0) == :Success &&
-            @logger.debug("'#{@name}' turned off.")
-          retval = true
         end
       end
       # of state semaphore sync
-      retval
     end
 
     private

@@ -3,7 +3,6 @@
 require '/usr/local/lib/boiler_controller/boiler_base'
 require '/usr/local/lib/boiler_controller/globals'
 
-
 # A PI controller for the boiler
 class BoilerPI
   def initialize(output_wiper, heatmap,
@@ -50,21 +49,14 @@ class BoilerPI
 
     init_pi
     @pi_thread = Thread.new do
+      @logger.info('Boiler PD sleeping '\
+        "#{@stability_buffer.size} secs before starting control")
+      sleep @config[:boiler_pi_start_grace_time]
+      @logger.info('Boiler PD starting control')
+
+      # Main loop of the PD controller
       until @pi_output_active.locked?
-        if @stability_timer.expired?
-          @stability_timer.reset
-          @stability_buffer.input_sample(@sensor.temp)
-          @logger.info('Boiler PD stability buffer size: '\
-                       "#{@stability_buffer.size}")
-        end
-        if @sampling_timer.expired?
-          @sampling_timer.reset
-          @sampling_buffer.input_sample(@sensor.temp)
-          @logger.info('Boiler PD sampling buffer size: '\
-                       "#{@sampling_buffer.size}")
-          pi_control(@sampling_buffer.value)
-          @output_wiper.set_water_temp(@output)
-        end
+        pi_main_loop
         sleep 0.1
       end
     end
@@ -79,6 +71,24 @@ class BoilerPI
   end
 
   private
+
+  # The main loop of the PD controller
+  def pi_main_loop
+    if @stability_timer.expired?
+      @stability_timer.reset
+      @stability_buffer.input_sample(@sensor.temp)
+      @logger.info('Boiler PD stability buffer size: '\
+                   "#{@stability_buffer.size}")
+    end
+    if @sampling_timer.expired?
+      @sampling_timer.reset
+      @sampling_buffer.input_sample(@sensor.temp)
+      @logger.info('Boiler PD sampling buffer size: '\
+                   "#{@sampling_buffer.size}")
+      pi_control(@sampling_buffer.value)
+      @output_wiper.set_water_temp(@output)
+    end
+  end
 
   def pi_control(input)
     error = (@target - input).abs > 0.3 ? @target - input : 0
