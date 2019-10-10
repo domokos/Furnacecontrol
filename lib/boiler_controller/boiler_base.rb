@@ -652,14 +652,11 @@ module BoilerBase
       # - start HW production
       # - turn off hydr shift pump
       @buffer_sm.on_enter_HW do
+        buffer.boiler_pi.stop
         buffer.hw_pump.on
         sleep buffer.config[:circulation_maintenance_delay] if\
           buffer.set_relays(:HW) != :delayed
-        if buffer.hydr_shift_pump.on?
-          buffer.hydr_shift_pump.off
-        else
-          buffer.logger.debug('Hydr shift pump already off')
-        end
+        buffer.hydr_shift_pump.off
         buffer.hw_wiper.set_water_temp(buffer.hw_sensor.temp)
       end
       # of enter HW action
