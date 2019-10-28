@@ -131,8 +131,9 @@ class BoilerPI
   end
 
   def limit(value)
-    return 34 if value < 34
-    return 85 if value > 85
+    return @config[:minimum_heating_watertemp]\
+      if value < @config[:minimum_heating_watertemp]
+    return 70 if value > 70
 
     value
   end
