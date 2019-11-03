@@ -116,7 +116,6 @@
 #
 # Heating state change related constants
 :forward_above_target: 3.3
-:min_delta_t_to_maintain: 5.0
 :buffer_passthrough_overshoot: 3
 :buffer_expiry_threshold: 2.5
 :boiler_on_detector_delta_t_threshold: 2.0
