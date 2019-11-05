@@ -220,28 +220,28 @@ class HeatingController
                                     'Basement thermostat')
     # Create magnetic valves
     @basement_radiator_valve = \
-      BusDevice::DelayedCloseMagneticValve\
+      BusDevice::Switch\
       .new(@device_base, 'Basement radiator valve',
            'Contact 8 on main board',
            @config[:main_controller_dev_addr],
            @config[:basement_radiator_valve_reg_addr],
            DRY_RUN)
     @basement_floor_valve = \
-      BusDevice::DelayedCloseMagneticValve\
+      BusDevice::Switch\
       .new(@device_base, 'Basement floor valve',
            'Contact 9 on main board',
            @config[:main_controller_dev_addr],
            @config[:basement_floor_valve_reg_addr],
            DRY_RUN)
     @living_floor_valve = \
-      BusDevice::DelayedCloseMagneticValve\
+      BusDevice::Switch\
       .new(@device_base, 'Living level floor valve',
            'In the living floor water distributor',
            @config[:six_owbus_dev_addr],
            @config[:living_floor_valve_reg_addr],
            DRY_RUN)
     @upstairs_floor_valve = \
-      BusDevice::DelayedCloseMagneticValve\
+      BusDevice::Switch\
       .new(@device_base, 'Upstairs floor valve',
            'In the upstairs water distributor',
            @config[:six_owbus_dev_addr],

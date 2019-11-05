@@ -915,6 +915,15 @@ module BoilerBase
         buffer.hw_pump.off if buffer.hw_pump.on?
         buffer.heater_relay.off if buffer.heater_relay.on?
 
+        # Dump excess heat into the buffer if coming from HW
+        if buffer.prev_sm_state == :HW
+          buffer.logger.debug('Entering frombuffer coming from HW')
+          buffer.hydr_shift_pump.on
+          buffer.hydr_shift_pump\
+                .delayed_off(buffer.config[:post_HW_heat_dump_into_buffer_time])
+          return
+        end
+
         # Turn off hydr shift pump
         if buffer.hydr_shift_pump.on?
           # Wait for boiler to turn off safely

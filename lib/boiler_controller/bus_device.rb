@@ -102,6 +102,7 @@ module BusDevice
       @register_address = register_address
       @dry_run = dry_run
       @state_semaphore = Mutex.new
+      @delayed_close_semaphore = Mutex.new
 
       # Initialize state to off
       @state = :off
@@ -156,6 +157,22 @@ module BusDevice
       end
       # of state semaphore sync
       retval
+    end
+
+    def delayed_close(delay = 2)
+      return false unless @delayed_close_semaphore.try_lock
+
+      @state_semaphore.synchronize do
+        Thread.new do
+          sleep delay
+          off
+        end
+        @delayed_close_semaphore.unlock
+      end
+    end
+
+    def delayed_off(delay = 2)
+      delayed_close(delay)
     end
 
     private
@@ -260,49 +277,6 @@ module BusDevice
       check_result
     end
     # End of class Switch
-  end
-
-  # This Magnetic valve closes with a delay to decrease
-  # shockwawe effects in the system
-  class DelayedCloseMagneticValve < Switch
-    # Delayed close magnetic valve close delay in secs
-    DELAYED_CLOSE_VALVE_DELAY = 2
-
-    def initialize(base,
-                   name, location,
-                   slave_address, register_address,
-                   dry_run)
-      super(base, name, location, slave_address,
-            register_address, dry_run)
-      @delayed_close_semaphore = Mutex.new
-      @modification_semaphore = Mutex.new
-    end
-
-    alias parent_off off
-    alias parent_on on
-
-    def delayed_close
-      return false unless @delayed_close_semaphore.try_lock
-
-      @modification_semaphore.synchronize do
-        Thread.new do
-          sleep DELAYED_CLOSE_VALVE_DELAY
-          parent_off
-        end
-        @delayed_close_semaphore.unlock
-      end
-    end
-
-    def on
-      retval = false
-      @modification_semaphore.synchronize { retval = parent_on }
-      retval
-    end
-
-    def open
-      on
-    end
-    # End of class DelayedCloseMagneticValve
   end
 
   # The class of the switch turned on in pulses
