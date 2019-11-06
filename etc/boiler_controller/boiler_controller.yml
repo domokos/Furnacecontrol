@@ -122,7 +122,7 @@
 :boiler_on_detector_max_target_overshoot: 3.0
 :boiler_on_detector_min_below_target: 5.0
 :buffer_passtrough_heat_protection_threshold: 2.0
-:post_HW_heat_dump_into_buffer_time: 65
+:post_HW_heat_dump_into_buffer_time: 80
 #
 #
 # *********************************************************************************************
