@@ -223,20 +223,16 @@ module BoilerBase
           while @sec_elapsed < @timebase
             any_thermostats_on = false
             @thermostat_instances.each do |th|
-              if th.cycle_threshold > @sec_elapsed
-                th.modification_mutex.synchronize do
+              th.modification_mutex.synchronize do
+                if th.cycle_threshold > @sec_elapsed
                   if th.state != :on
                     th.state = :on
                     @logger.debug('Turning on ' + th.name)
                   end
-                end
-                any_thermostats_on = true
-              else
-                th.modification_mutex.synchronize do
-                  if th.state != :off
-                    th.state = :off
-                    @logger.debug('Turning off ' + th.name)
-                  end
+                  any_thermostats_on = true
+                elsif th.state != :off
+                  th.state = :off
+                  @logger.debug('Turning off ' + th.name)
                 end
               end
             end
