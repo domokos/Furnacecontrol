@@ -210,12 +210,10 @@ module BoilerBase
         loop do
           # Calculate the threshold value for each instance
           @thermostat_instances.each do |th|
-            th.modification_mutex.synchronize do
-              th.cycle_threshold = @timebase * th.value
-              @logger
-                .debug("#{th.name} pulse width set to: "\
-                       "#{(th.cycle_threshold / @timebase * 100).round(0)}%")
-            end
+            th.update_threshold(@timebase)
+            @logger
+              .debug("#{th.name} pulse width set to: "\
+                      "#{(th.threshold / @timebase * 100).round(0)}%")
           end
 
           # Perform the cycle
@@ -223,17 +221,15 @@ module BoilerBase
           while @sec_elapsed < @timebase
             any_thermostats_on = false
             @thermostat_instances.each do |th|
-              th.modification_mutex.synchronize do
-                if th.cycle_threshold > @sec_elapsed
-                  if th.state != :on
-                    th.state = :on
-                    @logger.debug('Turning on ' + th.name)
-                  end
-                  any_thermostats_on = true
-                elsif th.state != :off
-                  th.state = :off
-                  @logger.debug('Turning off ' + th.name)
+              if th.threshold > @sec_elapsed
+                if th.off?
+                  th.on
+                  @logger.debug('Turning on ' + th.name)
                 end
+                any_thermostats_on = true
+              elsif th.on?
+                th.off
+                @logger.debug('Turning off ' + th.name)
               end
             end
 
@@ -259,8 +255,6 @@ module BoilerBase
   # passed to it as an argument. The reference function should return true
   # at times, when the PWM thermostat should consider the PWM to be active.
   class PwmThermostat
-    attr_accessor :cycle_threshold, :state
-    attr_reader :target, :name, :modification_mutex
     def initialize(base, sensor,
                    filtersize, value_proc,
                    name)
@@ -285,6 +279,22 @@ module BoilerBase
       base.register(self)
     end
 
+    def name
+      @modification_mutex.synchronize { @name }
+    end
+
+    def state
+      @modification_mutex.synchronize { @state }
+    end
+
+    def threshold
+      @modification_mutex.synchronize { @cycle_threshold }
+    end
+
+    def update_threshold(timebase)
+      @modification_mutex.synchronize { @cycle_threshold = timebase * @value_proc.call(@sample_filter, @target) }
+    end
+
     def update
       @modification_mutex.synchronize { @sample_filter.input_sample(@sensor.temp) }
     end
@@ -294,21 +304,19 @@ module BoilerBase
     end
 
     def temp
-      retval = 0
-      @modification_mutex.synchronize { retval = @sample_filter.value }
-      retval
+      @modification_mutex.synchronize { @sample_filter.value }
     end
 
     def on?
-      retval = false
-      @modification_mutex.synchronize { retval = (@state == :on) }
-      retval
+      @modification_mutex.synchronize { @state == :on }
     end
 
     def off?
-      retval = false
-      @modification_mutex.synchronize { retval = (@state == :off) }
-      retval
+      @modification_mutex.synchronize { @state == :off }
+    end
+
+    def target
+      @modification_mutex.synchronize { @target }
     end
 
     def set_target(target)
@@ -316,7 +324,15 @@ module BoilerBase
     end
 
     def value
-      @value_proc.call(@sample_filter, @target)
+      @modification_mutex.synchronize { @value_proc.call(@sample_filter, @target) }
+    end
+
+    def on
+      @modification_mutex.synchronize { @state = :on }
+    end
+
+    def off
+      @modification_mutex.synchronize { @state = :off }
     end
   end
   # End of class PwmThermostat
@@ -368,9 +384,7 @@ module BoilerBase
     end
 
     def temp
-      retval = 0
-      @measurement_mutex.synchronize { retval = @mix_filter.value }
-      retval
+      @measurement_mutex.synchronize { @mix_filter.value }
     end
 
     def set_target_temp(new_target_temp)
