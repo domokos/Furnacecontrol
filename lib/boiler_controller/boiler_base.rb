@@ -183,11 +183,9 @@ module BoilerBase
       loop do
         initialized = true
         @thermostat_instances.each do |th|
-          th.modification_mutex.synchronize do
-            initialized &= !th.target.nil?
-            # @logger.debug(th.name + " initialized: #{!th.target.nil?}")
-            # @logger.debug("Thermostats initialized: #{initialized}")
-          end
+          initialized &= !th.target.nil?
+          # @logger.debug(th.name + " initialized: #{!th.target.nil?}")
+          # @logger.debug("Thermostats initialized: #{initialized}")
         end
         sleep 0.5
         safety_loop_counter += 1
