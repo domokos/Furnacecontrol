@@ -122,53 +122,44 @@ module BusDevice
     end
 
     def on?
-      @state == :on
+      @state_semaphore.synchronize { @state == :on }
     end
 
     def off?
-      @state == :off
+      @state_semaphore.synchronize { @state == :off }
     end
 
     # Turn the device on
     def on
-      retval = false
-      @state_semaphore.synchronize do
-        if @state != :on
-          @state = :on
-          write_device(1) == :Success &&
-            @logger.debug("'#{@name}' turned on.")
-          @logger.debug(Thread.current.backtrace.join("\n")) if @name == 'Basement floor valve'
-          retval = true
-        end
+      return false unless @state_semaphore.try_lock
+
+      if @state != :on
+        @state = :on
+        write_device(1) == :Success &&
+          @logger.debug("'#{@name}' turned on.")
+        @logger.debug(Thread.current.backtrace.join("\n")) if @name == 'Basement floor valve'
       end
-      # of state semaphore sync
-      retval
+      @state_semaphore.unlock
     end
 
     # Turn the device off
     def off
-      retval = false
-      @state_semaphore.synchronize do
-        if @state != :off
-          @state = :off
-          write_device(0) == :Success &&
-            @logger.debug("'#{@name}' turned off.")
-          @logger.debug(Thread.current.backtrace.join("\n")) if @name == 'Basement floor valve'
-          retval = true
-        end
+      return false unless @state_semaphore.try_lock
+
+      if @state != :off
+        @state = :off
+        write_device(0) == :Success &&
+          @logger.debug("'#{@name}' turned off.")
+        @logger.debug(Thread.current.backtrace.join("\n")) if @name == 'Basement floor valve'
       end
-      # of state semaphore sync
-      retval
+      @state_semaphore.unlock
     end
 
     def delayed_close(delay = 2)
-      return false unless @delayed_close_semaphore.try_lock
-
-      @state_semaphore.synchronize do
-        Thread.new do
-          sleep delay
-          off
-        end
+      Thread.new do
+        Thread.exit unless @delayed_close_semaphore.try_lock
+        sleep delay
+        off
         @delayed_close_semaphore.unlock
       end
     end
