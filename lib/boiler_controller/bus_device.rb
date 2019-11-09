@@ -137,7 +137,6 @@ module BusDevice
         @state = :on
         write_device(1) == :Success &&
           @logger.debug("'#{@name}' turned on.")
-        @logger.debug(Thread.current.backtrace.join("\n")) if @name == 'Basement floor valve'
       end
       @state_semaphore.unlock
     end
@@ -150,7 +149,6 @@ module BusDevice
         @state = :off
         write_device(0) == :Success &&
           @logger.debug("'#{@name}' turned off.")
-        @logger.debug(Thread.current.backtrace.join("\n")) if @name == 'Basement floor valve'
       end
       @state_semaphore.unlock
     end
