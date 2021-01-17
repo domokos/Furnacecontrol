@@ -219,7 +219,7 @@ module BoilerBase
           while @sec_elapsed < @timebase
             any_thermostats_on = false
             @thermostat_instances.each do |th|
-              if th.threshold > @sec_elapsed
+              if th.threshold >= @sec_elapsed
                 if th.off?
                   th.on
                   @logger.debug('Turning on ' + th.name)

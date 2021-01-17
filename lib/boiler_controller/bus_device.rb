@@ -663,7 +663,8 @@ module BusDevice
         Globals::Polycurve.new(
           [
             [28, 0x00],
-            [34, 0x96],
+            [34.4, 0x96],
+            [36.0, 0x98],
             [37, 0xa4],
             [40, 0xb0],
             [45, 0xbd], # 189 - 45

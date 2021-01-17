@@ -13,6 +13,7 @@ class HeatingController
 
   attr_reader :forward_temp, :hw_thermostat, :return_temp, :living_thermostat
   attr_reader :upstairs_thermostat, :basement_thermostat
+  attr_reader :cold_outside_thermostat
   attr_reader :living_floor_thermostat, :mode_thermostat, :target_boiler_temp
   attr_reader :sm_relax_timer
   attr_reader :logger, :config
@@ -63,6 +64,8 @@ class HeatingController
     # Set initial HW target
     @hw_thermostat.set_threshold(@hw_watertemp_polycurve\
       .float_value(@floor_thermostat.temp))
+    # Threshold not used in this case just set it to zero
+    @cold_outside_thermostat.set_target(0)
 
     @logger.debug('Boiler controller initialized initial state '\
                       "set to: #{@heating_sm.current}, "\
@@ -78,8 +81,8 @@ class HeatingController
       determine_power_needed == :HW || @moving_valves_required == true
     }
 
-    # Create the value proc for the basement thermostat. Lambda is used because
-    # proc would also return the "return" command
+    # Create the value proc for the basement thermostat. Lambda is used
+    # because proc would also return the "return" command
     @basement_thermostat_valueproc = lambda { |sample_filter, target|
       error = target - sample_filter.value
       # Calculate compensation for water temperature drop
@@ -96,6 +99,14 @@ class HeatingController
         value = 0
       end
       return value
+    }
+
+    # Create the value proc for the cold outside thermostat. Lambda is used
+    # because proc would also return the "return" command
+    @cold_outside_valueproc = lambda { |sample_filter, target|
+      outside_temp = sample_filter.value - target * 0
+      # Operate radiators @50% if outside temperature is below -3 C
+      return (outside_temp < -3 ? 0.5 : 0)
     }
   end
 
@@ -219,6 +230,11 @@ class HeatingController
       BoilerBase::PwmThermostat.new(@pwmbase, @basement_sensor, 30,
                                     @basement_thermostat_valueproc,
                                     'Basement thermostat')
+    @cold_outside_thermostat =
+      BoilerBase::PwmThermostat.new(@pwmbase, @external_sensor, 30,
+                                    @cold_outside_valueproc,
+                                    'Cold outside thermostat')
+
     # Create magnetic valves
     @basement_radiator_valve = \
       BusDevice::Switch\
@@ -552,6 +568,7 @@ class HeatingController
     @living_thermostat.update
     @upstairs_thermostat.update
     @basement_thermostat.update
+    @cold_outside_thermostat.update
     @floor_thermostat.update
     @mode_thermostat.update
   end
@@ -574,7 +591,7 @@ class HeatingController
 
       @logger.trace('Main boiler loop cycle start')
 
-      # Sleep to spare processor time
+      # Sleep to save processor time
       sleep @config[:main_loop_delay]
 
       # Apply the test conrol if in dry run
@@ -837,13 +854,13 @@ class HeatingController
       # Power needed for hot water - overrides Heat power need
       :HW
     elsif @mode == :mode_Heat_HW && (@upstairs_thermostat.on? || \
-          @living_thermostat.on?) && \
+          @living_thermostat.on? || cold_outside_thermostat.on?) && \
           @floor_thermostat.off? && \
           @basement_thermostat.off?
       # Power needed for heating
       :RAD
     elsif @mode == :mode_Heat_HW && (@upstairs_thermostat.on? || \
-          @living_thermostat.on?) && \
+          @living_thermostat.on? || cold_outside_thermostat.on?) && \
           (@floor_thermostat.on? || \
           @basement_thermostat.on?)
       # Power needed for heating and floor heating
@@ -1077,7 +1094,9 @@ class HeatingController
                           "#{@basement_floor_valve.state}")
     @heating_logger.debug('Basement thermostat status: '\
                           "#{@basement_thermostat.state}")
-
+    @heating_logger.debug('Cold outside thermostat status: '\
+                            "#{@cold_outside_thermostat.state}")
+  
     @heating_logger.debug("\nBoiler relay: #{@heater_relay.state}")
     @heating_logger.debug('Boiler required temperature: '\
                           "#{@heating_watertemp.temp_required.round(2)}")
