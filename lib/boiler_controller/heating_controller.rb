@@ -1102,9 +1102,9 @@ class HeatingController
                           "#{@basement_floor_valve.state}")
     @heating_logger.debug('Basement thermostat status: '\
                           "#{@basement_thermostat.state}")
-    @heating_logger.debug('Cold outside thermostat status: '\
-                            "#{@cold_outside_thermostat.state}")
-  
+    @heating_logger.debug('Cold outside thermostat status/PWM value: '\
+                          "#{@cold_outside_thermostat.state} / "\
+                          "#{(@cold_outside_thermostat.value * 100).round(0)}%")
     @heating_logger.debug("\nBoiler relay: #{@heater_relay.state}")
     @heating_logger.debug('Boiler required temperature: '\
                           "#{@heating_watertemp.temp_required.round(2)}")
