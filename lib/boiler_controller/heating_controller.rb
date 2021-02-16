@@ -106,7 +106,15 @@ class HeatingController
     @cold_outside_valueproc = lambda { |sample_filter, target|
       outside_temp = sample_filter.value - target * 0
       # Operate radiators @50% if outside temperature is below -3 C
-      return (outside_temp < -3 ? 0.5 : 0)
+      value = 0
+      if outside_temp < -5
+        value = 0.5
+      elsif outside_temp < -3
+        value = 0.3
+      elsif outside_temp < 0
+        value = 0.1
+      end
+      return value
     }
   end
 
