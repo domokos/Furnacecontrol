@@ -1096,8 +1096,9 @@ class HeatingController
     @heating_logger.debug("\nBasement target/temperature: "\
                           "#{@basement_thermostat.target} / "\
                           "#{@basement_thermostat.temp.round(2)}")
-    @heating_logger.debug("Basement PWM value: #{(@basement_thermostat.value * \
-                          100).round(0)}%")
+    @heating_logger.debug('Basement status/PWM value: '\
+                          "#{@basement_thermostat.state} / "\
+                          "#{(@basement_thermostat.value * 100).round(0)}%")
     @heating_logger.debug('Basement floor valve: '\
                           "#{@basement_floor_valve.state}")
     @heating_logger.debug('Basement thermostat status: '\
