@@ -111,7 +111,7 @@ class HeatingController
         value = 0.5
       elsif outside_temp < -3
         value = 0.3
-      elsif outside_temp < 0
+      elsif outside_temp < 2
         value = 0.1
       end
       return value
