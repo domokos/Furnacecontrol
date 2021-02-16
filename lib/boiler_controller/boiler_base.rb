@@ -46,6 +46,10 @@ module BoilerBase
       end
     end
 
+    def depth
+      @content.size
+    end
+
     def input_sample(the_sample)
       @filter_mutex.synchronize do
         @content.push(the_sample)
@@ -290,7 +294,9 @@ module BoilerBase
     end
 
     def update_threshold(timebase)
-      @modification_mutex.synchronize { @cycle_threshold = timebase * @value_proc.call(@sample_filter, @target) }
+      @modification_mutex.synchronize do
+        @cycle_threshold = timebase * @value_proc.call(@sample_filter, @target)
+      end
     end
 
     def update

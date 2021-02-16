@@ -84,6 +84,8 @@ class HeatingController
     # Create the value proc for the basement thermostat. Lambda is used
     # because proc would also return the "return" command
     @basement_thermostat_valueproc = lambda { |sample_filter, target|
+      return 0 if sample_filter.depth < 6
+
       error = target - sample_filter.value
       # Calculate compensation for water temperature drop
       multiplier = if @target_boiler_temp > 45
