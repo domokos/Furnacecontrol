@@ -607,10 +607,18 @@ module BusDevice
             @logger.error(errorstring)
 
             # Retry setting the server side known state on the device
-            retval = @base.comm_interface.send_message(
-              @slave_address, Buscomm::SET_REGISTER,
-              @register_address.chr + 0x00.chr + @value.chr + VOLATILE.chr
-            )
+            if @value != 0xff
+              @base.comm_interface
+                   .send_message(@slave_address, Buscomm::SET_REGISTER,
+                                 @register_address.chr + 0x00.chr +
+                                 @value.chr + VOLATILE.chr)
+            else
+              @base.comm_interface
+                   .send_message(@slave_address, Buscomm::SET_REGISTER,
+                                 @register_address.chr + 0x01.chr +
+                                 0xff.chr + VOLATILE.chr)
+            end
+
             # Re-read the result to see if the device side update was succesful
             retval = @base.comm_interface.send_message(
               @slave_address, Buscomm::READ_REGISTER,
