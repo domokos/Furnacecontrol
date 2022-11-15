@@ -5,7 +5,6 @@ Requires=NetworkManager.service boilercontrol_createpidlocation.service
 
 [Service]
 Type=forking
-Environment=GEM_PATH=/usr/local/rvm/gems/ruby-2.3.0:/usr/local/rvm/gems/ruby-2.3.0@global
 PIDFile=/var/run/boiler_controller/boiler_controller.pid
 User=boiler
 TimeoutStopSec=60
