@@ -12,9 +12,9 @@
 :target_basement_temp: 25.5
 #
 :HW_watertemp_polycurve:
-# @ 25 C and below: 51C
+# @ 25 C and below: 45C
 - - 25
-  - 51
+  - 48
 # @ 31C: 40C
 - - 31
   - 40
@@ -90,7 +90,7 @@
 :forward_mock_temp: 37.0
 :return_mock_temp: 31.0
 :upper_buffer_mock_temp: 31.0
-:buffer_output_mock_temp: 31.0
+:output_mock_temp: 31.0
 :HW_mock_temp: 55.0
 :living_mock_temp: 19.0
 :upstairs_mock_temp: 23.0
@@ -131,12 +131,17 @@
 # *********************************************************************************************
 #
 :mixer_limited_log_period: 120
-:mixer_filter_size: 2
+:mixer_filter_size: 3
 :mixer_sampling_delay: 3
 :mixer_control_loop_delay: 30
-:mixer_motor_kp_parameter: 1.2
-:mixer_motor_ki_parameter: 0.3
+# Base parameters of a classic - discrete - PI controller
+:mixer_motor_kp_parameter: 0.8
+:mixer_motor_ki_parameter: 0.1
+# Intergative factor is limited,
+# its absolute value is never bigger than the value of this parameter
 :mixer_motor_ival_limit: 0.6
+# Error is integrated into the integrative error factor only
+# if current period integrative error if avove this limit
 :mixer_motor_integrate_error_limit: 0.15
 :mixer_unidirectional_movement_time_limit: 65
 :mixer_movement_time_hysteresis: 5
@@ -150,16 +155,16 @@
 # *********************************************************************************************
 #
 # The IP on which the server is litening - bind address
-:rest_serverip: 192.168.130.6
+:rest_serverip: 192.168.130.8
 #
 # The tcp port for incoming connections
 :rest_serverport: 4567
 #
 # The private key of the server for TLS
-:rest_privatekey: /etc/pki/tls/private/phobos.szilva.key
+:rest_privatekey: /etc/pki/tls/private/privkey.pem
 #
 # The cert file of the server for tls
-:rest_cert_file: /etc/pki/tls/certs/phobos.szilva.crt
+:rest_cert_file: /etc/pki/tls/certs/fullchain.pem
 #
 #
 # *********************************************************************************************
@@ -181,8 +186,8 @@
 :main_controller_dev_addr: 11
 :hw_sensor_reg_addr: 1
 :basement_sensor_reg_addr: 2
-:upper_buffer_sensor_reg_addr: 3
-:buffer_output_sensor_reg_addr: 4
+:output_sensor_reg_addr: 3
+:upper_buffer_sensor_reg_addr: 4
 :spare_valve_reg_addr: 5
 :hw_valve_reg_addr: 6
 :radiator_pump_reg_addr: 7
@@ -213,6 +218,23 @@
 :mixer_cw_reg_addr: 5
 :mixer_ccw_reg_addr: 6
 :mixer_spare_valve_reg_addr: 7
-:mixer_spareb_switch_reg_addr: 8
+:mixer_usebuffer_reg_addr: 8
 :mixer_gpio_reg_addr: 9
-:read_single_rom_code_on_owbus_reg_addr: 10
+:temp_hp_dhw_switch_reg_addr: 10
+:temp_hp_relay_switch_reg_addr: 11
+:read_single_rom_code_on_owbus_reg_addr: 12
+#
+# HP controller - Boiler room
+:hp_controller_dev_addr: 13
+:hp_low_tariff_switch_reg_addr: 1
+:hp_night_mode_switch_reg_addr: 2
+:hp_heat_cool_switch_reg_addr: 3
+:hp_dual_setpoint_switch_reg_addr: 4
+:hp_on_off_switch_reg_addr: 5
+:hp_hw_switch_reg_addr: 6
+:hp_hw_wiper_reg_addr: 7
+:hp_heat_wiper_reg_addr: 8
+:hp_ehs_input_reg_addr: 9
+:hp_heat_cool_input_reg_addr: 10
+:hp_backup_heater_input_reg_addr: 11
+:hp_alarm_input_reg_addr: 12

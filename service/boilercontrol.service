@@ -1,7 +1,7 @@
 [Unit]
 Description=Boilercontrol
-After=network.service
-Requires=network.service boilercontrol_createpidlocation.service
+After=NetworkManager.service
+Requires=NetworkManager.service boilercontrol_createpidlocation.service
 
 [Service]
 Type=forking
@@ -11,6 +11,8 @@ User=boiler
 TimeoutStopSec=60
 Nice=-3
 ExecStart=/usr/local/bin/boiler_controller.rb --daemon --pidfile /var/run/boiler_controller/boiler_controller.pid
+ExecStop=/usr/local/bin/boilercontrol_shutdown
+ExecReload=/usr/local/bin/boilercontrol_reload
 Restart=always
 RestartSec=180
 

@@ -1,0 +1,7 @@
+#!/usr/bin/bash
+/usr/bin/curl -s http://192.168.130.8:4567/shutdown
+
+while [ $(/usr/sbin/pidof /usr/local/rvm/rubies/ruby-2.3.0/bin/ruby /usr/local/bin/boiler_controller.rb) ]
+do
+    sleep 1
+done

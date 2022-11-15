@@ -3,31 +3,10 @@
 require '/usr/local/lib/boiler_controller/buscomm'
 require '/usr/local/lib/boiler_controller/globals'
 require '/usr/local/lib/boiler_controller/bus_device'
+require '/usr/local/lib/boiler_controller/buffer_sm'
 require 'rubygems'
-require 'finite_machine'
 
 module BoilerBase
-  # The definition of the heating state machine
-  class HeatingSM < FiniteMachine::Definition
-    alias_target :controller
-
-    events do
-      event :turnon, off: :heating
-      event :postheat, heating: :postheating
-      event :posthw, heating: :posthwing
-      event :turnoff, %i[postheating posthwing heating] => :off
-      event :init, none: :off
-    end
-
-    callbacks do
-      on_before do |event|
-        controller.logger.info 'Heating state change from '\
-                               "#{event.from} to #{event.to}"
-      end
-    end
-  end
-  # of class Heating SM
-
   # A low pass filter to filter out jitter from sensor data
   class Filter
     def initialize(size)
@@ -78,6 +57,7 @@ module BoilerBase
   class ThermostatBase
     attr_reader :state, :threshold
     attr_accessor :hysteresis
+
     def initialize(sensor, hysteresis, threshold, filtersize)
       @sensor = sensor
       @hysteresis = hysteresis
@@ -134,6 +114,7 @@ module BoilerBase
   # Class of the asymmetric thermostat
   class ASymmetricThermostat < ThermostatBase
     attr_accessor :up_hysteresis, :down_hysteresis
+
     def initialize(sensor,
                    down_hysteresis, up_hysteresis,
                    threshold, filtersize)
@@ -166,6 +147,7 @@ module BoilerBase
   # The base class of PWM thermostats with common timing
   class PwmBase
     attr_accessor :config
+
     def initialize(config, is_hw_or_valve_proc,
                    timebase = 3600)
       @config = config
@@ -341,6 +323,7 @@ module BoilerBase
   end
   # End of class PwmThermostat
 
+  # Class of the Mixer controller device
   class MixerControl
     def initialize(mix_sensor, cw_switch, ccw_switch,
                    config,
@@ -389,6 +372,10 @@ module BoilerBase
 
     def temp
       @measurement_mutex.synchronize { @mix_filter.value }
+    end
+
+    def target_temp
+      @target_temp
     end
 
     def set_target_temp(new_target_temp)
@@ -536,7 +523,8 @@ module BoilerBase
 
       # Wait for the measurement thread to exit
       @logger.debug(\
-        'Mixer controller - waiting for measurement thread to exit')
+        'Mixer controller - waiting for measurement thread to exit'
+      )
       @measurement_thread.join
       @logger.debug('Mixer controller - measurement thread joined')
 
@@ -664,36 +652,25 @@ module BoilerBase
   end
   # of class MixerControl
 
-  # The definition of the heating state machine
-  class BufferSM < FiniteMachine::Definition
-    alias_target :buffer
-
-    events do
-      event :turnoff, any: :off
-      event :normal, any: :normal
-      event :frombuffer, any: :frombuffer
-      event :HW, any: :HW
-      event :init, none: :off
-    end
-  end
-  # of class BufferSM
-
+  # Class of the buffer heater
   class BufferHeat
-    attr_reader :forward_sensor, :upper_sensor, :buf_output_sensor, :return_sensor
-    attr_reader :hw_sensor, :heat_return_sensor
-    attr_reader :hw_valve
-    attr_reader :heater_relay, :hydr_shift_pump, :hw_pump
-    attr_reader :hw_wiper, :heat_wiper
-    attr_reader :logger, :config
-    attr_reader :heater_relax_timer
-    attr_reader :target_temp
+    attr_reader :forward_sensor, :upper_sensor, :buf_output_sensor, :return_sensor,
+                :hw_sensor, :heat_return_sensor,
+                :hw_valve, :bufferbypass_valve,
+                :heater_relay, :hp_relay, :hp_dhw_wiper,
+                :hydr_shift_pump, :hw_pump,
+                :hw_wiper, :heat_wiper,
+                :logger, :config,
+                :heater_relax_timer,
+                :target_temp
     attr_accessor :prev_sm_state
+
     # Initialize the buffer taking its sensors and control valves
     def initialize(forward_sensor, upper_sensor, buf_output_sensor, return_sensor,
                    heat_return_sensor,
                    hw_sensor,
-                   hw_valve,
-                   heater_relay,
+                   hw_valve, bufferbypass_valve,
+                   heater_relay, hp_relay, hp_dhw_wiper,
                    hydr_shift_pump, hw_pump,
                    hw_wiper, heat_wiper,
                    config)
@@ -710,9 +687,12 @@ module BoilerBase
 
       # Valves
       @hw_valve = hw_valve
+      @bufferbypass_valve = bufferbypass_valve
 
       # Pump, heat relay
       @heater_relay = heater_relay
+      @hp_relay = hp_relay
+      @hp_dhw_wiper = hp_dhw_wiper
       @hydr_shift_pump = hydr_shift_pump
       @hw_pump = hw_pump
 
@@ -754,10 +734,8 @@ module BoilerBase
       @relay_state = nil
 
       # Create the state machine of the buffer heater
-      @buffer_sm = BufferSM.new
-      @buffer_sm.target self
+      @buffer_sm = BufferStates::BufferSM.new(self)
 
-      set_sm_actions
       @buffer_sm.init
 
       @target_temp = 7.0
@@ -786,7 +764,7 @@ module BoilerBase
     # :off - The system is configured for being turned off. The remaining heat
     #        from the boiler - if any - is transferred to the buffer.
     #
-    # :HW - The system is configured for HW - Boiler relays are switched off
+    # :hw - The system is configured for HW - Boiler relays are switched off
     #       this now does not take the solar option into account.
 
     def set_mode(new_mode)
@@ -831,22 +809,25 @@ module BoilerBase
     def state
       @buffer_sm.current
     end
+
     # Configure the relays for a certain purpose
     def set_relays(config)
       # Check validity of the parameter
       raise "Invalid relay config parameter '#{config}' passed to set_relays(config)"\
-        unless %i[normal HW].include? config
+        unless %i[normal hw].include? config
 
       return :immediate if @relay_state == config
 
       @logger.info("Changing relay state: '#{@relay_state}' => '#{config}'")
 
       case config
-      when :HW
+      when :hw
         @hw_valve.on
-        @relay_state = :HW
+        @bufferbypass_valve.on
+        @relay_state = :hw
       when :normal
         @hw_valve.off
+        @bufferbypass_valve.off
         @relay_state = :normal
       end
 
@@ -875,104 +856,6 @@ module BoilerBase
 
     # Define  the state transition actions
     def set_sm_actions
-      # :off, :normal, :frombuffer, :HW
-
-      # Log state transitions and arm the state change relaxation timer
-      @buffer_sm.on_before do |event|
-        buffer.logger.debug('Bufferheater state change from '\
-                          "#{event.from} to #{event.to}")
-        buffer.prev_sm_state = event.from
-        buffer.heater_relax_timer.reset
-      end
-
-      # On turning off the controller will take care of pumps
-      # - Turn off HW production of boiler
-      # - Turn off the heater relay
-      @buffer_sm.on_enter_off do |event|
-        if event.name == :init
-          buffer.logger.debug('Bufferheater initializing')
-          buffer.hw_wiper.set_water_temp(65.0)
-          buffer.set_relays(:normal)
-          buffer.heater_relay.off if buffer.heater_relay.on?
-        else
-          buffer.logger.debug('Bufferheater turning off')
-          if buffer.heater_relay.on?
-            buffer.heater_relay.off
-            sleep buffer.config[:circulation_maintenance_delay]
-          else
-            buffer.logger.debug('Heater relay already off')
-          end
-        end
-      end
-      # of enter off action
-
-      # On entering heat through buffer shifter
-      # - Turn off HW production of boiler
-      # - move relay to normal
-      # - start the boiler
-      # - Start the hydr shift pump
-      @buffer_sm.on_enter_normal do
-        buffer.hw_pump.off if buffer.hw_pump.on?
-        buffer.heat_wiper.set_water_temp(\
-          buffer.corrected_watertemp(buffer.target_temp)
-        )
-        buffer.hydr_shift_pump.on
-        sleep buffer.config[:circulation_maintenance_delay] \
-          if buffer.set_relays(:normal) == :immediate
-        buffer.heater_relay.on
-      end
-      # of enter normal action
-
-      # On entering heating from buffer set relays and turn off heating
-      # - Turn off HW production of boiler
-      @buffer_sm.on_enter_frombuffer do
-        buffer.hw_pump.off if buffer.hw_pump.on?
-        buffer.heater_relay.off if buffer.heater_relay.on?
-
-        # Dump excess heat into the buffer if coming from HW
-        if buffer.prev_sm_state == :HW
-          buffer.logger.debug('Coming from HW')
-          buffer.set_relays(:normal)
-          buffer.hydr_shift_pump.on
-          buffer.hydr_shift_pump\
-                .delayed_off(buffer.config[:post_HW_heat_dump_into_buffer_time])
-        # Turn off hydr shift pump
-        elsif buffer.hydr_shift_pump.on?
-          # Wait for boiler to turn off safely
-          buffer.logger.debug('Waiting for boiler to stop before '\
-            'cutting it off from circulation')
-          sleep buffer.config[:circulation_maintenance_delay]
-          buffer.hydr_shift_pump.off
-        end
-      end
-      # of enter frombuffer action
-
-      # On entering HW
-      # - Set relays to HW
-      # - turn on HW pump
-      # - start HW production
-      # - turn off hydr shift pump
-      @buffer_sm.on_enter_HW do
-        buffer.hw_pump.on
-        sleep buffer.config[:circulation_maintenance_delay] if\
-          buffer.set_relays(:HW) != :delayed
-        if buffer.hydr_shift_pump.on?
-          buffer.hydr_shift_pump.off
-        else
-          buffer.logger.debug('Hydr shift pump already off')
-        end
-        buffer.hw_wiper.set_water_temp(buffer.hw_sensor.temp)
-      end
-      # of enter HW action
-
-      # On exiting HW
-      # - stop HW production
-      # - Turn off hw pump in a delayed manner
-      @buffer_sm.on_exit_HW do
-        buffer.hw_wiper.set_water_temp(65.0)
-        sleep buffer.config[:circulation_maintenance_delay]
-      end
-      # of exit HW action
     end
     # of setting up state machine callbacks - set_sm_actions
 
@@ -992,6 +875,7 @@ module BoilerBase
       case @buffer_sm.current
         # Evaluate Buffer Fill state
       when :normal
+        set_relays(:normal)
         # Normal - State change evaluation conditions
 
         # If the buffer is nearly full - too low delta T or
@@ -999,7 +883,7 @@ module BoilerBase
         # As of now we assume that the boiler is able to generate the
         # output temp requred therefore it is enough to monitor the
         # deltaT to find out if the above condition is met
-
+=begin
         @delta_t = @forward_temp - @return_temp
 
         if (@forward_temp > \
@@ -1015,11 +899,11 @@ module BoilerBase
           # Set the required water temperature raised with the buffer filling
           # offset Decide how ot set relays based on boiler state
         else
-          @heat_wiper\
-            .set_water_temp(corrected_watertemp(@target_temp))
+          # @heat_wiper\
+          #  .set_water_temp(corrected_watertemp(@target_temp))
           set_relays(:normal)
         end
-
+=end
         # Evaluate feed from Buffer state
       when :frombuffer
 
@@ -1044,11 +928,13 @@ module BoilerBase
         # of exit criteria evaluation
 
         # HW state
-      when :HW
+      when :hw
         @delta_t = @forward_temp - @return_temp
         # Just set the HW temp
-        @hw_wiper.set_water_temp(@hw_sensor.temp)
+        # @hw_wiper.set_water_temp(@hw_sensor.temp)
       else
+        @logger.debug('Unexpected state in '\
+          "evaluate_heater_state_change: #{@buffer_sm.current}")
         raise 'Unexpected state in '\
               "evaluate_heater_state_change: #{@buffer_sm.current}"
       end
@@ -1059,15 +945,16 @@ module BoilerBase
 
     # Perform mode change of the boiler
     def perform_mode_change
-      # :floorheat,:radheat,:off,:HW
+      # :floorheat,:radheat,:off,:hw
       # @mode contains the new mode
       # @prev_mode contains the prevoius mode
       @logger.debug("Heater control mode changed, got new mode: #{@mode}")
 
       case @mode
       when :HW
-        @buffer_sm.HW
+        @buffer_sm.dhw
       when :floorheat, :radheat
+=begin
         # Resume if in a heating mode before HW
         if @prev_mode == :HW && @prev_sm_state != :off
           @logger.debug("Ending HW - resuming state to: #{@prev_sm_state}")
@@ -1084,6 +971,9 @@ module BoilerBase
           @logger.debug('Setting heating to normal')
           @buffer_sm.normal
         end
+=end
+        @logger.debug('Setting heating to normal')
+        @buffer_sm.normal
       else
         raise 'Invalid mode in perform_mode_change. Expecting either '\
               "':HW', ':radheat' or ':floorheat' got: '#{@mode}'"

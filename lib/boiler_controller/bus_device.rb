@@ -9,6 +9,7 @@ module BusDevice
   # The base class of bus devices
   class DeviceBase
     attr_reader :config, :logger, :comm_interface
+
     COMM_SPEED = Buscomm::COMM_SPEED_9600_H
 
     def initialize(config)
@@ -248,7 +249,7 @@ module BusDevice
 
         # Bail out if comparison/resetting trial fails CHECK_RETRY_COUNT times
         if retry_count >= CHECK_RETRY_COUNT
-          @bas.logger.fatal('Unable to recover '\
+          @logger.fatal('Unable to recover '\
             "#{@name} device mismatch. Potential HW failure - bailing out")
           @config.shutdown_reason = Globals::FATAL_SHUTDOWN
           check_result = :Failure
@@ -384,7 +385,6 @@ module BusDevice
     # "" << 0x0f.chr << 0xaf.chr * ONE_BIT_TEMP_VALUE
     ONEWIRE_TEMP_FAIL = -1295.0625
     DEFAULT_TEMP = 85.0
-    UNREALISTIC_TEMP_DIFF_THRESHOLD = 15
 
     def initialize(base,
                    name, location,
@@ -423,9 +423,7 @@ module BusDevice
         if @delay_timer.expired?
           temp_tmp = read_temp
           # Skip out of bounds and sudden power-on reset values
-          if temp_tmp < -55 || temp_tmp > 125 ||
-             ((temp_tmp - @lasttemp).abs > UNREALISTIC_TEMP_DIFF_THRESHOLD &&
-             temp_tmp == DEFAULT_TEMP)
+          if temp_tmp < -55 || temp_tmp > 125
             @skipped_temp_values += 1
           else
             @lasttemp = temp_tmp
@@ -462,7 +460,7 @@ module BusDevice
                retval[:Content][Buscomm::PARAMETER_START + 1]
         @debug && @logger.info("Low level HW #{@name} value: "\
                                     "#{temp.unpack('H*')[0]}")
-        return temp.unpack('s')[0] * ONE_BIT_TEMP_VALUE
+        temp.unpack('s')[0] * ONE_BIT_TEMP_VALUE
       rescue MessagingError => e
         # Log the messaging error
         retval = e.return_message
@@ -473,7 +471,7 @@ module BusDevice
 
         # Signal the main thread for fatal error shutdown
         @config.shutdown_reason = Globals::FATAL_SHUTDOWN
-        return @lasttemp
+        @lasttemp
       end
     end
     # End of Class definition TempSensor
@@ -641,7 +639,7 @@ module BusDevice
         end
       rescue StandardError => e
         # Log the messaging error
-        if e.class == MessagingError
+        if e.instance_of?(MessagingError)
           retval = e.return_message
           @logger.fatal('Unrecoverable communication error on bus '\
             "communicating with '#{@name}' ERRNO: #{retval[:Return_code]} - "\
@@ -731,6 +729,56 @@ module BusDevice
             [56.1, 0xf0], # 2.86k
             [61.5, 0xfe], # 2.32k
             [62.6, 0xff] # 2.28k
+          ], shift
+        )
+      super(base,
+            name, location,
+            slave_address, register_address,
+            dry_run, init_temp)
+    end
+
+    protected
+
+    def wiper_lookup(temp_value)
+      @lookup_curve.value(temp_value)
+    end
+    # End of class HWWaterTemp
+  end
+
+  # The class of the HP HW water temp function
+  class HPHWWaterTemp < WaterTempBase
+    def initialize(base,
+                   name, location,
+                   slave_address, register_address,
+                   dry_run,
+                   shift = 0, init_temp = 65.0)
+      @lookup_curve =
+        Globals::Polycurve.new(
+          [
+            [11.0, 0x5f],
+            [12.0, 0x5a],
+            [13.5, 0x55],
+            [15.0, 0x50],
+            [16.5, 0x4b],
+            [18.5, 0x46],
+            [20.0, 0x41],
+            [22.0, 0x3c],
+            [24.0, 0x37],
+            [26.5, 0x32],
+            [29.5, 0x2d],
+            [32.5, 0x28],
+            [36.0, 0x23],
+            [40.5, 0x1e],
+            [45.5, 0x19],
+            [52.0, 0x14],
+            [61.0, 0x0f],
+            [74.0, 0x0a],
+            [78.0, 0x09],
+            [81.5, 0x08],
+            [86.5, 0x07],
+            [91.5, 0x06],
+            [98.5, 0x05],
+            [100.0, 0x04]
           ], shift
         )
       super(base,

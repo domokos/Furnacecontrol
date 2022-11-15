@@ -1,4 +1,4 @@
-#!/usr/local/rvm/rubies/ruby-2.3.0/bin/ruby
+#!/usr/bin/ruby
 # frozen_string_literal: true
 
 # Boiler control softvare
@@ -22,35 +22,6 @@ logger.heating_logger.level = Logger::INFO
 
 DRY_RUN = false
 
-Signal.trap('TTIN') do
-  puts "---------\n"
-  Thread.list.each do |thread|
-    puts "Thread name: #{thread[:name]} ID: #{thread.object_id.to_s(36)}"
-    puts thread.backtrace.join("\n")
-    puts "---------\n"
-  end
-  puts "---------\n"
-end
-
-Signal.trap('USR1') do
-  puts 'USR1 signal caught - setting heating logging to '\
-  'DEBUG, app logging to INFO'
-  logger.app_logger.level = Globals::BoilerLogger::INFO
-  logger.heating_logger.level = Logger::DEBUG
-end
-
-Signal.trap('USR2') do
-  puts 'USR2 signal caught - setting all logging to INFO'
-  logger.app_logger.level = Globals::BoilerLogger::INFO
-  logger.heating_logger.level = Logger::INFO
-end
-
-Signal.trap('URG') do
-  puts 'URG signal caught - setting all logging to DEBUG'
-  logger.app_logger.level = Globals::BoilerLogger::DEBUG
-  logger.heating_logger.level = Logger::DEBUG
-end
-
 # Beginnning of main execution thread
 
 Thread.current['thread_name'] = 'Main thread'
@@ -60,12 +31,6 @@ RobustThread.logger = logger.daemon_logger
 daemonize = !ARGV.find_index('--daemon').nil?
 
 pid = fork do
-=begin
-  restapi_thread = Thread.new do
-    $app_logger.info('Starting restapi')
-    $BoilerRestapi.run!
-  end
-=end
   pidfile_index = ARGV.find_index('--pidfile')
   pidpath = if !pidfile_index.nil? && !ARGV[pidfile_index + 1].nil?
               ARGV[pidfile_index + 1]
@@ -85,34 +50,71 @@ pid = fork do
     config.shutdown_reason = Globals::NORMAL_SHUTDOWN
   end
 
+  # Create logger
+  logger.app_logger.level = Globals::BoilerLogger::DEBUG unless\
+  ARGV.find_index('--debug').nil?
+
+  logger.app_logger.info('**************------------------------------***************')
+  logger.app_logger.info('Boiler controller initializing')
+
+  # Create controller
+  heating_control = HeatingController.new(config)
+  logger.app_logger.info('Controller initialized - starting operation')
+
+  RobustThread.new(label: 'Restapi thread') do
+    Thread.current[:name] = 'Restapi Thread'
+    Signal.trap('HUP', 'IGNORE')
+    Signal.trap('TERM', 'IGNORE')
+    # Create rest api
+    Restapi.set :bind, config[:rest_serverip]
+    Restapi.set :port, config[:rest_serverport]
+    Restapi.set :myprivatekey, config[:rest_privatekey]
+    Restapi.set :mycertfile, config[:rest_cert_file]
+    Restapi.set :heatingconfig, config
+    Restapi.set :heatingcontrol, heating_control
+    Restapi.set :logger, logger
+
+    class << Restapi.settings
+      def server_settings
+        {
+          backend: BoilerThinBackend,
+          private_key_file: settings.myprivatekey,
+          cert_chain_file: settings.mycertfile,
+          verify_peer: false
+        }
+      end
+    end
+
+    logger.app_logger.info('Starting restapi')
+    Restapi.run!
+    logger.app_logger.info('Restapi terminated')
+  end
+
+  # Log that the restapi webserver is running
+  Thread.new do
+    sleep(1) until Restapi.settings.running?
+    logger.app_logger.info('Restapi startup complete')
+  end
+
   RobustThread.new(label: 'Main daemon thread') do
     Thread.current[:name] = 'Main daemon'
     Signal.trap('HUP', 'IGNORE')
 
-    logger.app_logger.level = Globals::BoilerLogger::DEBUG unless\
-                        ARGV.find_index('--debug').nil?
-
-    logger.app_logger.info('Boiler controller initializing')
-
-    # Create controller
-    boiler_control = HeatingController.new(config)
-    logger.app_logger.info('Controller initialized - starting operation')
-
     begin
-      boiler_control.operate
+      heating_control.operate
     rescue StandardError => e
-      logger.app_logger.fatal('Exception caught in main block: ' + e.inspect)
-      logger.app_logger.fatal('Exception backtrace: ' + e.backtrace.join("\n"))
+      logger.app_logger.fatal("Exception caught in main block: #{e.inspect}")
+      logger.app_logger.fatal("Exception backtrace: #{e.backtrace.join("\n")}")
       config.shutdown_reason = Globals::FATAL_SHUTDOWN
-      boiler_control.shutdown
-      # $BoilerRestapi.quit!
+      heating_control.shutdown
+      logger.app_logger.info('Shutting down Restapi')
+      Restapi.quit!
       exit
     end
-    # $BoilerRestapi.quit!
+    logger.app_logger.info('Shutting down Restapi')
+    Restapi.quit!
   end
 end
-
-require '/usr/local/lib/boiler_controller/restapi'
 
 if daemonize
   Process.detach pid

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'sinatra/base'
 require 'thin'
 require 'yaml'
@@ -6,55 +8,79 @@ require 'yaml'
 class BoilerThinBackend < ::Thin::Backends::TcpServer
   def initialize(host, port, options)
     super(host, port)
-    @ssl = true
+    @ssl = false
     @ssl_options = options
   end
 end
 
-# Setup the webserver for the rest interface
-=begin
-$BoilerRestapi = Sinatra.new do
+# Class of the Rest API
+class Restapi < Sinatra::Base
+  HTTP_OK = 200
+  HTTP_BAD_REQUEST = 400
+  # Setup the webserver for the rest interface
   configure do
     set :environment, :production
-    set :bind, $config[:rest_serverip]
-    set :port, $config[:rest_serverport]
     set :server, 'thin'
-    class << settings
-      def server_settings
-        {
-          backend:           BoilerThinBackend,
-          private_key_file:  $config[:rest_privatekey],
-          cert_chain_file:   $config[:rest_cert_file],
-          verify_peer:       false
-        }
-      end
-    end
+    disable :traps
   end
 
   get '/config:itemname' do
     paramname = params['itemname'][1, 99].to_sym
-    retval = ''.dup
-    $config_mutex.synchronize do
-      retval = $config[paramname]
-    end
-    return retval.to_s
+    settings.heatingconfig[paramname].to_s
   end
 
   get '/current:itemname' do
     case params['itemname']
     when ':living_temp'
-      $boiler_control.living_thermostat.temp.round(2).to_s
+      settings.heatingcontrol.living_thermostat.temp.round(2).to_s
     when ':upstairs_temp'
-      $boiler_control.upstairs_thermostat.temp.round(2).to_s
+      settings.heatingcontrol.upstairs_thermostat.temp.round(2).to_s
     when ':basement_temp'
-      $boiler_control.basement_thermostat.temp.round(2).to_s
+      settings.heatingcontrol.basement_thermostat.temp.round(2).to_s
     when ':external_temp'
-      $boiler_control.living_floor_thermostat.temp.round(2).to_s
+      settings.heatingcontrol.mode_thermostat.temp.round(2).to_s
+    when ':dhw_temp'
+      settings.heatingcontrol.hw_thermostat.temp.round(2).to_s
+    when ':mixer_output_temp'
+      settings.heatingcontrol.mixer_controller.temp.round(2).to_s
+    when ':mixer_target'
+      settings.heatingcontrol.mixer_controller.target_temp.round(2).to_s
+    when ':return_temp'
+      settings.heatingcontrol.heat_return_temp.round(2).to_s
+    when ':output_temp'
+      settings.heatingcontrol.output_temp.round(2).to_s
+    when ':state'
+      settings.heatingcontrol.state_history.last[:state].to_s
+    when ':power'
+      settings.heatingcontrol.state_history.last[:power].to_s
     end
   end
 
-  put '/reload' do
-    $boiler_control.reload
+  get '/shutdown' do
+    settings.heatingconfig.shutdown_reason = Globals::NORMAL_SHUTDOWN
+    200
+  end
+
+  get '/log:itemname' do
+    case params['itemname']
+    when ':on'
+      settings.logger.app_logger.level = Globals::BoilerLogger::DEBUG
+      settings.logger.heating_logger.level = Logger::DEBUG
+      settings.logger.app_logger.info('Logging turned on')
+      HTTP_OK
+    when ':off'
+      settings.logger.app_logger.level = Globals::BoilerLogger::INFO
+      settings.logger.heating_logger.level = Logger::INFO
+      settings.logger.app_logger.info('Logging turned off')
+      HTTP_OK
+    else
+      'No such endpoint'
+    end
+  end
+
+  patch '/reload' do
+    settings.heatingcontrol.reload
+    settings.logger.app_logger.info('Config reloaded')
+    HTTP_OK
   end
 end
-=end

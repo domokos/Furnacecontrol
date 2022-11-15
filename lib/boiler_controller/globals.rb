@@ -61,11 +61,12 @@ module Globals
   # Class holding the logger instances of the controller
   class ControllerLogger
     attr_reader :app_logger, :heating_logger, :daemon_logger
+
     def initialize
       @app_logger = BoilerLogger.new(APPLOG_LOGFILE, 6, 1_000_000)
 
       @app_logger.formatter = proc { |severity, datetime, _progname, msg|
-        if caller(4..4)[0].class == String
+        if caller(4..4)[0].instance_of?(String)
           "#{datetime.to_s.sub!(/^(.*) \+.*$/, '\1')} #{severity} "\
           "#{caller(4..4)[0].sub!(%r{^.*/(.*)$}, '\1')} :: #{msg}\n"
         else
@@ -81,7 +82,7 @@ module Globals
 
       @daemon_logger = Logger.new(DAEMON_LOGFILE, 6, 1_000_000)
       @daemon_logger.formatter = proc { |severity, datetime, _progname, msg|
-        if caller(4..4)[0].class == String
+        if caller(4..4)[0].instance_of?(String)
           "#{datetime.to_s.sub!(/^(.*) \+.*$/, '\1')} #{severity} "\
           "#{caller(4..4)[0].sub!(%r{^.*\/(.*)$}, '\1')} :: #{msg}\n"
         else
@@ -98,6 +99,7 @@ module Globals
     # the boiler configuration
     attr_reader :config_mutex, :logger
     attr_accessor :shutdown_reason, :pidpath
+
     def initialize(logger, config_path)
       @config_mutex = Mutex.new
       @config = {}
@@ -117,8 +119,7 @@ module Globals
     def reload
       @config_mutex.synchronize { @config = YAML.load_file(@config_path) }
     rescue StandardError
-      @logger.fatal('Cannot open config file: ' + @config_path + \
-                        ' Shutting down.')
+      @logger.fatal("Cannot open config file: #{@config_path} Shutting down.")
       @shutdown_reason = Globals::FATAL_SHUTDOWN
     end
   end
@@ -126,6 +127,7 @@ module Globals
   # A Timer class for timing whole seconds
   class TimerSec
     attr_reader :name
+
     def initialize(timer_time, name)
       @name = name
       @timer_time = timer_time
@@ -174,15 +176,13 @@ module Globals
 
     def load(pointlist, shift = 0)
       if pointlist.size < 2
-        raise 'Invalid array size - must be at least 2 it is: ' + \
-              pointlist.size.to_s
+        raise "Invalid array size - must be at least 2 it is: #{pointlist.size}"
       end
 
       @pointlist = Array.new(pointlist)
       @pointlist.each_index do |i|
         if @pointlist[i].size != 2
-          raise 'Invalid array size at index ' + i.to_s + \
-                ' must be 2 it is: ' + @pointlist[i].size.to_s
+          raise "Invalid array size at index #{i} must be 2 it is: #{@pointlist[i].size}"
         end
 
         @pointlist[i][0] += shift
@@ -223,6 +223,7 @@ module Globals
   # A simple linear regression class
   class LinearRegression
     attr_accessor :slope, :offset
+
     def initialize(dx, dy = nil)
       @size = dx.size
       dy,dx = dx,axis() unless dy # make 2D if given 1D
@@ -258,8 +259,9 @@ module Globals
     def initialize(input_sensor, name,
                    k_p, k_i, k_d, setpoint,
                    outmin, outmax,
-                   sampletime)
+                   sampletime, logger)
       @name = name
+      @logger = logger
 
       @kp = k_p
       @ki = k_i
@@ -300,13 +302,13 @@ module Globals
 
     def start
       if @stop_mutex.locked?
-        $app_logger.debug('Stopping PID controller operation active in '\
+        @logger.debug('Stopping PID controller operation active in '\
                           'PID controller: ' + @name)
         return
       end
 
       if @active
-        $app_logger.debug('PID controller already active - returning')
+        @logger.debug('PID controller already active - returning')
         return
       else
         update_parameters
@@ -326,12 +328,12 @@ module Globals
 
     def stop
       unless @active
-        $app_logger.debug('PID not active - returning')
+        @logger.debug('PID not active - returning')
         return
       end
 
       if @stop_mutex.locked?
-        $app_logger.debug('Stopping PID controller operation already '\
+        @logger.debug('Stopping PID controller operation already '\
                           'active in PID controller: ' + @name)
         return
       end

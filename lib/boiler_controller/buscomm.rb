@@ -11,6 +11,7 @@ require '/usr/local/lib/boiler_controller/globals'
 # return message of the messaging subsystem
 class MessagingError < StandardError
   attr_accessor :return_message
+
   def initialize(message)
     @return_message = message
     super

@@ -1,22 +1,23 @@
 # frozen_string_literal: true
 
 require '/usr/local/lib/boiler_controller/boiler_base'
+require '/usr/local/lib/boiler_controller/heating_sm'
 require 'rubygems'
 
 # Class of the heating controller
 class HeatingController
-  attr_reader :mixer_controller, :buffer_heater, :heating_watertemp
-  attr_reader :radiator_pump, :floor_pump, :hw_watertemp, :heater_relay
-  attr_reader :hydr_shift_pump, :hot_water_pump, :basement_floor_valve
-  attr_reader :basement_radiator_valve
-  attr_reader :living_floor_valve, :upstairs_floor_valve
-
-  attr_reader :forward_temp, :hw_thermostat, :return_temp, :living_thermostat
-  attr_reader :upstairs_thermostat, :basement_thermostat
-  attr_reader :cold_outside_thermostat
-  attr_reader :living_floor_thermostat, :mode_thermostat, :target_boiler_temp
-  attr_reader :sm_relax_timer
-  attr_reader :logger, :config
+  attr_reader :mixer_controller, :buffer_heater, :heating_watertemp,
+              :radiator_pump, :floor_pump, :hw_watertemp, :heater_relay,
+              :hydr_shift_pump, :hot_water_pump, :basement_floor_valve,
+              :basement_radiator_valve,
+              :living_floor_valve, :upstairs_floor_valve,
+              :forward_temp, :return_temp, :output_temp, :heat_return_temp,
+              :hw_thermostat, :living_thermostat,
+              :upstairs_thermostat, :basement_thermostat,
+              :cold_outside_thermostat,
+              :mode_thermostat, :target_boiler_temp,
+              :sm_relax_timer,
+              :logger, :config, :state_history
 
   def initialize(config)
     # Init instance variables
@@ -178,12 +179,12 @@ class HeatingController
                                 @config[:main_controller_dev_addr],
                                 @config[:upper_buffer_sensor_reg_addr],
                                 DRY_RUN, @config[:upper_buffer_mock_temp])
-    @buffer_output_sensor =
-      BusDevice::TempSensor.new(@device_base, 'Buffer output temperature',
-                                'On top of the buffer output pipe',
+    @output_sensor =
+      BusDevice::TempSensor.new(@device_base, 'Heating output temperature',
+                                'After the joining of the buffer and the bypass',
                                 @config[:main_controller_dev_addr],
-                                @config[:buffer_output_sensor_reg_addr],
-                                DRY_RUN, @config[:buffer_output_mock_temp])
+                                @config[:output_sensor_reg_addr],
+                                DRY_RUN, @config[:output_mock_temp])
     @hw_sensor =
       BusDevice::TempSensor.new(@device_base, 'Hot Water temperature',
                                 'Inside the hot water container '\
@@ -219,6 +220,14 @@ class HeatingController
 
   # Create devices
   def create_devices
+    create_thermostats
+    create_valves
+    create_relays
+    create_temp_wipers
+    create_controllers
+  end
+
+  def create_thermostats
     # Create thermostats, with default threshold values and hysteresis values
     @living_thermostat =
       BoilerBase::SymmetricThermostat.new(@living_sensor, 0.3, 0.0, 15)
@@ -244,7 +253,9 @@ class HeatingController
       BoilerBase::PwmThermostat.new(@pwmbase, @external_sensor, 30,
                                     @cold_outside_valueproc,
                                     'Cold outside thermostat')
+  end
 
+  def create_valves
     # Create magnetic valves
     @basement_radiator_valve = \
       BusDevice::Switch\
@@ -283,12 +294,29 @@ class HeatingController
            @config[:main_controller_dev_addr],
            @config[:hw_valve_reg_addr], DRY_RUN)
 
+    # Create buffer bypass valves
+    @bufferbypass_valve = \
+      BusDevice::Switch\
+      .new(@device_base, 'Forward three-way valve',
+           'After the heat exhanger and after the buffer output - Usebuffer Contact on mixer controller board',
+           @config[:mixer_controller_dev_addr],
+           @config[:mixer_usebuffer_reg_addr], DRY_RUN)
+  end
+
+  def create_relays
     # Create heater relay switch
     @heater_relay = \
       BusDevice::Switch\
       .new(@device_base, 'Heater relay', 'Heater contact on main panel',
            @config[:main_controller_dev_addr],
            @config[:heater_relay_reg_addr], DRY_RUN)
+
+    # Create the temporary HP heater relay switch
+    @hp_relay = \
+      BusDevice::Switch\
+      .new(@device_base, 'HP heater relay', 'Temporary contact on OWbus of Mixer controller',
+           @config[:hp_controller_dev_addr],
+           @config[:hp_on_off_switch_reg_addr], DRY_RUN)
 
     # Create mixer pulsing switches
     @cw_switch = \
@@ -301,7 +329,9 @@ class HeatingController
       .new(@device_base, 'CCW mixer switch', 'In the mixer controller box',
            @config[:mixer_controller_dev_addr],
            @config[:mixer_ccw_reg_addr], DRY_RUN)
+  end
 
+  def create_temp_wipers
     # Create water temp wipers
     @heating_watertemp = \
       BusDevice::HeatingWaterTemp\
@@ -318,13 +348,25 @@ class HeatingController
            @config[:hw_wiper_reg_addr], DRY_RUN,
            @config[:hw_temp_shift])
 
+    @hp_dhw_wiper = \
+      BusDevice::HPHWWaterTemp\
+      .new(@device_base, 'HP HW temp wiper',
+           'HW wiper contact on HP panel',
+           @config[:hp_controller_dev_addr],
+           @config[:hp_hw_wiper_reg_addr], DRY_RUN,
+           0)
+  end
+
+  def create_controllers
     # Create the BufferHeat controller
     @buffer_heater = \
       BoilerBase::BufferHeat\
       .new(@forward_sensor, @upper_buffer_sensor,
-           @buffer_output_sensor, @return_sensor, @heat_return_sensor,
-           @hw_sensor, @hw_valve, @heater_relay, @hydr_shift_pump,
-           @hot_water_pump, @hw_watertemp, @heating_watertemp,
+           @output_sensor, @return_sensor, @heat_return_sensor,
+           @hw_sensor, @hw_valve, @bufferbypass_valve,
+           @heater_relay, @hp_relay, @hp_dhw_wiper,
+           @hydr_shift_pump, @hot_water_pump, @hw_watertemp,
+           @heating_watertemp,
            @config)
 
     # Create the Mixer controller
@@ -336,7 +378,7 @@ class HeatingController
   # Prefill sensors and thermostats to ensure smooth startup operation
   def prefill_sensors
     6.times do |i|
-      @logger.info("Prefilling sensors. Round: #{i} of 6")
+      @logger.info("Prefilling sensors. Round: #{i + 1} of 6")
       read_sensors
       sleep 0.5
       @config.shutdown_reason != Globals::NO_SHUTDOWN && break
@@ -346,14 +388,12 @@ class HeatingController
   # Define the activating actions of the statemachine
   def create_sm_with_actions
     # Create the heating state machine
-    @heating_sm = BoilerBase::HeatingSM.new
+    @heating_sm = HeatingStates::HeatingSM.new(self)
 
     @sm_relax_timer = Globals::TimerSec.new(\
       @config[:heating_sm_state_change_relaxation_time],
       'Buffer SM state change relaxation timer'\
     )
-
-    @heating_sm.target self
 
     # Log state transitions and arm the state change relaxation timer
     @heating_sm.on_before do |event|
@@ -504,6 +544,11 @@ class HeatingController
       # posthw based on operating mode
 
       if power_needed[:power] == :NONE
+        @logger.debug('Need power is: NONE turning off')
+        @heating_sm.turnoff
+      end
+=begin
+      if power_needed[:power] == :NONE
         case buffer_heater.state
         when @mode == :mode_Heat_HW && :HW
           @logger.debug('Need power is: NONE coming from HW in Heat_HW mode')
@@ -526,7 +571,7 @@ class HeatingController
                 "evaluate_state_change: #{buffer_heater.state}"
         end
       end
-
+=end
     when :postheating
       # Evaluating postheating state:
       # If Delta T on the Boiler drops below 5 C then -> off
@@ -575,6 +620,7 @@ class HeatingController
     @return_temp = @return_sensor.temp
     @upper_buffer_temp = @upper_buffer_sensor.temp
     @heat_return_temp = @heat_return_sensor.temp
+    @output_temp = @output_sensor.temp
     @living_thermostat.update
     @upstairs_thermostat.update
     @basement_thermostat.update
@@ -1163,7 +1209,7 @@ class HeatingController
     @heating_sm.turnoff
     @logger.info('Shutdown complete. '\
                  "Shutdown reason: #{@config.shutdown_reason}")
-    command = 'rm -f ' + @config.pidpath
+    command = "rm -f #{@config.pidpath}"
     system(command)
   end
 end
