@@ -1,15 +1,19 @@
 #!/bin/bash
 
-rm /usr/local/bin/boiler_controller.rb
+rm -f /usr/local/bin/boiler_controller.rb
+rm -f /usr/local/bin/boilercontrol_*
 install -m 755 -o boiler -g root -p bin/boiler_controller.rb /usr/local/bin/
 install -m 755 -o boiler -g root -p bin/boilercontrol_log /usr/local/bin/
 install -m 755 -o boiler -g root -p bin/boilercontrol_logoff /usr/local/bin/
 install -m 755 -o boiler -g root -p bin/boilercontrol_createpidlocation /usr/local/bin/
 install -m 755 -o boiler -g root -p bin/boilercontrol_shutdown /usr/local/bin/
 install -m 755 -o boiler -g root -p bin/boilercontrol_reload /usr/local/bin/
-rm /etc/boiler_controller/boiler_controller.yml
+rm -f /etc/boiler_controller/boiler_controller.yml
 install -m 644 -o boiler -g root -p etc/boiler_controller/boiler_controller.yml /etc/boiler_controller/
-rm /usr/local/lib/boiler_controller/*
+rm -f /usr/local/lib/boiler_controller/*
 install -m 644 -o boiler -g root -p lib/boiler_controller/* /usr/local/lib/boiler_controller/
-rm /usr/lib/systemd/system/boilercontrol*
+rm -f /usr/lib/systemd/system/boilercontrol*
 install -m 755 -o root -g root -p service/* /usr/lib/systemd/system/
+systemctl daemon-reload
+rm -f /etc/udev/rules.d/99-usb-serial-dev.rules
+install -m 655 -o root -g root -p etc/udev/rules.d/99-usb-serial-dev.rules /etc/udev/rules.d

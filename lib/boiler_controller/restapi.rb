@@ -17,11 +17,21 @@ end
 class Restapi < Sinatra::Base
   HTTP_OK = 200
   HTTP_BAD_REQUEST = 400
+  HTTP_NOT_FOUND = 404
   # Setup the webserver for the rest interface
   configure do
     set :environment, :production
     set :server, 'thin'
     disable :traps
+  end
+
+  def initialize
+    super
+    # Wait 1` secs` before serving non-essential requests to avoid nil class exceptions
+    @startup_timer = Globals::TimerSec.new(10, 'Rest API startup timer')
+
+    # Perform initial temperature read
+    @startup_timer.reset
   end
 
   get '/config:itemname' do
@@ -30,6 +40,8 @@ class Restapi < Sinatra::Base
   end
 
   get '/current:itemname' do
+    return 400 unless @startup_timer.expired?
+
     case params['itemname']
     when ':living_temp'
       settings.heatingcontrol.living_thermostat.temp.round(2).to_s
@@ -53,6 +65,18 @@ class Restapi < Sinatra::Base
       settings.heatingcontrol.state_history.last[:state].to_s
     when ':power'
       settings.heatingcontrol.state_history.last[:power].to_s
+    when ':hp_outgoing_temp'
+      settings.heatingcontrol.buffer_heater.heatpump.forward_temp.to_s
+    when ':hp_target_temp'
+      settings.heatingcontrol.buffer_heater.heatpump.heating_targettemp.to_s
+    when ':hp_pump_rpm'
+      settings.heatingcontrol.buffer_heater.heatpump.pump_rpm.to_s
+    when ':hp_compressor_rpm'
+      settings.heatingcontrol.buffer_heater.heatpump.compressor_rpm.to_s
+    when ':hp_power'
+      settings.heatingcontrol.buffer_heater.heatpump.power.to_s
+    else
+      HTTP_NOT_FOUND
     end
   end
 

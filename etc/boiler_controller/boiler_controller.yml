@@ -173,7 +173,7 @@
 # *********************************************************************************************
 #
 # The device of the serial bus 
-:serial_device: /dev/ttyUSB0
+:serial_device: /dev/ttyHomeBUS
 #
 # The address of the bus master to use
 :bus_master_address: 1
@@ -238,3 +238,50 @@
 :hp_heat_cool_input_reg_addr: 10
 :hp_backup_heater_input_reg_addr: 11
 :hp_alarm_input_reg_addr: 12
+
+
+#
+#
+# *********************************************************************************************
+# HP Controller modbus addresses 
+# Modifying these parameters requires a restart
+# *********************************************************************************************
+#
+# The device of the HP heater serial bus
+:hp_modbus_serial_device: /dev/ttyHPBUS
+:hp_modbus_speed: 19200
+:hp_modbus_data_bits: 8
+:hp_modbus_parity: 0
+:hp_modbus_stop_bits: 2
+:hp_modbus_slave_addr: 1
+#
+# HP bus peremeters
+:hp_bus_values_read_period: 10
+#
+# Input register addresses
+:hp_return_water_temp_addr: 0
+:hp_compressor_rpm_addr: 1
+:hp_discharge_temperature_addr: 2
+
+:hp_current_consumption_addr: 3
+:hp_current_consumption_multiplier: 100
+
+:hp_fan_rpm_addr: 4
+:hp_defrost_temp_addr: 5
+:hp_outdoor_air_temp_addr: 6
+
+:hp_water_pump_rpm_addr: 7
+:hp_water_pump_rpm_multiplier: 100
+
+:hp_suction_temp_addr: 8
+
+:hp_outgoing_water_temp_addr: 9
+
+:hp_operating_mode_addr: 10 # 0=Heating/Cooling OFF  1=Heating 2=Cooling 
+#
+# Holding register addresses
+# Configuration addresses
+:hp_heating_zone1_setpoint_mode_addr: 1
+:hp_heating_zone1_setpoint_addr: 2
+:hp_heating_zone1_max_watertemp_addr: 3
+:hp_heating_zone1_min_watertemp_addr: 4

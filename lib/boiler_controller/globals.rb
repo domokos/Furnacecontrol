@@ -134,7 +134,7 @@ module Globals
       @start_ts = Time.now - @timer_time
     end
 
-    def set_timer(timer_time)
+    def timer=(timer_time)
       @timer_time = timer_time
     end
 

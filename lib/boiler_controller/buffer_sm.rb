@@ -32,7 +32,6 @@ module BufferStates
       if event.name == :init
         buffer.logger.debug('Bufferheater initializing')
         buffer.hw_wiper.set_water_temp(65.0)
-        buffer.hp_dhw_wiper.set_water_temp(65.0)
         buffer.set_relays(:normal)
         buffer.heater_relay.off if buffer.heater_relay.on?
       else
@@ -107,8 +106,8 @@ module BufferStates
       else
         buffer.logger.debug('Hydr shift pump already off')
       end
-      # buffer.hw_wiper.set_water_temp(buffer.hw_sensor.temp)
-      buffer.hp_dhw_wiper.set_water_temp(25.0)
+      buffer.heatpump.heating_targettemp = 60
+      buffer.hp_relay.on
     end
     # of enter HW action
 
@@ -118,7 +117,6 @@ module BufferStates
     on_exit(:hw) do
       buffer.logger.debug('Deactivating hw state')
       buffer.hw_wiper.set_water_temp(65.0)
-      buffer.hp_dhw_wiper.set_water_temp(65.0)
       sleep buffer.config[:circulation_maintenance_delay]
     end
     # of exit hw action

@@ -405,16 +405,12 @@ module BusDevice
       @temp_reader_mutex = Mutex.new
 
       @delay_timer = Globals::TimerSec.new(TEMP_BUS_READ_TIMEOUT,
-                                           'Temp Sensor Delay timer: ' + @name)
+                                           "Temp Sensor Delay timer: #{@name}")
 
       # Perform initial temperature read
       @delay_timer.reset
       initial_temp = read_temp
-      @lasttemp = if !initial_temp.nil?
-                    initial_temp
-                  else
-                    DEFAULT_TEMP
-                  end
+      @lasttemp = !initial_temp.nil? ? initial_temp : DEFAULT_TEMP
       @skipped_temp_values = 0
     end
 
@@ -458,9 +454,9 @@ module BusDevice
         # Calculate temperature value from the data returned
         temp = ''.dup << retval[:Content][Buscomm::PARAMETER_START] <<
                retval[:Content][Buscomm::PARAMETER_START + 1]
-        @debug && @logger.info("Low level HW #{@name} value: "\
-                                    "#{temp.unpack('H*')[0]}")
-        temp.unpack('s')[0] * ONE_BIT_TEMP_VALUE
+        @logger.trace("Low level HW #{@name} value: "\
+                                    "#{temp.unpack1('H*')}")
+        temp.unpack1('s') * ONE_BIT_TEMP_VALUE
       rescue MessagingError => e
         # Log the messaging error
         retval = e.return_message

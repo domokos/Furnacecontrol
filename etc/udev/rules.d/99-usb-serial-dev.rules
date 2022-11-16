@@ -1,0 +1,2 @@
+KERNEL=="ttyUSB[0-9]*", SUBSYSTEMS=="usb-serial", DRIVERS=="pl2303", SYMLINK+="ttyHomeBUS"
+KERNEL=="ttyUSB[0-9]*", SUBSYSTEMS=="usb-serial", DRIVERS=="ftdi_sio", SYMLINK+="ttyHPBUS"
