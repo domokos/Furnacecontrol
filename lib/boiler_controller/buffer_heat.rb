@@ -192,11 +192,7 @@ class BufferHeat
 
   # Calculate limited boiler target watertemp taking overshoot into account
   def corrected_watertemp(watertemp)
-    overshoot = if @overshoot_required
-                @config[:buffer_passthrough_overshoot]
-                else
-                0
-                end
+    overshoot = @overshoot_required ? @config[:buffer_passthrough_overshoot] : 0
     if watertemp + overshoot < @config[:minimum_heating_watertemp]
       @config[:minimum_heating_watertemp]
     else

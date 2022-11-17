@@ -98,7 +98,7 @@ module BufferStates
     # - turn off hydr shift pump
     on_enter(:hw) do
       buffer.logger.debug('Activating hw state')
-      buffer.hw_pump.on
+      # buffer.hw_pump.on --- Removed for HP only HW activation
       sleep buffer.config[:circulation_maintenance_delay] if\
         buffer.set_relays(:hw) != :delayed
       if buffer.hydr_shift_pump.on?
