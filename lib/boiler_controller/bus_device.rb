@@ -374,6 +374,54 @@ module BusDevice
     # End of class PulseSwitch
   end
 
+  # Class of the binary sensing input
+  class BinaryInput
+    def initialize(base,
+                   name, location,
+                   slave_address, register_address,
+                   dry_run,
+                   mock_temp, debug = false)
+
+      @base = base
+      @logger = base.logger
+      @config = base.config
+      @name = name
+      @slave_address = slave_address
+      @location = location
+      @register_address = register_address
+      @dry_run = dry_run
+      @mock_temp = mock_temp
+      @debug = debug
+    end
+
+    def state
+      if !@dry_run
+        begin
+          retval = @base.comm_interface
+                        .send_message(@slave_address,
+                                      Buscomm::READ_REGISTER,
+                                      @register_address.chr)
+          @logger.trace('Sucessfully read device '\
+            "'#{@name}' address #{@register_address}")
+        rescue MessagingError => e
+          retval = e.return_message
+          @logger.fatal('Unrecoverable communication error on bus, '\
+            "reading '#{@name}' ERRNO: #{retval[:Return_code]} - "\
+            "#{Buscomm::RESPONSE_TEXT[retval[:Return_code]]}")
+          @config.shutdown_reason = Globals::FATAL_SHUTDOWN
+          return 0
+        end
+
+        retval[:Content][Buscomm::PARAMETER_START].ord.positive?
+
+      else
+        @logger.debug("Dry run - reading device '#{@name}'"\
+          " address #{@register_address}")
+        0
+      end
+    end
+  end
+
   # The class of the temp sensor
   class TempSensor
     attr_reader :name, :slave_address, :location

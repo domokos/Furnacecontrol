@@ -40,7 +40,9 @@ class HeatingController
     @homebus_device_base = BusDevice::DeviceBase\
                            .new(@config)
 
-    create_pumps_and_sensors
+    create_pumps
+
+    create_sensors
 
     create_valueprocs
 
@@ -128,7 +130,7 @@ class HeatingController
     }
   end
 
-  def create_pumps_and_sensors
+  def create_pumps
     # Create pumps
     @radiator_pump =
       BusDevice::Switch.new(@homebus_device_base, 'Radiator pump',
@@ -154,8 +156,16 @@ class HeatingController
                             'Contact 7 on Main Panel',
                             @config[:main_controller_dev_addr],
                             @config[:hot_water_pump_reg_addr], DRY_RUN)
+  end
 
-    # Create temp sensors
+  def create_sensors
+    create_mixer_controller_sensors
+    create_main_controller_sensors
+    create_six_owbus_sensors
+    create_hp_sensors
+  end
+
+  def create_mixer_controller_sensors
     @mixer_sensor =
       BusDevice::TempSensor.new(@homebus_device_base, 'Forward floor temperature',
                                 'On the forward piping after the mixer valve',
@@ -180,6 +190,9 @@ class HeatingController
                                 @config[:mixer_controller_dev_addr],
                                 @config[:return_sensor_reg_addr],
                                 DRY_RUN, @config[:return_mock_temp])
+  end
+
+  def create_main_controller_sensors
     @upper_buffer_sensor =
       BusDevice::TempSensor.new(@homebus_device_base, 'Upper Buffer temperature',
                                 'Inside the buffer - upper section',
@@ -199,6 +212,9 @@ class HeatingController
                                 @config[:main_controller_dev_addr],
                                 @config[:hw_sensor_reg_addr],
                                 DRY_RUN, @config[:HW_mock_temp])
+  end
+
+  def create_six_owbus_sensors
     @living_sensor =
       BusDevice::TempSensor.new(@homebus_device_base, 'Living room temperature',
                                 'Temperature in the living room',
@@ -223,6 +239,36 @@ class HeatingController
                                 @config[:six_owbus_dev_addr],
                                 @config[:external_sensor_reg_addr],
                                 DRY_RUN, @config[:external_mock_temp])
+  end
+
+  def create_hp_sensors
+    @hp_ehs_active =
+      BusDevice::BinaryInput.new(@homebus_device_base, 'EHS signal from HP',
+                                 'On HP controller board',
+                                 @config[:hp_controller_dev_addr],
+                                 @config[:hp_ehs_input_reg_addr],
+                                  DRY_RUN, @config[:external_mock_temp])
+
+    @hp_cooling_mode_active =
+      BusDevice::BinaryInput.new(@homebus_device_base, 'EHS signal from HP',
+                                 'On HP controller board',
+                                 @config[:hp_controller_dev_addr],
+                                 @config[:hp_heat_cool_input_reg_addr],
+                                 DRY_RUN, @config[:external_mock_temp])
+
+    @hp_backup_heater_active =
+      BusDevice::BinaryInput.new(@homebus_device_base, 'EHS signal from HP',
+                                 'On HP controller board',
+                                 @config[:hp_controller_dev_addr],
+                                 @config[:hp_backup_heater_input_reg_addr],
+                                 DRY_RUN, @config[:external_mock_temp])
+
+    @hp_alarm_active =
+      BusDevice::BinaryInput.new(@homebus_device_base, 'EHS signal from HP',
+                                 'On HP controller board',
+                                 @config[:hp_controller_dev_addr],
+                                 @config[:hp_alarm_input_reg_addr],
+                                 DRY_RUN, @config[:external_mock_temp])
   end
 
   # Create devices
