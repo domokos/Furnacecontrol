@@ -34,12 +34,24 @@ class HeatPump
     @forward_temp_sensor.value
   end
 
+  def return_temp
+    @return_sensor.value
+  end
+
+  def discahrge_temp
+    @discahrge_sensor.value
+  end
+
   def pump_rpm
     @waterpump_rpm_sensor.value
   end
 
   def compressor_rpm
     @compressor_rpm_sensor.value
+  end
+
+  def fan_rpm
+    @fan_rpm_sensor.value
   end
 
   def power
@@ -76,7 +88,7 @@ class HeatPump
 
   def create_sensors
     @forward_temp_sensor = HPBase::HPSensor.new(@busmutex,
-                                                { hp_device: @hp_device, name: 'HP Forward temp sensor',
+                                                { hp_device: @hp_device, name: 'HP Forward temp',
                                                   register_address: @config[:hp_outgoing_water_temp_addr],
                                                   register_type: :input, config: @config })
 
@@ -97,5 +109,21 @@ class HeatPump
                                            register_address: @config[:hp_current_consumption_addr],
                                            register_type: :input, config: @config,
                                            multiplier: @config[:hp_current_consumption_multiplier] })
+
+    @fan_rpm_sensor = HPBase::HPSensor.new(@busmutex,
+                                           { hp_device: @hp_device, name: 'HP Fan RPM',
+                                             register_address: @config[:hp_fan_rpm_addr],
+                                             register_type: :input, config: @config,
+                                             multiplier: @config[:hp_fan_rpm_multiplier] })
+
+    @return_sensor = HPBase::HPSensor.new(@busmutex,
+                                          { hp_device: @hp_device, name: 'HP Return temp',
+                                            register_address: @config[:hp_return_water_temp_addr],
+                                            register_type: :input, config: @config })
+
+    @discahrge_sensor = HPBase::HPSensor.new(@busmutex,
+                                             { hp_device: @hp_device, name: 'HP Return temp',
+                                               register_address: @config[:hp_discharge_temperature_addr],
+                                               register_type: :input, config: @config })
   end
 end

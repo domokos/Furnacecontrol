@@ -75,6 +75,12 @@ class Restapi < Sinatra::Base
       settings.heatingcontrol.buffer_heater.heatpump.compressor_rpm.to_s
     when ':hp_power'
       settings.heatingcontrol.buffer_heater.heatpump.power.to_s
+    when ':hp_fan_rpm'
+      settings.heatingcontrol.buffer_heater.heatpump.fan_rpm.to_s
+    when ':hp_return_temp'
+      settings.heatingcontrol.buffer_heater.heatpump.return_temp.to_s
+    when ':hp_discharge_temp'
+      settings.heatingcontrol.buffer_heater.heatpump.discahrge_temp.to_s
     else
       HTTP_NOT_FOUND
     end

@@ -267,6 +267,8 @@
 :hp_current_consumption_multiplier: 100
 
 :hp_fan_rpm_addr: 4
+:hp_fan_rpm_multiplier: 10
+
 :hp_defrost_temp_addr: 5
 :hp_outdoor_air_temp_addr: 6
 
