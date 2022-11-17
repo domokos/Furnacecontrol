@@ -275,7 +275,7 @@ class BufferHeat
     # HW state
     when :hw
       @delta_t = @forward_temp - @return_temp
-      hw_pump.on if @heatpump.forward_temp > @hw_temp + 7
+      hw_pump.on if @heatpump.return_temp > @hw_temp + 2
       # Just set the HW temp
       # @hw_wiper.set_water_temp(@hw_sensor.temp)
     else
