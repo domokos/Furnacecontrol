@@ -92,7 +92,7 @@ module BusDevice
     def initialize(base,
                    name, location,
                    slave_address, register_address,
-                   dry_run)
+                   dry_run, init_from_device = :set_default_off)
       @base = base
       @logger = base.logger
       @config = base.config
@@ -105,9 +105,16 @@ module BusDevice
       @state_semaphore = Mutex.new
       @delayed_close_semaphore = Mutex.new
 
-      # Initialize state to off
-      @state = :off
-      write_device(0) unless @dry_run
+      if !@dry_run && init_from_device == :init_from_device
+        # Initialize state based on the device itself
+        device_val = read_device
+        @state = device_val.positive? ? :on : :off
+      else
+        device_val = 0
+        @state = :off
+      end
+      # Write physically to trigger a bus exception if there are bus problems
+      write_device(device_val) unless @dry_run
 
       # Register method at base to check switch value consistency
       # with the state stored in the class
@@ -190,9 +197,16 @@ module BusDevice
           return :Failure
         end
       else
-        @logger.trace("Dry run - writing #{value} to register '#{@name}'")
+        @logger.trace("Dry run - writing #{value} to '#{@name}'")
       end
       :Success
+    end
+
+    def read_device
+      retval = @base.comm_interface.send_message(
+        @slave_address, Buscomm::READ_REGISTER, @register_address.chr
+      )
+      retval[:Content][Buscomm::PARAMETER_START].ord
     end
 
     def check_process
@@ -207,37 +221,31 @@ module BusDevice
 
         @state_semaphore.synchronize do
           # Check what value the device knows of itself
-          retval = @base.comm_interface.send_message(
-            @slave_address, Buscomm::READ_REGISTER, @register_address.chr
-          )
+          device_val = read_device
 
           # Temp variable state_val holds the server side state binary value
-          state_val = if @state == :on
-                        1 else 0
-                      end
-          while retval[:Content][Buscomm::PARAMETER_START].ord !=
-                state_val && retry_count <= CHECK_RETRY_COUNT
+          state_val = @state == :on ? 1 : 0
+
+          # Loop until there is no mismatch or max retry count reached
+          while device_val != state_val && retry_count <= CHECK_RETRY_COUNT
 
             errorstring = 'Mismatch between stored and read switch values '\
                           "Name: '#{@name}' Location: '#{@location}'\n".dup
             errorstring << "Known state: #{state_val} device returned state: "\
-                           "#{retval[:Content][Buscomm::PARAMETER_START].ord}\n"
+                           "#{device_val}\n"
             errorstring << 'Trying to set device to the known state - attempt'\
                            " no: #{retry_count}"
 
             @logger.error(errorstring)
 
             # Try setting the server side known state to the device
-            retval = @base.comm_interface.send_message(
+            @base.comm_interface.send_message(
               @slave_address, Buscomm::SET_REGISTER,
               @register_address.chr + state_val.chr
             )
 
             # Re-read the device value to see if write was succesful
-            retval = @base.comm_interface.send_message(
-              @slave_address, Buscomm::READ_REGISTER,
-              @register_address.chr
-            )
+            device_val = read_device
 
             # Sleep more and more - hoping that the mismatch
             # error resolves itself

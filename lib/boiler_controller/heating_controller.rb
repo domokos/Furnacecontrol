@@ -345,15 +345,23 @@ class HeatingController
       .new(@homebus_device_base, 'Forward three-way valve',
            'After the boiler+buffer joint - Contact 2 on main board',
            @config[:main_controller_dev_addr],
-           @config[:hw_valve_reg_addr], DRY_RUN)
+           @config[:hw_valve_reg_addr], DRY_RUN, :init_from_device)
 
     # Create buffer bypass valves
     @bufferbypass_valve = \
       BusDevice::Switch\
-      .new(@homebus_device_base, 'Forward three-way valve',
-           'After the heat exhanger and after the buffer output - Usebuffer Contact on mixer controller board',
+      .new(@homebus_device_base, 'Buffer bypass three-way valves',
+           'After the heat exhanger and after the buffer output in tandem - Usebuffer Contact on mixer controller board',
            @config[:mixer_controller_dev_addr],
-           @config[:mixer_usebuffer_reg_addr], DRY_RUN)
+           @config[:mixer_usebuffer_reg_addr], DRY_RUN, :init_from_device)
+
+    # Create buffer bypass valves
+    @hw_hp_only_valve = \
+      BusDevice::Switch\
+      .new(@homebus_device_base, 'Forward three-way valve',
+           'After the heat exchanger before Gas boiler - HW_HP_ONLY Contact on mixer controller board',
+           @config[:mixer_controller_dev_addr],
+           @config[:mixer_hp_hw_only_valve_reg_addr], DRY_RUN, :init_from_device)
   end
 
   def create_relays
@@ -364,12 +372,47 @@ class HeatingController
            @config[:main_controller_dev_addr],
            @config[:heater_relay_reg_addr], DRY_RUN)
 
-    # Create the temporary HP heater relay switch
+    # Create the HP heater relay switch
     @hp_relay = \
       BusDevice::Switch\
-      .new(@homebus_device_base, 'HP heater relay', 'Temporary contact on OWbus of Mixer controller',
+      .new(@homebus_device_base, 'HP heater relay', 'Relay contact on HP controller',
            @config[:hp_controller_dev_addr],
            @config[:hp_on_off_switch_reg_addr], DRY_RUN)
+
+    # Create the HP low_tariff relay switch
+    @hp_low_tariff_relay = \
+      BusDevice::Switch\
+      .new(@homebus_device_base, 'HP low tariff relay', 'Relay contact on HP controller',
+           @config[:hp_controller_dev_addr],
+           @config[:hp_low_tariff_switch_reg_addr], DRY_RUN)
+
+    # Create the HP night mode relay switch
+    @hp_low_tariff_relay = \
+      BusDevice::Switch\
+      .new(@homebus_device_base, 'HP night mode relay', 'Relay contact on HP controller',
+           @config[:hp_controller_dev_addr],
+           @config[:hp_night_mode_switch_reg_addr], DRY_RUN)
+
+    # Create the HP heat/cool mode relay switch
+    @hp_low_tariff_relay = \
+      BusDevice::Switch\
+      .new(@homebus_device_base, 'HP heat/cool mode relay', 'Relay contact on HP controller',
+           @config[:hp_controller_dev_addr],
+           @config[:hp_heat_cool_switch_reg_addr], DRY_RUN)
+
+    # Create the HP dual point relay switch
+    @hp_low_tariff_relay = \
+      BusDevice::Switch\
+      .new(@homebus_device_base, 'HP dual point relay', 'Relay contact on HP controller',
+           @config[:hp_controller_dev_addr],
+           @config[:hp_dual_setpoint_switch_reg_addr], DRY_RUN)
+
+    # Create the HP HW relay switch
+    @hp_low_tariff_relay = \
+      BusDevice::Switch\
+      .new(@homebus_device_base, 'HP HW relay', 'Relay contact on HP controller',
+           @config[:hp_controller_dev_addr],
+           @config[:hp_hw_switch_reg_addr], DRY_RUN)
 
     # Create mixer pulsing switches
     @cw_switch = \
@@ -377,6 +420,7 @@ class HeatingController
       .new(@homebus_device_base, 'CW mixer switch', 'In the mixer controller box',
            @config[:mixer_controller_dev_addr],
            @config[:mixer_cw_reg_addr], DRY_RUN)
+
     @ccw_switch = \
       BusDevice::PulseSwitch\
       .new(@homebus_device_base, 'CCW mixer switch', 'In the mixer controller box',
@@ -408,6 +452,14 @@ class HeatingController
            @config[:hp_controller_dev_addr],
            @config[:hp_hw_wiper_reg_addr], DRY_RUN,
            0)
+    # @hp_heating_wiper = \
+    # BusDevice::WE_need_a_New_Class_Here\
+    # .new(@homebus_device_base, 'HP HW temp wiper',
+    #     'HW wiper contact on HP panel',
+    #     @config[:hp_controller_dev_addr],
+    #     @config[:hp_heat_wiper_reg_addr], DRY_RUN,
+    #     0)
+    #     
   end
 
   def create_controllers

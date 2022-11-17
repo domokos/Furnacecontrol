@@ -180,7 +180,7 @@
 #
 # The check period on the bus for the integrity of each device in seconds
 # Should roughly be 10 times the number of devices on the bus
-:check_period_interval_sec: 200
+:check_period_interval_sec: 300
 #
 # Main panel device - Boiler room
 :main_controller_dev_addr: 11
@@ -217,7 +217,7 @@
 :return_sensor_reg_addr: 4
 :mixer_cw_reg_addr: 5
 :mixer_ccw_reg_addr: 6
-:mixer_spare_valve_reg_addr: 7
+:mixer_hp_hw_only_valve_reg_addr: 7
 :mixer_usebuffer_reg_addr: 8
 :mixer_gpio_reg_addr: 9
 :temp_hp_dhw_switch_reg_addr: 10
