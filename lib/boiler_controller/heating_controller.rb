@@ -387,30 +387,30 @@ class HeatingController
            @config[:hp_low_tariff_switch_reg_addr], DRY_RUN)
 
     # Create the HP night mode relay switch
-    @hp_low_tariff_relay = \
+    @hp_night_mode_relay = \
       BusDevice::Switch\
       .new(@homebus_device_base, 'HP night mode relay', 'Relay contact on HP controller',
            @config[:hp_controller_dev_addr],
            @config[:hp_night_mode_switch_reg_addr], DRY_RUN)
 
     # Create the HP heat/cool mode relay switch
-    @hp_low_tariff_relay = \
+    @hp_heat_cool_mode_relay = \
       BusDevice::Switch\
       .new(@homebus_device_base, 'HP heat/cool mode relay', 'Relay contact on HP controller',
            @config[:hp_controller_dev_addr],
            @config[:hp_heat_cool_switch_reg_addr], DRY_RUN)
 
     # Create the HP dual point relay switch
-    @hp_low_tariff_relay = \
+    @hp_dual_setpoint_relay = \
       BusDevice::Switch\
-      .new(@homebus_device_base, 'HP dual point relay', 'Relay contact on HP controller',
+      .new(@homebus_device_base, 'HP dual setpoint relay', 'Relay contact on HP controller',
            @config[:hp_controller_dev_addr],
            @config[:hp_dual_setpoint_switch_reg_addr], DRY_RUN)
 
     # Create the HP HW relay switch
-    @hp_low_tariff_relay = \
+    @hp_hw_relay = \
       BusDevice::Switch\
-      .new(@homebus_device_base, 'HP HW relay', 'Relay contact on HP controller',
+      .new(@homebus_device_base, 'HP HW switch relay', 'Relay contact on HP controller',
            @config[:hp_controller_dev_addr],
            @config[:hp_hw_switch_reg_addr], DRY_RUN)
 
