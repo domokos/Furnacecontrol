@@ -255,7 +255,8 @@
 :hp_modbus_stop_bits: 2
 :hp_modbus_slave_addr: 1
 #
-# HP bus peremeters
+#
+# HP bus parameters
 :hp_bus_values_read_period: 10
 #
 # Input register addresses
@@ -276,13 +277,14 @@
 :hp_water_pump_rpm_multiplier: 100
 
 :hp_suction_temp_addr: 8
-
 :hp_outgoing_water_temp_addr: 9
+:hp_heat_exchanger_temp_addr: 32
 
-:hp_operating_mode_addr: 10 # 0=Heating/Cooling OFF  1=Heating 2=Cooling 
 #
 # Holding register addresses
 # Configuration addresses
+:hp_operating_mode_addr: 10 # 0=Heating/Cooling OFF  1=Heating 2=Cooling 
+
 :hp_heating_zone1_setpoint_mode_addr: 1
 :hp_heating_zone1_setpoint_addr: 2
 :hp_heating_zone1_max_watertemp_addr: 3

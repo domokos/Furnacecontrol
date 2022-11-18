@@ -42,6 +42,18 @@ class HeatPump
     @discahrge_sensor.value
   end
 
+  def defrost_temp
+    @defrost_sensor.value
+  end
+
+  def suction_temp
+    @suction_sensor.value
+  end
+
+  def exchanger_temp
+    @exchanger_sensor.value
+  end
+
   def pump_rpm
     @waterpump_rpm_sensor.value
   end
@@ -122,8 +134,23 @@ class HeatPump
                                             register_type: :input, config: @config })
 
     @discahrge_sensor = HPBase::HPSensor.new(@busmutex,
-                                             { hp_device: @hp_device, name: 'HP Return temp',
+                                             { hp_device: @hp_device, name: 'HP Discharge temp',
                                                register_address: @config[:hp_discharge_temperature_addr],
+                                               register_type: :input, config: @config })
+
+    @defrost_sensor = HPBase::HPSensor.new(@busmutex,
+                                           { hp_device: @hp_device, name: 'HP Defrost temp',
+                                             register_address: @config[:hp_defrost_temp_addr],
+                                             register_type: :input, config: @config })
+
+    @suction_sensor = HPBase::HPSensor.new(@busmutex,
+                                           { hp_device: @hp_device, name: 'HP Suction temp',
+                                             register_address: @config[:hp_suction_temp_addr],
+                                             register_type: :input, config: @config })
+
+    @exchanger_sensor = HPBase::HPSensor.new(@busmutex,
+                                             { hp_device: @hp_device, name: 'HP Heat Exchanger temp',
+                                               register_address: @config[:hp_heat_exchanger_temp_addr],
                                                register_type: :input, config: @config })
   end
 end

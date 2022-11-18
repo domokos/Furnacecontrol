@@ -81,6 +81,12 @@ class Restapi < Sinatra::Base
       settings.heatingcontrol.buffer_heater.heatpump.return_temp.to_s
     when ':hp_discharge_temp'
       settings.heatingcontrol.buffer_heater.heatpump.discahrge_temp.to_s
+    when ':hp_defrost_temp'
+      settings.heatingcontrol.buffer_heater.heatpump.defrost_temp.to_s
+    when ':hp_suction_temp'
+      settings.heatingcontrol.buffer_heater.heatpump.suction_temp.to_s
+    when ':hp_exchanger_temp'
+      settings.heatingcontrol.buffer_heater.heatpump.exchanger_temp.to_s
     else
       HTTP_NOT_FOUND
     end
