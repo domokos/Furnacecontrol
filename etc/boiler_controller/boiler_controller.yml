@@ -220,9 +220,7 @@
 :mixer_hp_hw_only_valve_reg_addr: 7
 :mixer_usebuffer_reg_addr: 8
 :mixer_gpio_reg_addr: 9
-:temp_hp_dhw_switch_reg_addr: 10
-:temp_hp_relay_switch_reg_addr: 11
-:read_single_rom_code_on_owbus_reg_addr: 12
+:read_single_rom_code_on_owbus_reg_addr: 10
 #
 # HP controller - Boiler room
 :hp_controller_dev_addr: 13
