@@ -3,10 +3,11 @@
 module HPBase
   # Direct Discrete inputs logger
   class ModbusDiscreteInputsLogger
-    def initialize(busmutex, hp_device, logger)
+    def initialize(busmutex, hp_device, logger, signed = false)
       @busmutex = busmutex
       @hp_device = hp_device
       @logger = logger
+      @signed = signed
       @inputs = []
     end
 
@@ -59,12 +60,22 @@ module HPBase
 
     private
 
+    def to_signed16(num)
+      # length = 16 # in bits
+      mid = 32_768 # 2**(length - 1)
+      max_unsigned = 65_536 # 2**length
+      num >= mid ? num - max_unsigned : num
+    end
+
     def read_value
+      val = 0
       case @register_type
       when :input
-        @busmutex.synchronize { @hp_device.input_registers[@register_address][0].to_i * @multiplier }
+        @busmutex.synchronize { val = @hp_device.input_registers[@register_address].first }
+        @signed ? to_signed(val) * @multiplier : val * @multiplier
       when :holding
-        @busmutex.synchronize { @hp_device.holding_registers[@register_address][0].to_i * @multiplier }
+        @busmutex.synchronize { val = @hp_device.holding_registers[@register_address].first }
+        @signed ? to_signed(val) * @multiplier : val * @multiplier
       end
     rescue StandardError => e
       # Log the messaging error
