@@ -3,11 +3,10 @@
 module HPBase
   # Direct Discrete inputs logger
   class ModbusDiscreteInputsLogger
-    def initialize(busmutex, hp_device, logger, signed = false)
+    def initialize(busmutex, hp_device, logger)
       @busmutex = busmutex
       @hp_device = hp_device
       @logger = logger
-      @signed = signed
       @inputs = []
     end
 
@@ -35,6 +34,7 @@ module HPBase
       @register_address = param[:register_address]
       @register_type = param[:register_type]
       @multiplier = param[:multiplier].nil? ? 1 : param[:multiplier]
+      @signed = param[:signed].nil? || param[:signed] ? true : false
 
       @value_reader_mutex = Mutex.new
 
