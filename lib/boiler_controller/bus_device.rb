@@ -421,7 +421,7 @@ module BusDevice
       @state_reader_mutex.synchronize do
         if @delay_timer.expired?
           read_device
-          delay_timer.reset
+          @delay_timer.reset
         end
         @state
       end
