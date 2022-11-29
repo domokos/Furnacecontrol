@@ -3,7 +3,7 @@
 module HPBase
   # Direct Discrete inputs logger
   class ModbusDiscreteInputsLogger
-    def iniialize(busmutex, hp_device, logger)
+    def initialize(busmutex, hp_device, logger)
       @busmutex = busmutex
       @hp_device = hp_device
       @logger = logger
