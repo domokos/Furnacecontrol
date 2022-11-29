@@ -72,10 +72,10 @@ module HPBase
       case @register_type
       when :input
         @busmutex.synchronize { val = @hp_device.input_registers[@register_address].first }
-        @signed ? to_signed(val) * @multiplier : val * @multiplier
+        @signed ? to_signed16(val) * @multiplier : val * @multiplier
       when :holding
         @busmutex.synchronize { val = @hp_device.holding_registers[@register_address].first }
-        @signed ? to_signed(val) * @multiplier : val * @multiplier
+        @signed ? to_signed16(val) * @multiplier : val * @multiplier
       end
     rescue StandardError => e
       # Log the messaging error
