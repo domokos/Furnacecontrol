@@ -157,7 +157,7 @@ class HeatPump
   end
 
   def start_discrete_inputs_logger_thread
-    Thred.new do
+    Thread.new do
       direct_modbus = HPBase::ModbusDiscreteInputsLogger(@busmutex, @hp_device, @logger)
       @logger_timer = Globals::TimerSec.new(5, 'HP Discrete input logger timer')
       @logger_timer.reset
