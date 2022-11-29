@@ -7,14 +7,15 @@ module HPBase
       @busmutex = busmutex
       @hp_device = hp_device
       @logger = logger
+      @inputs = []
     end
 
     def log_all_discrete_inputs
-      @busmutex.synchronize { inputs.push(@hp_device.discrete_inputs[0..34]) }
+      @busmutex.synchronize { @inputs.push(@hp_device.discrete_inputs[0..34]) }
     end
-    inputs.shift if inpust.size > 15
+    @inputs.shift if @inputs.size > 15
     @logger.debug('Logging disrete inputs:')
-    0.upto(inputs.size - 1) { |i| @logger.debug("item: #{inputs[i].join(',')}")}
+    0.upto(@inputs.size - 1) { |i| @logger.debug("item: #{@inputs[i].join(',')}")}
   end
 
   # The class of the HP value sensor
