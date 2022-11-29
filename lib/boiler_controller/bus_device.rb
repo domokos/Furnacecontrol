@@ -399,8 +399,7 @@ module BusDevice
       @dry_run = dry_run
 
       # Initialize state
-      device_val = @dry_run ? 0 : read_device
-      @state = device_val.positive? ? :on : :off
+      @state = @dry_run ? :off : read_device
 
       @state_reader_mutex = Mutex.new
       @delay_timer = Globals::TimerSec.new(@config[:bus_values_read_period],
@@ -429,6 +428,8 @@ module BusDevice
     end
 
     def read_device
+      return :off if @dry_run
+
       retval = @base.comm_interface.send_message(
         @slave_address, Buscomm::READ_REGISTER, @register_address.chr
       )
