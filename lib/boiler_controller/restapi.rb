@@ -61,6 +61,8 @@ class Restapi < Sinatra::Base
       settings.heatingcontrol.heat_return_temp.round(2).to_s
     when ':output_temp'
       settings.heatingcontrol.output_temp.round(2).to_s
+    when ':mode'
+      settings.heatingcontrol.hp_heating_mode_active.on? ? 'HEAT' : 'COOL'
     when ':state'
       settings.heatingcontrol.state_history.last[:state].to_s
     when ':power'

@@ -117,28 +117,28 @@ class HeatingController
                                  'On HP controller board',
                                  @config[:hp_controller_dev_addr],
                                  @config[:hp_ehs_input_reg_addr],
-                                  DRY_RUN, @config[:external_mock_temp])
+                                 DRY_RUN)
 
-    @hp_cooling_mode_active =
-      BusDevice::BinaryInput.new(@homebus_device_base, 'EHS signal from HP',
+    @hp_heating_mode_active =
+      BusDevice::BinaryInput.new(@homebus_device_base, 'Heating / cooling mode signal from HP',
                                  'On HP controller board',
                                  @config[:hp_controller_dev_addr],
                                  @config[:hp_heat_cool_input_reg_addr],
-                                 DRY_RUN, @config[:external_mock_temp])
+                                 DRY_RUN)
 
     @hp_backup_heater_active =
-      BusDevice::BinaryInput.new(@homebus_device_base, 'EHS signal from HP',
+      BusDevice::BinaryInput.new(@homebus_device_base, 'Backup Heater signal from HP',
                                  'On HP controller board',
                                  @config[:hp_controller_dev_addr],
                                  @config[:hp_backup_heater_input_reg_addr],
-                                 DRY_RUN, @config[:external_mock_temp])
+                                 DRY_RUN)
 
     @hp_alarm_active =
-      BusDevice::BinaryInput.new(@homebus_device_base, 'EHS signal from HP',
+      BusDevice::BinaryInput.new(@homebus_device_base, 'Alarm signal from HP',
                                  'On HP controller board',
                                  @config[:hp_controller_dev_addr],
                                  @config[:hp_alarm_input_reg_addr],
-                                 DRY_RUN, @config[:external_mock_temp])
+                                 DRY_RUN)
   end
 
   # Create value procs/lambdas

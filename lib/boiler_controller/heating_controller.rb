@@ -13,7 +13,7 @@ class HeatingController
               :basement_radiator_valve,
               :living_floor_valve, :upstairs_floor_valve,
               :forward_temp, :return_temp, :output_temp, :heat_return_temp,
-              :hw_thermostat, :living_thermostat,
+              :hw_thermostat, :living_thermostat, :hp_heating_mode_active
               :upstairs_thermostat, :basement_thermostat,
               :cold_outside_thermostat,
               :mode_thermostat, :target_boiler_temp,

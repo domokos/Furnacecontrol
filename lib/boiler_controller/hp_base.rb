@@ -41,7 +41,7 @@ module HPBase
       @delay_timer = Globals::TimerSec.new(@config[:hp_bus_values_read_period],
                                            "HP value Sensor Delay timer: #{@name}")
 
-      # Perform initial valueerature read
+      # Perform initial value read
       @delay_timer.reset
       initial_value = read_value
       @lastvalue = initial_value.nil? ? DEFAULT_VALUE : initial_value

@@ -387,8 +387,7 @@ module BusDevice
     def initialize(base,
                    name, location,
                    slave_address, register_address,
-                   dry_run,
-                   mock_temp, debug = false)
+                   dry_run)
 
       @base = base
       @logger = base.logger
@@ -398,36 +397,44 @@ module BusDevice
       @location = location
       @register_address = register_address
       @dry_run = dry_run
-      @mock_temp = mock_temp
-      @debug = debug
+
+      # Initialize state
+      device_val = @dry_run ? 0 : read_device
+      @state = device_val.positive? ? :on : :off
+
+      @state_reader_mutex = Mutex.new
+      @delay_timer = Globals::TimerSec.new(@config[:bus_values_read_period],
+                                           "Binary Input Sensor Delay timer: #{@name}")
+      @delay_timer.reset
     end
 
-    def state
-      if !@dry_run
-        begin
-          retval = @base.comm_interface
-                        .send_message(@slave_address,
-                                      Buscomm::READ_REGISTER,
-                                      @register_address.chr)
-          @logger.trace('Sucessfully read device '\
-            "'#{@name}' address #{@register_address}")
-        rescue MessagingError => e
-          retval = e.return_message
-          @logger.fatal('Unrecoverable communication error on bus, '\
-            "reading '#{@name}' ERRNO: #{retval[:Return_code]} - "\
-            "#{Buscomm::RESPONSE_TEXT[retval[:Return_code]]}")
-          @config.shutdown_reason = Globals::FATAL_SHUTDOWN
-          return 0
+    def on?
+      device_state == :on
+    end
+
+    def off?
+      device_state == :off
+    end
+
+    private
+
+    def device_state
+      @state_reader_mutex.synchronize do
+        if @delay_timer.expired?
+          read_device
+          delay_timer.reset
         end
-
-        retval[:Content][Buscomm::PARAMETER_START].ord.positive?
-
-      else
-        @logger.debug("Dry run - reading device '#{@name}'"\
-          " address #{@register_address}")
-        0
+        @state
       end
     end
+
+    def read_device
+      retval = @base.comm_interface.send_message(
+        @slave_address, Buscomm::READ_REGISTER, @register_address.chr
+      )
+      @state = retval[:Content][Buscomm::PARAMETER_START].ord.positive? ? :on : :off
+    end
+    # End of class Binary Input
   end
 
   # The class of the temp sensor
@@ -436,7 +443,6 @@ module BusDevice
     attr_accessor :mock_temp
 
     ONE_BIT_TEMP_VALUE = 0.0625
-    TEMP_BUS_READ_TIMEOUT = 2
 
     # "" << 0x0f.chr << 0xaf.chr * ONE_BIT_TEMP_VALUE
     ONEWIRE_TEMP_FAIL = -1295.0625
@@ -460,7 +466,7 @@ module BusDevice
 
       @temp_reader_mutex = Mutex.new
 
-      @delay_timer = Globals::TimerSec.new(TEMP_BUS_READ_TIMEOUT,
+      @delay_timer = Globals::TimerSec.new(@config[:bus_values_read_period],
                                            "Temp Sensor Delay timer: #{@name}")
 
       # Perform initial temperature read
