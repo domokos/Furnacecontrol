@@ -28,6 +28,8 @@ class HeatPump
     @heating_targettemp = 20
 
     create_sensors
+
+    start_discrete_inputs_logger_thread
   end
 
   def forward_temp
@@ -152,5 +154,20 @@ class HeatPump
                                              { hp_device: @hp_device, name: 'HP Heat Exchanger temp',
                                                register_address: @config[:hp_heat_exchanger_temp_addr],
                                                register_type: :input, config: @config })
+  end
+
+  def start_discrete_inputs_logger_thread
+    Thred.new do
+      direct_modbus = HPBase::ModbusDiscreteInputsLogger(@busmutex, @hp_device, @logger)
+      @logger_timer = Globals::TimerSec.new(5, 'HP Discrete input logger timer')
+      @logger_timer.reset
+      while @config.shutdown_reason == Globals::NO_SHUTDOWN
+        if @logger_timer.expired?
+          @logger_timer.reset
+          direct_modbus.log_all_discrete_inputs
+        end
+        sleep 1
+      end
+    end
   end
 end

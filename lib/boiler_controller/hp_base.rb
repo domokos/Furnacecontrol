@@ -1,6 +1,22 @@
 # frozen_string_literal: true
 
 module HPBase
+  # Direct Discrete inputs logger
+  class ModbusDiscreteInputsLogger
+    def iniialize(busmutex, hp_device, logger)
+      @busmutex = busmutex
+      @hp_device = hp_device
+      @logger = logger
+    end
+
+    def log_all_discrete_inputs
+      @busmutex.synchronize { inputs.push(@hp_device.discrete_inputs[0..34]) }
+    end
+    inputs.shift if inpust.size > 15
+    @logger.debug('Logging disrete inputs:')
+    0.upto(inputs.size - 1) { |i| @logger.debug("item: #{inputs[i].join(',')}")}
+  end
+
   # The class of the HP value sensor
   class HPSensor
     attr_reader :name, :slave_address
