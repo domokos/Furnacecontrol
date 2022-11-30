@@ -210,12 +210,10 @@ class HeatingController
     @cold_outside_thermostat.update
     @floor_thermostat.update
     @mode_thermostat.update
-  end
 
-  def evaluate_defrost
     @defrost = buffer_heater.heatpump.fan_rpm.zero? &&
                buffer_heater.heatpump.compressor_rpm.zero? &&
-               buffer_heater.buffer.hp_relay.on?
+               buffer_heater.hp_relay.on?
   end
 
   public
@@ -246,7 +244,6 @@ class HeatingController
       # and real heating tartgets if not in dry run
       unless DRY_RUN
         read_sensors
-        evaluate_defrost
         temp_power_needed = { state: @heating_sm.current,
                               power: determine_power_needed,
                               timestamp: Time.now.getlocal(0) }
