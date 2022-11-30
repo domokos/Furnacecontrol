@@ -17,7 +17,7 @@ class HeatingController
               :upstairs_thermostat, :basement_thermostat,
               :cold_outside_thermostat,
               :mode_thermostat, :target_boiler_temp,
-              :sm_relax_timer,
+              :sm_relax_timer, :defrost,
               :logger, :config, :state_history
 
   def initialize(config)
@@ -30,6 +30,7 @@ class HeatingController
     @logger = config.logger.app_logger
     @heating_logger = config.logger.heating_logger
     @config = config
+    @defrost = false
 
     read_config
 
@@ -209,6 +210,10 @@ class HeatingController
     @cold_outside_thermostat.update
     @floor_thermostat.update
     @mode_thermostat.update
+
+    @defrost = buffer_heater.heatpump.fan_rpm.zero? &&
+               buffer_heater.heatpump.compressor_rpm.zero? &&
+               buffer_heater.buffer.hp_relay.on?
   end
 
   public
