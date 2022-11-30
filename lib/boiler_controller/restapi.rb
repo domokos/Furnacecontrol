@@ -89,7 +89,7 @@ class Restapi < Sinatra::Base
       settings.heatingcontrol.buffer_heater.heatpump.suction_temp.to_s
     when ':hp_exchanger_temp'
       settings.heatingcontrol.buffer_heater.heatpump.exchanger_temp.to_s
-    when ':defrost'
+    when ':hp_defrost'
       settings.heatingcontrol.defrost ? 'DEFROST' : 'NORMAL'
     else
       HTTP_NOT_FOUND
