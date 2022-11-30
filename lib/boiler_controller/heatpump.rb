@@ -29,7 +29,7 @@ class HeatPump
 
     create_sensors
 
-    start_discrete_inputs_logger_thread
+    # start_discrete_inputs_logger_thread
   end
 
   def forward_temp
