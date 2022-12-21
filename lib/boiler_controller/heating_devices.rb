@@ -145,7 +145,7 @@ class HeatingController
   def create_valueprocs
     # Create the is_HW or valve movement proc for the floor PWM thermostats
     @is_hw_or_valve_proc = proc {
-      determine_power_needed == :HW || @moving_valves_required == true
+      determine_power_needed == :HW || @moving_valves_required || !@buffer_heater.hp_outputs_power
     }
 
     # Create the value proc for the basement thermostat. Lambda is used
