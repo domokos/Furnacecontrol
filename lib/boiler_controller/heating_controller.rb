@@ -433,11 +433,17 @@ class HeatingController
       end
 
       if @buffer_heater.hp_outputs_power
-        # Radiator pump on
-        @radiator_pump.on
+        unless @radiator_pump.on?
+          @logger.info('Turning radiator pump on')
+          # Radiator pump on
+          @radiator_pump.on
+        end
       else
-        # Radiator pump on
-        @radiator_pump.off
+        unless @radiator_pump.off?
+          @logger.info('No power from HP turning radiator pump off')
+          # Radiator pump on
+          @radiator_pump.off
+        end
       end
 
     when :RADFLOOR
@@ -459,18 +465,22 @@ class HeatingController
         @upstairs_floor_valve.delayed_close
       end
 
-      if changed
-        @logger.info('Setting valves and pumps for RADFLOOR')
-      end
+      @logger.info('Setting valves and pumps for RADFLOOR') if changed
 
       if @buffer_heater.hp_outputs_power
-        # Radiator pump on
-        @radiator_pump.on
-        @floor_pump.on
+        if @radiator_pump.off? || @floor_pump.off?
+          @logger.info('Turning radiator and floor pumps on')
+          # Radiator pump on
+          @radiator_pump.on
+          @floor_pump.on
+        end
       else
-        # Radiator pump on
-        @radiator_pump.off
-        @floor_pump.off
+        if @radiator_pump.on? || @floor_pump.on?
+          @logger.info('No power from HP turning pumps off')
+          # Radiator pump on
+          @radiator_pump.off
+          @floor_pump.off
+        end
       end
 
     when :FLOOR
@@ -498,14 +508,19 @@ class HeatingController
       end
 
       if @buffer_heater.hp_outputs_power
-        # Radiator pump on
-        @floor_pump.on
+        unless @floor_pump.on?
+          @logger.info('Turning floor pump on')
+          # Floor pump on
+          @floor_pump.on
+        end
       else
-        # Radiator pump on
-        @floor_pump.off
+        unless @floor_pump.off?
+          @logger.info('No power from HP turning floor pump off')
+          # Floor pump ff
+          @floor_pump.off
+        end
       end
     end
-  end
 
   # This function tells what kind of  power is needed
   def determine_power_needed
