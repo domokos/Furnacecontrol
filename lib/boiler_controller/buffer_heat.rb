@@ -205,7 +205,7 @@ class BufferHeat
 
   # Update internal states
   def update_states
-    @hp_outputs_power = @heatpump.compressor_rpm.positive? &&
+    @hp_outputs_power = @heatpump.fan_rpm.positive? &&
                         @hp_relay.on?
   end
 
