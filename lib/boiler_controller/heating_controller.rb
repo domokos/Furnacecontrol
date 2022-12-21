@@ -428,10 +428,16 @@ class HeatingController
         @living_floor_valve.delayed_close
         @upstairs_floor_valve.delayed_close
 
-        # Radiator pump on
-        @radiator_pump.on
         # Floor heating off
         @floor_pump.off
+      end
+
+      if @buffer_heater.hp_outputs_power
+        # Radiator pump on
+        @radiator_pump.on
+      else
+        # Radiator pump on
+        @radiator_pump.off
       end
 
     when :RADFLOOR
@@ -455,12 +461,18 @@ class HeatingController
 
       if changed
         @logger.info('Setting valves and pumps for RADFLOOR')
+      end
 
-        # Floor heating on
-        @floor_pump.on
+      if @buffer_heater.hp_outputs_power
         # Radiator pump on
         @radiator_pump.on
+        @floor_pump.on
+      else
+        # Radiator pump on
+        @radiator_pump.off
+        @floor_pump.off
       end
+
     when :FLOOR
       # decide on basement valve based on basement temperature
       if @basement_thermostat.on?
@@ -482,9 +494,15 @@ class HeatingController
         @logger.info('Setting valves and pumps for FLOOR')
         @basement_radiator_valve.delayed_close
 
-        # Floor heating on
-        @floor_pump.on
         @radiator_pump.off
+      end
+
+      if @buffer_heater.hp_outputs_power
+        # Radiator pump on
+        @floor_pump.on
+      else
+        # Radiator pump on
+        @floor_pump.off
       end
     end
   end

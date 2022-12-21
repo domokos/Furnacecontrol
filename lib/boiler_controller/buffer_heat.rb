@@ -7,7 +7,7 @@ class BufferHeat
   attr_reader :forward_sensor, :upper_sensor, :buf_output_sensor, :return_sensor,
               :hw_sensor, :heat_return_sensor,
               :hw_valve, :bufferbypass_valve,
-              :heater_relay, :hp_relay, :heatpump,
+              :heater_relay, :hp_relay, :heatpump, :hp_outputs_power,
               :hydr_shift_pump, :hw_pump,
               :hw_wiper, :heat_wiper,
               :logger, :config,
@@ -84,6 +84,7 @@ class BufferHeat
     @mode = @prev_mode = :off
     @control_thread = nil
     @relay_state = nil
+    @hp_outputs_power = false
 
     # Create the state machine of the buffer heater
     @buffer_sm = BufferStates::BufferSM.new(self)
@@ -202,6 +203,12 @@ class BufferHeat
 
   private
 
+  # Update internal states
+  def update_states
+    @hp_outputs_power = @heatpump.compressor_rpm.positive? &&
+                        @hp_relay.on?
+  end
+
   #
   # Evaluate heating conditions and
   # set feed strategy
@@ -275,7 +282,14 @@ class BufferHeat
     # HW state
     when :hw
       @delta_t = @forward_temp - @return_temp
-      hw_pump.on if @heatpump.return_temp > @hw_temp + 2
+
+      if (@heatpump.return_temp > (@hw_temp + 2)) && @hp_outputs_power
+        @hw_pump.on
+        set_relays(:hw)
+      else
+        @hw_pump.off
+        set_relays(:normal) unless @hp_outputs_power
+      end
       # Just set the HW temp
       # @hw_wiper.set_water_temp(@hw_sensor.temp)
     else
@@ -361,6 +375,7 @@ class BufferHeat
             @mode_changed = false
           else
             evaluate_heater_state_change
+            update_states
           end
         end
         sleep @config[:buffer_heat_control_loop_delay] unless\

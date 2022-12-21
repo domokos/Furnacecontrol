@@ -99,8 +99,10 @@ module BufferStates
     on_enter(:hw) do
       buffer.logger.debug('Activating hw state')
       # buffer.hw_pump.on --- Removed for HP only HW activation
-      sleep buffer.config[:circulation_maintenance_delay] if\
-        buffer.set_relays(:hw) != :delayed
+      if buffer.hp_outputs_power
+        sleep buffer.config[:circulation_maintenance_delay] if\
+          buffer.set_relays(:hw) != :delayed
+      end
       if buffer.hydr_shift_pump.on?
         buffer.hydr_shift_pump.off
       else
