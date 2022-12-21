@@ -521,6 +521,7 @@ class HeatingController
         end
       end
     end
+  end
 
   # This function tells what kind of  power is needed
   def determine_power_needed
