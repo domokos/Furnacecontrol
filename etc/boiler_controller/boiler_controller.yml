@@ -278,14 +278,18 @@
 
 :hp_suction_temp_addr: 8
 :hp_outgoing_water_temp_addr: 9
+:hp_operating_mode_addr: 10 # 0=Heating/Cooling OFF  1=Heating 2=Cooling 
 :hp_heat_exchanger_temp_addr: 32
+
 
 #
 # Holding register addresses
 # Configuration addresses
-:hp_operating_mode_addr: 10 # 0=Heating/Cooling OFF  1=Heating 2=Cooling 
 
-:hp_heating_zone1_setpoint_mode_addr: 1
 :hp_heating_zone1_setpoint_addr: 2
 :hp_heating_zone1_max_watertemp_addr: 3
 :hp_heating_zone1_min_watertemp_addr: 4
+
+:hp_cooling_zone1_setpoint_addr: 12
+:hp_cooling_zone1_max_watertemp_addr: 13
+:hp_cooling_zone1_min_watertemp_addr: 14
