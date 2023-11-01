@@ -288,7 +288,7 @@ class BufferHeat
         set_relays(:hw)
       else
         @hw_pump.off
-        set_relays(:normal) unless @hp_outputs_power
+        set_relays(:hw) if @hp_outputs_power
       end
       # Just set the HW temp
       # @hw_wiper.set_water_temp(@hw_sensor.temp)

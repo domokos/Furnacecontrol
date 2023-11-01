@@ -751,6 +751,7 @@ class HeatingController
                           "#{@cold_outside_thermostat.state} / "\
                           "#{(@cold_outside_thermostat.value * 100).round(0)}%")
     @heating_logger.debug("\nBoiler relay: #{@heater_relay.state}")
+    @heating_logger.debug("\nHP relay: #{@hp_relay.state}")
     @heating_logger.debug('Boiler required temperature: '\
                           "#{@heating_watertemp.temp_required.round(2)}")
     @heating_logger.debug("LOGITEM END\n")
