@@ -432,19 +432,19 @@ class HeatingController
         @floor_pump.off
       end
 
-      if @buffer_heater.hp_outputs_power
+      #if @buffer_heater.hp_outputs_power
         unless @radiator_pump.on?
           @logger.info('Turning radiator pump on')
           # Radiator pump on
           @radiator_pump.on
         end
-      else
-        unless @radiator_pump.off?
-          @logger.info('No power from HP turning radiator pump off')
-          # Radiator pump on
-          @radiator_pump.off
-        end
-      end
+     # else
+      #  unless @radiator_pump.off?
+     #     @logger.info('No power from HP turning radiator pump off')
+     #     # Radiator pump on
+     #     @radiator_pump.off
+     #   end
+     # end
 
     when :RADFLOOR
       # decide on basement valves based on basement temperature
@@ -467,21 +467,21 @@ class HeatingController
 
       @logger.info('Setting valves and pumps for RADFLOOR') if changed
 
-      if @buffer_heater.hp_outputs_power
+#      if @buffer_heater.hp_outputs_power
         if @radiator_pump.off? || @floor_pump.off?
           @logger.info('Turning radiator and floor pumps on')
           # Radiator pump on
           @radiator_pump.on
           @floor_pump.on
         end
-      else
-        if @radiator_pump.on? || @floor_pump.on?
-          @logger.info('No power from HP turning pumps off')
-          # Radiator pump on
-          @radiator_pump.off
-          @floor_pump.off
-        end
-      end
+ #     else
+ #       if @radiator_pump.on? || @floor_pump.on?
+ #         @logger.info('No power from HP turning pumps off')
+ #        # Radiator pump on
+ #        @radiator_pump.off
+ #        @floor_pump.off
+ #      end
+ #     end
 
     when :FLOOR
       # decide on basement valve based on basement temperature
@@ -507,19 +507,19 @@ class HeatingController
         @radiator_pump.off
       end
 
-      if @buffer_heater.hp_outputs_power
+      #if @buffer_heater.hp_outputs_power
         unless @floor_pump.on?
           @logger.info('Turning floor pump on')
           # Floor pump on
           @floor_pump.on
         end
-      else
-        unless @floor_pump.off?
-          @logger.info('No power from HP turning floor pump off')
-          # Floor pump ff
-          @floor_pump.off
-        end
-      end
+      #else
+      #  unless @floor_pump.off?
+      #    @logger.info('No power from HP turning floor pump off')
+      #    # Floor pump ff
+      #    @floor_pump.off
+      #  end
+      #end
     end
   end
 
