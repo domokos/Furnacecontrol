@@ -375,7 +375,7 @@ class HeatingController
     #     @config[:hp_controller_dev_addr],
     #     @config[:hp_heat_wiper_reg_addr], DRY_RUN,
     #     0)
-    #     
+    #
   end
 
   def create_controllers

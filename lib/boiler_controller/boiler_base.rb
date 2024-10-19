@@ -56,11 +56,9 @@ module BoilerBase
   # The Thermostat base class providing hysteresis behavior to a sensor
   class ThermostatBase
     attr_reader :state, :threshold
-    attr_accessor :hysteresis
 
-    def initialize(sensor, hysteresis, threshold, filtersize)
+    def initialize(sensor, threshold, filtersize)
       @sensor = sensor
-      @hysteresis = hysteresis
       @threshold = threshold
       @sample_filter = Filter.new(filtersize)
       @state = if @sensor.temp >= @threshold
@@ -102,6 +100,13 @@ module BoilerBase
 
   # Class of the Symmetric thermostat
   class SymmetricThermostat < ThermostatBase
+    attr_accessor :hysteresis
+
+    def initialize(sensor, hysteresis, threshold, filtersize)
+      super(sensor, threshold, filtersize)
+      @hysteresis = hysteresis
+    end
+
     def determine_state
       if @state == :off
         @state = :on if @sample_filter.value < @threshold - @hysteresis
@@ -118,16 +123,9 @@ module BoilerBase
     def initialize(sensor,
                    down_hysteresis, up_hysteresis,
                    threshold, filtersize)
-      @sensor = sensor
+      super(sensor, threshold, filtersize)
       @up_hysteresis = up_hysteresis
       @down_hysteresis = down_hysteresis
-      @threshold = threshold
-      @sample_filter = Filter.new(filtersize)
-      @state = if @sensor.temp >= @threshold
-                 :off
-               else
-                 :on
-               end
     end
 
     def determine_state
@@ -138,7 +136,7 @@ module BoilerBase
       end
     end
 
-    def set_hysteresis(new_down_hysteresis,new_up_hysteresis)
+    def set_hysteresis(new_down_hysteresis, new_up_hysteresis)
       @down_hysteresis = new_down_hysteresis
       @up_hysteresis = new_up_hysteresis
     end
@@ -389,7 +387,7 @@ module BoilerBase
 
       @logger.debug('Mixer controller starting control')
 
-      # Clear control thread stop sugnaling mutex
+      # Clear control thread stop signaling mutex
       @stop_control_requested.unlock if @stop_control_requested.locked?
 
       # Start control thread

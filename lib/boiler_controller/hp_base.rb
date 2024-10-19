@@ -43,7 +43,7 @@ module HPBase
 
       # Perform initial value read
       @delay_timer.reset
-      initial_value = read_value
+      initial_value = read_value(true)
       @lastvalue = initial_value.nil? ? DEFAULT_VALUE : initial_value
     end
 
@@ -67,7 +67,7 @@ module HPBase
       num >= mid ? num - max_unsigned : num
     end
 
-    def read_value
+    def read_value(dontcatchexception = false)
       val = 0
       case @register_type
       when :input
@@ -83,8 +83,11 @@ module HPBase
         "reading #{@name}")
       @logger.fatal("Exception caught in main block: #{e.inspect}")
       @logger.fatal("Exception backtrace: #{e.backtrace.join("\n")}")
+      raise e if dontcatchexception
+
       # Signal the main thread for fatal error shutdown
       @config.shutdown_reason = Globals::FATAL_SHUTDOWN
+      @logger.fatal('Shutting down controller')
       @lastvalue
     end
     # End of Class definition HPvalueSensor

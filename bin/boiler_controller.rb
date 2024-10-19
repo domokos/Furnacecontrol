@@ -57,62 +57,73 @@ pid = fork do
   logger.app_logger.info('**************------------------------------***************')
   logger.app_logger.info('Boiler controller initializing')
 
-  # Create controller
-  heating_control = HeatingController.new(config)
-  logger.app_logger.info('Controller initialized - starting operation')
+  startup_fail = false
+  begin
+    # Create controller
+    heating_control = HeatingController.new(config)
+  rescue StandardError => e
+    startup_fail = true
+  end
 
-  RobustThread.new(label: 'Restapi thread') do
-    Thread.current[:name] = 'Restapi Thread'
-    Signal.trap('HUP', 'IGNORE')
-    Signal.trap('TERM', 'IGNORE')
-    # Create rest api
-    Restapi.set :bind, config[:rest_serverip]
-    Restapi.set :port, config[:rest_serverport]
-    Restapi.set :myprivatekey, config[:rest_privatekey]
-    Restapi.set :mycertfile, config[:rest_cert_file]
-    Restapi.set :heatingconfig, config
-    Restapi.set :heatingcontrol, heating_control
-    Restapi.set :logger, logger
+  if !startup_fail
+    logger.app_logger.info('Controller initialized - starting operation')
 
-    class << Restapi.settings
-      def server_settings
-        {
-          backend: BoilerThinBackend,
-          private_key_file: settings.myprivatekey,
-          cert_chain_file: settings.mycertfile,
-          verify_peer: false
-        }
+    RobustThread.new(label: 'Restapi thread') do
+      Thread.current[:name] = 'Restapi Thread'
+      Signal.trap('HUP', 'IGNORE')
+      Signal.trap('TERM', 'IGNORE')
+      # Create rest api
+      Restapi.set :bind, config[:rest_serverip]
+      Restapi.set :port, config[:rest_serverport]
+      Restapi.set :myprivatekey, config[:rest_privatekey]
+      Restapi.set :mycertfile, config[:rest_cert_file]
+      Restapi.set :heatingconfig, config
+      Restapi.set :heatingcontrol, heating_control
+      Restapi.set :logger, logger
+
+      class << Restapi.settings
+        def server_settings
+          {
+            backend: BoilerThinBackend,
+            private_key_file: settings.myprivatekey,
+            cert_chain_file: settings.mycertfile,
+            verify_peer: false
+          }
+        end
       end
+
+      logger.app_logger.info('Starting restapi')
+      Restapi.run!
+      logger.app_logger.info('Restapi terminated')
     end
 
-    logger.app_logger.info('Starting restapi')
-    Restapi.run!
-    logger.app_logger.info('Restapi terminated')
-  end
+    # Log that the restapi webserver is running
+    Thread.new do
+      sleep(1) until Restapi.settings.running?
+      logger.app_logger.info('Restapi startup complete')
+    end
 
-  # Log that the restapi webserver is running
-  Thread.new do
-    sleep(1) until Restapi.settings.running?
-    logger.app_logger.info('Restapi startup complete')
-  end
+    RobustThread.new(label: 'Main daemon thread') do
+      Thread.current[:name] = 'Main daemon'
+      Signal.trap('HUP', 'IGNORE')
 
-  RobustThread.new(label: 'Main daemon thread') do
-    Thread.current[:name] = 'Main daemon'
-    Signal.trap('HUP', 'IGNORE')
-
-    begin
-      heating_control.operate
-    rescue StandardError => e
-      logger.app_logger.fatal("Exception caught in main block: #{e.inspect}")
-      logger.app_logger.fatal("Exception backtrace: #{e.backtrace.join("\n")}")
-      config.shutdown_reason = Globals::FATAL_SHUTDOWN
-      heating_control.shutdown
+      begin
+        heating_control.operate
+      rescue StandardError => e
+        logger.app_logger.fatal("Exception caught in main block: #{e.inspect}")
+        logger.app_logger.fatal("Exception backtrace: #{e.backtrace.join("\n")}")
+        config.shutdown_reason = Globals::FATAL_SHUTDOWN
+        heating_control.shutdown
+        logger.app_logger.info('Shutting down Restapi')
+        Restapi.quit!
+        exit
+      end
       logger.app_logger.info('Shutting down Restapi')
       Restapi.quit!
-      exit
     end
-    logger.app_logger.info('Shutting down Restapi')
-    Restapi.quit!
+  else
+    logger.app_logger.info('Controller startup failed - exiting')
+    exit
   end
 end
 
