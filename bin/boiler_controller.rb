@@ -122,7 +122,7 @@ pid = fork do
       Restapi.quit!
     end
   else
-    logger.app_logger.info('Controller startup failed - exiting')
+    logger.app_logger.info('\nController startup failed - exiting')
     exit
   end
 end
