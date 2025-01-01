@@ -177,11 +177,11 @@ class HeatingController
       # Operate radiators @50% if outside temperature is below -3 C
       value = 0
       if outside_temp < -5
-        value = 0.5
-      elsif outside_temp < -3
-        value = 0.3
+        value = 0.8
+      elsif outside_temp < 0
+        value = 0.6
       elsif outside_temp < 2
-        value = 0.1
+        value = 0.4
       end
       return value
     }
